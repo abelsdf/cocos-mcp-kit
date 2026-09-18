@@ -3,7 +3,7 @@
 module.paths.push(Editor.App.path + '/node_modules');
 
 const cc = require('cc');
-const { attachPrefabMetadata, normalizePrefabNodeLayers } = require('./lib/prefab-metadata');
+const { assertNoLinkedPrefabInstances, attachPrefabMetadata, normalizePrefabNodeLayers } = require('./lib/prefab-metadata');
 const { resolveNode } = require('./lib/node-resolution');
 const { captureScriptExecution } = require('./lib/script-execution');
 
@@ -25,6 +25,7 @@ const {
   UITransform,
   Label,
   Sprite,
+  SpriteFrame,
   Button,
   Widget,
   Camera,
@@ -1000,6 +1001,7 @@ exports.methods = {
     if (!node) {
       throw new Error('Target node was not found.');
     }
+    assertNoLinkedPrefabInstances(node);
 
     const serialize = getCceSerializer();
     const prefab = new Prefab();
@@ -1203,14 +1205,23 @@ exports.methods = {
       throw new Error(`Parent not found: ${options.parentPath}`);
     }
 
+    let spriteFrame = null;
+    if (options.spriteFrameUuid) {
+      spriteFrame = await loadAssetByUuid(options.spriteFrameUuid);
+      if (!(spriteFrame instanceof SpriteFrame)) {
+        throw new Error(`spriteFrameUuid must resolve to a cc.SpriteFrame: ${options.spriteFrameUuid}`);
+      }
+    }
+    const color = parseColor(options.color, Color.WHITE);
+
     const node = new Node(options.name || 'Sprite');
     node.parent = parent;
     configureNodeBasics(node, options);
     configureUITransform(node, options);
     const sprite = getOrAddComponent(node, Sprite);
-    sprite.color = parseColor(options.color, Color.WHITE);
-    if (options.spriteFrameUuid) {
-      sprite.spriteFrame = await loadAssetByUuid(options.spriteFrameUuid);
+    sprite.color = color;
+    if (spriteFrame) {
+      sprite.spriteFrame = spriteFrame;
     }
 
     return {

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
   UI_2D_LAYER,
+  assertNoLinkedPrefabInstances,
   assertSerializedPrefabMetadata,
   attachPrefabMetadata,
   createPrefabFileId,
@@ -74,6 +75,16 @@ test('normalizePrefabNodeLayers assigns UI_2D to the entire cloned node tree', (
   assert.equal(root.layer, UI_2D_LAYER);
   assert.equal(child.layer, UI_2D_LAYER);
   assert.equal(grandchild.layer, UI_2D_LAYER);
+});
+
+test('prefab creation rejects a linked child before flattening its source relationship', () => {
+  const root = { name: 'Root', children: [{
+    name: 'LinkedChild',
+    _prefab: { asset: { uuid: 'base-prefab' }, instance: { fileId: 'instance' } },
+    children: [],
+  }] };
+  assert.throws(() => assertNoLinkedPrefabInstances(root), /Root\/LinkedChild.*flattened/);
+  assert.doesNotThrow(() => assertNoLinkedPrefabInstances({ name: 'Plain', children: [] }));
 });
 
 test('attachPrefabMetadata assigns root and asset references to every node and component', () => {

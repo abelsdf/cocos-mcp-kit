@@ -1,5 +1,7 @@
 # Cocos MCP Kit
 
+[English](./README.md) | **简体中文**
+
 Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp) 开发的开源 Cocos Creator 编辑器扩展。它在编辑器中提供本地 MCP 服务，使兼容的开发助手能够查询并操作 Cocos 工程。
 
 本分支已采用独立的扩展与包标识。当前代码以 Funplay 工具为底座；[需求文档](./docs/REQUIREMENTS.md)和[开发计划](./docs/PLAN.md)记录新增能力的实施状态。场景与资源的实际效果还需在独立测试工程中验证。
