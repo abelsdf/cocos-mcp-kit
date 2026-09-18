@@ -113,6 +113,13 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - 新增纯逻辑与场景方法测试，节点重名、失效 UUID、上限截断和拒绝误改均通过；相关测试 28/28 通过。全量测试 254 项中 240 通过、10 失败、4 跳过；失败项与此前 Windows 环境的软链接、权限和路径基线一致。**这只证明本地代码与模拟场景行为，不等于 Creator 3.8.8 内保存重开通过。**FR-03、FR-04 和阶段 1 任务仍保持未勾选，资源子资产解析与真实编辑器验证尚未完成。
 - 阶段 0 源码审查发现 `lib/scenes.js` 与 `lib/prefabs.js` 在 `asset-db:save-asset` 失败或写回不一致时会直接写文件；该回退尚未验证导入、meta/UUID 和编辑器内存状态。FR-05 持久化验收前需在独立测试工程核验并决定是否禁用此回退，不将文件存在视为资产可用。
 
+### Creator 3.8.8 首轮实测（2026-09-18）
+
+- 独立工程 `CocosMcpTest2D` 已加载本扩展；`/health` 与 MCP `initialize` 返回相同工程身份，当前 core 配置暴露 39/105 个工具。`get_editor_state`、场景层级、资源列表等查询在真实编辑器中返回。
+- `create_scene(mode=empty)` 经 `asset-db:create-asset` 创建场景，Editor 导入并产生 `.meta`；在 `Smoke.scene` 创建 `McpSmokeMarker` 和 `UITransform` 后，显式 `scene:save-scene` 写盘。切换 `Blank.scene` 再重新打开 `Smoke.scene`，节点 UUID、坐标和组件均恢复。这只覆盖该小型场景的创建与保存重开，尚不证明复杂资源引用、预制体或所有 CRUD 路径。
+- 直接在场景脚本中新增节点后，`scene:query-dirty` 仍返回 `false`，但显式保存有效；后续须区分场景脚本直接修改与编辑器原生消息的脏状态行为，不能依赖脏标记自动保存。
+- 实测 `get_scene_info`、`get_hierarchy` 曾把标记为 `CCObjectFlags.DontSave` 的编辑器辅助节点误列为场景内容；源码已按该标志过滤查询、统计和节点定位，相关测试 8/8 通过。重开 Creator 后，在 `Smoke.scene` 中 `get_scene_info`、`get_hierarchy` 均只返回 1 个测试节点且无截断，性能统计为 1 个节点、1 个组件，按辅助节点名称定位返回未找到。全量测试 256 项中 242 通过、10 个既有 Windows 环境失败、4 跳过；阶段 0 和 FR-05 的其余验收仍未完成。
+
 ## 阶段 2：构建器与 UI 模板
 
 关联：FR-05—FR-08、FR-17。依赖阶段 1。

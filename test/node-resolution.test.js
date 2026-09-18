@@ -44,3 +44,14 @@ test('unique names and scene-qualified paths resolve without changing node ident
   assert.equal(resolveNode(scene, { path: 'Scene/Camera' }), unique);
   assert.equal(nodePath(scene, unique), 'Camera');
 });
+
+test('selector predicate omits hidden subtrees for both path and UUID lookup', () => {
+  const { scene, secondButton } = makeTree();
+  const hidden = { name: 'Canvas', uuid: 'hidden', parent: scene, children: [] };
+  const hiddenButton = { name: 'Button', uuid: 'hidden-button', parent: hidden, children: [] };
+  hidden.children.push(hiddenButton);
+  scene.children.push(hidden);
+  const includeNode = (node) => node !== hidden;
+  assert.equal(resolveNode(scene, { uuid: 'hidden-button' }, { includeNode }), null);
+  assert.equal(resolveNode(scene, { path: 'Canvas/Button', uuid: 'button-b' }, { includeNode }), secondButton);
+});

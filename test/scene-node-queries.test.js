@@ -19,6 +19,7 @@ class MockNode {
     this.position = { x: 0, y: 0, z: 0 };
     this.rotation = { x: 0, y: 0, z: 0, w: 1 };
     this.scale = { x: 1, y: 1, z: 1 };
+    this._objFlags = 0;
     this._parent = null;
   }
 
@@ -52,7 +53,9 @@ function sceneMethods() {
     Editor: { App: { path: '' } },
     module: { paths: [] },
     exports,
-    require: (id) => id === 'cc' ? { Node: MockNode, director: { getScene: () => scene } } : localRequire(id),
+    require: (id) => id === 'cc'
+      ? { Node: MockNode, CCObjectFlags: { DontSave: 8 }, director: { getScene: () => scene } }
+      : localRequire(id),
     console,
   }, { filename: sceneFile });
   return { scene, first, second, camera, methods: exports.methods };
@@ -97,4 +100,26 @@ test('ambiguous or stale selectors cannot change another node', async () => {
   const created = await methods.createNode({ name: 'New', parentUuid: second.uuid });
   assert.equal(created.created, true);
   assert.equal(second.children.length, 2);
+});
+
+test('Creator DontSave helper roots are excluded from scene queries and node targets', async () => {
+  const { scene, methods } = sceneMethods();
+  const helper = new MockNode('Editor Scene Foreground', 'editor-helper');
+  helper._objFlags = 8 | 1024;
+  helper.parent = scene;
+  const hiddenChild = new MockNode('Button', 'editor-button');
+  hiddenChild.parent = helper;
+
+  const info = await methods.getSceneInfo({ maxDepth: 2 });
+  assert.equal(info.childCount, 3);
+  assert.equal(info.returnedNodes, 5);
+  assert.equal(info.nodes.some((node) => node.name === helper.name), false);
+
+  const hierarchy = await methods.getHierarchy({ maxDepth: 2 });
+  assert.equal(hierarchy.nodes.length, 3);
+  const found = await methods.findNodes({ name: 'Button' });
+  assert.equal(found.count, 2);
+  assert.equal(found.nodes.some((node) => node.uuid === hiddenChild.uuid), false);
+  await assert.rejects(() => methods.inspectNode({ uuid: helper.uuid }), /not found/);
+  await assert.rejects(() => methods.createNode({ name: 'Oops', parentUuid: helper.uuid }), /Parent not found/);
 });

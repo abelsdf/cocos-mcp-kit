@@ -32,6 +32,17 @@ const {
   AnimationClip,
 } = cc;
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+const DONT_SAVE_FLAG = cc.CCObjectFlags && cc.CCObjectFlags.DontSave
+  || cc.CCObject && cc.CCObject.Flags && cc.CCObject.Flags.DontSave
+  || 8;
+
+function isSceneContentNode(node) {
+  return !node || !(node._objFlags & DONT_SAVE_FLAG);
+}
+
+function sceneContentChildren(node) {
+  return node.children.filter(isSceneContentNode);
+}
 
 async function callPreviewRuntimeTool(name) {
   // Keep legacy scene-script entrypoints, but route them back to the editor's
@@ -118,7 +129,7 @@ function colorToObject(value) {
 }
 
 function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive, budget) {
-  if (!includeInactive && !node.active) {
+  if (!isSceneContentNode(node) || (!includeInactive && !node.active)) {
     return null;
   }
   if (budget.count >= budget.maxNodes) {
@@ -144,7 +155,7 @@ function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive
 
   if (depth < maxDepth) {
     const children = [];
-    for (const child of node.children) {
+    for (const child of sceneContentChildren(node)) {
       const childSummary = summarizeNode(child, depth + 1, maxDepth, includeComponents, includeInactive, budget);
       if (childSummary) {
         children.push(childSummary);
@@ -152,26 +163,27 @@ function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive
     }
     summary.children = children;
   } else {
-    summary.childCount = node.children.length;
-    if (node.children.length > 0) budget.truncatedByDepth = true;
+    summary.childCount = sceneContentChildren(node).length;
+    if (summary.childCount > 0) budget.truncatedByDepth = true;
   }
 
   return summary;
 }
 
 function walkNodes(visitor, node) {
+  if (!isSceneContentNode(node)) return;
   visitor(node);
-  for (const child of node.children) {
+  for (const child of sceneContentChildren(node)) {
     walkNodes(visitor, child);
   }
 }
 
 function findNodeByPath(nodePath) {
-  return resolveNode(getScene(), { path: nodePath });
+  return resolveNode(getScene(), { path: nodePath }, { includeNode: isSceneContentNode });
 }
 
 function findNode(input) {
-  return resolveNode(getScene(), input || {});
+  return resolveNode(getScene(), input || {}, { includeNode: isSceneContentNode });
 }
 
 function getCceSerializer() {
@@ -357,6 +369,7 @@ function collectSceneStats() {
   };
 
   function visit(node, depth) {
+    if (!isSceneContentNode(node)) return;
     if (node !== getScene()) {
       stats.nodeCount += 1;
       stats.maxDepth = Math.max(stats.maxDepth, depth);
@@ -377,7 +390,7 @@ function collectSceneStats() {
       if (component instanceof Button) stats.buttonCount += 1;
     }
 
-    for (const child of node.children) {
+    for (const child of sceneContentChildren(node)) {
       visit(child, depth + 1);
     }
   }
@@ -590,13 +603,14 @@ exports.methods = {
     const includeComponents = options.includeComponents !== false;
     const scene = getScene();
     const budget = { count: 0, maxNodes, truncatedByCount: false, truncatedByDepth: false };
-    const nodes = scene.children
+    const children = sceneContentChildren(scene);
+    const nodes = children
       .map((child) => summarizeNode(child, 1, maxDepth, includeComponents, true, budget))
       .filter(Boolean);
     return {
       sceneName: scene.name,
       uuid: scene.uuid,
-      childCount: scene.children.length,
+      childCount: children.length,
       nodes,
       returnedNodes: budget.count,
       truncated: budget.truncatedByCount || budget.truncatedByDepth,
@@ -620,7 +634,7 @@ exports.methods = {
     const budget = { count: 0, maxNodes, truncatedByCount: false, truncatedByDepth: false };
 
     if (root === getScene()) {
-      const nodes = root.children
+      const nodes = sceneContentChildren(root)
         .map((child) => summarizeNode(child, 1, maxDepth, includeComponents, includeInactive, budget))
         .filter(Boolean);
       return {
@@ -656,7 +670,7 @@ exports.methods = {
       position: vectorToObject(node.position),
       rotation: quatToObject(node.rotation),
       scale: vectorToObject(node.scale),
-      children: node.children.map((child) => ({
+      children: sceneContentChildren(node).map((child) => ({
         name: child.name,
         path: getNodePath(child),
         uuid: child.uuid,
@@ -1059,9 +1073,9 @@ exports.methods = {
         serialized: true,
         mode,
         source: source
-          ? { name: originalName, uuid: source.uuid, childCount: source.children.length }
+          ? { name: originalName, uuid: source.uuid, childCount: sceneContentChildren(source).length }
           : null,
-        scene: { name: scene.name, childCount: scene.children.length },
+        scene: { name: scene.name, childCount: sceneContentChildren(scene).length },
         content,
       };
     } finally {
@@ -1091,7 +1105,7 @@ exports.methods = {
       loaded: true,
       sceneUuid,
       sceneName: scene.name,
-      childCount: scene.children.length,
+      childCount: sceneContentChildren(scene).length,
     };
   },
 
