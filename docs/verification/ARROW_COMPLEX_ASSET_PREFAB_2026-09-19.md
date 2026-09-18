@@ -29,4 +29,4 @@
 - 浏览器预览实际展示的是项目 `profiles/v2/packages/preview.json` 中固定的 `Main.scene`，并非测试场景。没有测试场景的视觉截图，不声称运行画面已验收。Creator [预览文档](https://docs.cocos.com/creator/3.8/manual/zh/editor/preview/index.html)说明工具栏可选择预览场景。
 - `lib/scenes.js`、`lib/prefabs.js` 的既有文件直写回退及覆盖已有预制体路径未在本轮故障注入；脚本事件、按钮、构建器、跨版本和完整 FR-05 仍待验证。
 
-本轮修复 `scene.js` 的 SpriteFrame 加载和类型检查顺序，避免失败后的半节点；`lib/tools/assets-advanced.js` 在合法 JSON 中只识别明确的资源引用字段，避免把 Cocos 节点 ID 和普通字段当资源 UUID；`lib/prefab-metadata.js` 为不支持的嵌套链接增加前置拒绝。相关测试 31/31 通过，变更文件 `node --check` 与 `git diff --check` 通过。本机 `npm` 启动脚本缺失 `npm-cli.js`，故未用 `npm run check`；本轮未重跑全量测试。所有结论限定于本工程的 Creator 3.8.8 和上述路径。
+本轮修复 `scene.js` 的 SpriteFrame 加载和类型检查顺序，避免失败后的半节点；`lib/tools/assets-advanced.js` 在合法 JSON 中只识别明确的资源引用字段，避免把 Cocos 节点 ID 和普通字段当资源 UUID；`lib/prefab-metadata.js` 为不支持的嵌套链接增加前置拒绝。相关测试 31/31 通过，变更文件 `node --check` 与 `git diff --check` 通过。本轮未重跑全量测试；后续核实 `npm` 的报错来自受限环境无法读取用户目录入口，本机安装并未损坏。所有结论限定于本工程的 Creator 3.8.8 和上述路径。

@@ -71,6 +71,24 @@ function mockEditorRequests(t, handler) {
   });
 }
 
+function mockAssetDbPersistence(t, projectPath) {
+  mockEditorRequests(t, async (channel, method, dbUrl, content) => {
+    assert.equal(channel, 'asset-db');
+    if (method === 'create-asset' || method === 'save-asset') {
+      const filePath = path.join(projectPath, dbUrl.slice('db://'.length));
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, content);
+      return { imported: true };
+    }
+    if (method === 'query-asset-info') return {
+      uuid: 'generated-asset-uuid', url: dbUrl,
+      type: dbUrl.endsWith('.scene') ? 'cc.SceneAsset' : 'cc.Prefab', imported: true,
+    };
+    if (method === 'refresh-asset') return true;
+    throw new Error(`Unexpected asset-db method: ${method}`);
+  });
+}
+
 test('core profile exposes the documented focused tool set', () => {
   const tools = createRegistry('core').listTools();
   assert.equal(tools.length, 39);
@@ -139,6 +157,7 @@ test('create_scene serializes and persists a scene without an interactive save d
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'funplay-cocos-scene-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   fs.mkdirSync(path.join(tmp, 'assets'), { recursive: true });
+  mockAssetDbPersistence(t, tmp);
 
   const calls = [];
   const registry = createRegistry('full', tmp, {}, {
@@ -234,6 +253,7 @@ test('create_prefab_from_node serializes through scene bridge and writes asset f
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'funplay-cocos-prefab-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   fs.mkdirSync(path.join(tmp, 'assets'), { recursive: true });
+  mockAssetDbPersistence(t, tmp);
 
   const calls = [];
   const registry = createRegistry('full', tmp, {}, {
@@ -244,10 +264,10 @@ test('create_prefab_from_node serializes through scene bridge and writes asset f
           source: { name: 'SourceNode', path: 'Canvas/SourceNode', uuid: 'source-uuid' },
           root: { name: payload.rootName || 'SourceNode' },
           content: JSON.stringify([
-            { __type__: 'cc.Prefab', data: { __id__: 1 } },
+            { __type__: 'cc.Prefab', _name: payload.prefabName, data: { __id__: 1 } },
             {
               __type__: 'cc.Node',
-              _name: 'SourceNode',
+              _name: payload.rootName,
               _layer: 33554432,
               _components: [{ __id__: 2 }],
               _prefab: { __id__: 4 },
@@ -278,7 +298,7 @@ test('create_prefab_from_node serializes through scene bridge and writes asset f
     uuid: undefined,
     name: 'SourceNode',
     rootName: 'SettingsPanel',
-    prefabName: undefined,
+    prefabName: 'SettingsPanel',
   });
   assert.equal(result.value.data.created, true);
   assert.equal(result.value.data.path, 'assets/Prefabs/SettingsPanel.prefab');
@@ -291,6 +311,18 @@ test('create_prefab_from_node serializes through scene bridge and writes asset f
     fileIdCount: 2,
   });
   assert.equal(fs.existsSync(path.join(tmp, 'assets', 'Prefabs', 'SettingsPanel.prefab')), true);
+});
+
+test('create_prefab_from_node rejects a root name that differs from the target filename', async () => {
+  const registry = createRegistry('full', path.resolve('/tmp/cocos-prefab-name-test'), {}, {
+    sceneBridge: { call: async () => assert.fail('Rejected names must not serialize a node') },
+  });
+  await assert.rejects(
+    () => registry.callToolDetailed('create_prefab_from_node', {
+      target: 'Prefabs/SettingsPanel', name: 'SourceNode', rootName: 'DifferentName',
+    }),
+    /rootName must match the target prefab filename "SettingsPanel"/
+  );
 });
 
 test('create_prefab_from_node rejects non-UI_2D node layers before writing', async (t) => {

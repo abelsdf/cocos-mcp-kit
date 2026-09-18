@@ -1,12 +1,12 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const { canCreateZip, createZip } = require('../test-support/zip-fixture');
 const {
   activateGlobalExtension,
   getGlobalExtensionsDirectory,
@@ -14,11 +14,6 @@ const {
   installGlobalExtension,
 } = require('../lib/global-install');
 const { sha256File } = require('../lib/updater');
-
-function hasCommand(name) {
-  const result = childProcess.spawnSync(name, ['-v'], { encoding: 'utf8' });
-  return !result.error && result.status === 0;
-}
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'funplay-global-install-test-'));
@@ -42,16 +37,6 @@ function createExtensionPackage(packagePath, version) {
     'utf8'
   );
   fs.writeFileSync(path.join(packagePath, 'lib', 'marker.js'), `'use strict';\n`, 'utf8');
-}
-
-function createZip(sourceRoot, zipPath) {
-  const result = childProcess.spawnSync('zip', ['-qr', zipPath, 'cocos-mcp-kit'], {
-    cwd: sourceRoot,
-    encoding: 'utf8',
-  });
-  if (result.status !== 0) {
-    throw new Error(result.stderr || result.stdout || 'zip failed');
-  }
 }
 
 function serveFiles(files) {
@@ -111,7 +96,7 @@ test('global install state targets the active Creator version directory', () => 
 });
 
 test('global directory keeps the legacy fallback outside a running Creator host', () => {
-  const homePath = path.join('/tmp', 'funplay-legacy-home');
+  const homePath = path.join(os.tmpdir(), 'funplay-legacy-home');
   assert.equal(
     getGlobalExtensionsDirectory({ homePath }),
     path.join(homePath, '.CocosCreator', 'extensions')
@@ -119,7 +104,7 @@ test('global directory keeps the legacy fallback outside a running Creator host'
 });
 
 test('activateGlobalExtension asks Creator to scan and enable the global package', async () => {
-  const globalPackagePath = path.join('/tmp', 'creator-home', 'builtin-extensions', '3.8.8', 'cocos-mcp-kit');
+  const globalPackagePath = path.join(os.tmpdir(), 'creator-home', 'builtin-extensions', '3.8.8', 'cocos-mcp-kit');
   const packages = [];
   const calls = [];
   const editor = {
@@ -177,8 +162,8 @@ test('activateGlobalExtension asks Creator to scan and enable the global package
 });
 
 test('activateGlobalExtension preserves an active project copy after registering the global package', async () => {
-  const projectPackagePath = path.join('/tmp', 'project', 'extensions', 'cocos-mcp-kit');
-  const globalPackagePath = path.join('/tmp', 'creator-home', 'builtin-extensions', '3.8.8', 'cocos-mcp-kit');
+  const projectPackagePath = path.join(os.tmpdir(), 'project', 'extensions', 'cocos-mcp-kit');
+  const globalPackagePath = path.join(os.tmpdir(), 'creator-home', 'builtin-extensions', '3.8.8', 'cocos-mcp-kit');
   const packages = [{
     name: 'cocos-mcp-kit',
     path: projectPackagePath,
@@ -384,7 +369,7 @@ test('a dangling symlink at the global path is treated as occupied', async (cont
     createExtensionPackage(packagePath, '0.4.6');
     fs.mkdirSync(path.dirname(globalPackagePath), { recursive: true });
     try {
-      fs.symlinkSync(path.join(temp, 'missing-target'), globalPackagePath, 'dir');
+      fs.symlinkSync(path.join(temp, 'missing-target'), globalPackagePath, process.platform === 'win32' ? 'junction' : 'dir');
     } catch (error) {
       context.skip(`symlink creation unavailable: ${error.code || error.message}`);
       return;
@@ -413,7 +398,7 @@ test('a dangling symlink at the global path is treated as occupied', async (cont
 });
 
 test('installGlobalExtension verifies and installs a release into a new global path', {
-  skip: hasCommand('zip') ? false : 'zip command unavailable',
+  skip: canCreateZip() ? false : 'zip fixture tool unavailable',
 }, async () => {
   const temp = makeTempDir();
   let server = null;

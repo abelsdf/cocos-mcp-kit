@@ -97,7 +97,7 @@ test('unsupported clients hide Skills notices and cannot silently install into C
 test('managed Skill installation cannot follow project-local symlinks into another project', (t) => {
   const root = project(t);
   const outside = project(t);
-  fs.symlinkSync(outside, path.join(root, '.agents'), 'dir');
+  fs.symlinkSync(outside, path.join(root, '.agents'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => updateBuiltInProjectSkill(root), /outside the Cocos project/);
   assert.deepEqual(fs.readdirSync(outside), []);
 });
@@ -105,7 +105,7 @@ test('managed Skill installation cannot follow project-local symlinks into anoth
 test('an unsafe client directory is reported without breaking other clients’ Skills state', (t) => {
   const root = project(t);
   const outside = project(t);
-  fs.symlinkSync(outside, path.join(root, '.agents'), 'dir');
+  fs.symlinkSync(outside, path.join(root, '.agents'), process.platform === 'win32' ? 'junction' : 'dir');
   const codex = getProjectSkillsState(root, { clientId: 'codex' });
   assert.match(codex.error, /outside the Cocos project/);
   assert.deepEqual(codex.builtIns, []);

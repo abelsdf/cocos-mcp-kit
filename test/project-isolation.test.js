@@ -111,10 +111,11 @@ test('atomic config writes reject stale content and preserve file mode', (t) => 
   const { root } = fixture(t);
   const file = path.join(root, 'config.json');
   fs.writeFileSync(file, 'changed', { mode: 0o600 });
+  const initialMode = fs.statSync(file).mode & 0o777;
   assert.throws(() => writeTextIfUnchanged(file, 'new', 'old'), /changed while editing/);
   assert.equal(fs.readFileSync(file, 'utf8'), 'changed');
   writeTextIfUnchanged(file, 'new', 'changed');
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  assert.equal(fs.statSync(file).mode & 0o777, initialMode);
   assert.equal(fs.readdirSync(root).some((name) => name.endsWith('.tmp')), false);
 });
 

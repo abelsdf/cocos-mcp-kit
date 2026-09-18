@@ -86,16 +86,28 @@ test('prompt name, required, unknown and non-string arguments return invalid par
   assert.match(provider.getPrompt('scene_validation', { focus: 'Canvas' }).messages[0].content.text, /focus: Canvas/);
 });
 
-test('prompt discovery rejects symbolic-link files and directories', (t) => {
+test('prompt discovery rejects symbolic-link files', (t) => {
   const { root, directory } = fixture(t);
   const source = path.join(root, 'source.md');
   fs.writeFileSync(source, definition);
-  fs.symlinkSync(source, path.join(directory, 'linked.md'));
+  try {
+    fs.symlinkSync(source, path.join(directory, 'linked.md'));
+  } catch (error) {
+    if (['EPERM', 'EACCES'].includes(error.code)) {
+      t.skip(`file symlink creation unavailable: ${error.code}`);
+      return;
+    }
+    throw error;
+  }
   assert.equal(loadProjectPrompts(root).prompts.length, 0);
   assert.equal(loadProjectPrompts(root).warnings.length, 1);
+});
+
+test('prompt discovery rejects linked directories', (t) => {
+  const { root, directory } = fixture(t);
   const other = path.join(root, 'nested');
   fs.mkdirSync(other);
-  fs.symlinkSync(directory, path.join(other, 'mcp-prompts'), 'dir');
+  fs.symlinkSync(directory, path.join(other, 'mcp-prompts'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.equal(loadProjectPrompts(other).prompts.length, 0);
   assert.match(loadProjectPrompts(other).warnings[0], /symbolic link|outside the Cocos project/);
 });

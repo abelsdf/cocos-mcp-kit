@@ -1,23 +1,18 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const { canCreateZip, createZip } = require('../test-support/zip-fixture');
 const {
   extractZip,
   installLatestUpdate,
   parseChecksum,
   sha256File,
 } = require('../lib/updater');
-
-function hasCommand(name) {
-  const result = childProcess.spawnSync(name, ['-v'], { encoding: 'utf8' });
-  return !result.error && result.status === 0;
-}
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'funplay-updater-test-'));
@@ -39,16 +34,6 @@ function createReleasePackage(root, version) {
   fs.writeFileSync(path.join(packageRoot, 'browser.js'), `'use strict';\nmodule.exports = '${version}';\n`, 'utf8');
   fs.writeFileSync(path.join(packageRoot, 'lib', 'marker.js'), `'use strict';\n`, 'utf8');
   return packageRoot;
-}
-
-function createZip(sourceRoot, zipPath) {
-  const result = childProcess.spawnSync('zip', ['-qr', zipPath, 'cocos-mcp-kit'], {
-    cwd: sourceRoot,
-    encoding: 'utf8',
-  });
-  if (result.status !== 0) {
-    throw new Error(result.stderr || result.stdout || 'zip failed');
-  }
 }
 
 function serveFiles(files) {
@@ -76,7 +61,7 @@ test('parseChecksum returns the checksum for a named release asset', () => {
   assert.equal(parseChecksum(`${checksum}  other.zip\n`, 'CocosMcpKit.v0.4.1.zip'), '');
 });
 
-test('extractZip extracts the extension package safely', { skip: hasCommand('zip') ? false : 'zip command unavailable' }, () => {
+test('extractZip extracts the extension package safely', { skip: canCreateZip() ? false : 'zip fixture tool unavailable' }, () => {
   const temp = makeTempDir();
   try {
     const source = path.join(temp, 'source');
@@ -96,7 +81,7 @@ test('extractZip extracts the extension package safely', { skip: hasCommand('zip
 });
 
 test('installLatestUpdate downloads, verifies, backs up, and replaces the extension package', {
-  skip: hasCommand('zip') ? false : 'zip command unavailable',
+  skip: canCreateZip() ? false : 'zip fixture tool unavailable',
 }, async () => {
   const temp = makeTempDir();
   let server = null;

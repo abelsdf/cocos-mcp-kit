@@ -215,6 +215,7 @@ for (const extension of ['jsonc', 'json']) {
     const options = createTargetOptions(t);
     const original = '\uFEFF{\r\n\t// keep model and MCP preferences\r\n\t"model": "example/model",\r\n\t"mcp": {\r\n\t\t"cocos_mcp_kit": {\r\n\t\t\t"type": "remote",\r\n\t\t\t"url": "http://127.0.0.1:8123/", // endpoint\r\n\t\t\t"timeout": 15000,\r\n\t\t},\r\n\t\t/* other server */ "other": {"type":"local","command":["keep",],},\r\n\t},\r\n}\r\n';
     const file = writeOpenCodeConfig(options, original, extension);
+    const initialMode = fs.statSync(file).mode & 0o777;
     assert.equal(getTargetStatuses(OPENCODE_CONFIG, options).find((target) => target.id === 'opencode').configured, true);
     const initial = configureTarget(OPENCODE_CONFIG, 'opencode', options);
     assert.equal(fs.readFileSync(file, 'utf8'), original, 'same configuration must be a byte-for-byte no-op');
@@ -230,7 +231,7 @@ for (const extension of ['jsonc', 'json']) {
     assert.ok(written.includes('/* other server */ "other": {"type":"local","command":["keep",],}'));
     assert.equal(getTargetStatuses(updated, options).find((target) => target.id === 'opencode').configured, true);
     assert.equal(initial.configPath, file);
-    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(file).mode & 0o777, initialMode);
   });
 }
 
@@ -285,10 +286,19 @@ test('OpenCode config writes retain a symlink and the real file permissions', (t
   const file = path.join(options.homePath, '.config', 'opencode', 'opencode.jsonc');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(actual, '{ /* keep */ }', { mode: 0o600 });
-  fs.symlinkSync(actual, file);
+  const initialMode = fs.statSync(actual).mode & 0o777;
+  try {
+    fs.symlinkSync(actual, file);
+  } catch (error) {
+    if (['EPERM', 'EACCES'].includes(error.code)) {
+      t.skip(`file symlink creation unavailable: ${error.code}`);
+      return;
+    }
+    throw error;
+  }
   configureTarget(OPENCODE_CONFIG, 'opencode', options);
   assert.equal(fs.lstatSync(file).isSymbolicLink(), true);
-  assert.equal(fs.statSync(actual).mode & 0o777, 0o600);
+  assert.equal(fs.statSync(actual).mode & 0o777, initialMode);
   assert.ok(fs.readFileSync(actual, 'utf8').includes('/* keep */'));
   assert.equal(getTargetStatuses(OPENCODE_CONFIG, options).find((target) => target.id === 'opencode').configured, true);
 });
