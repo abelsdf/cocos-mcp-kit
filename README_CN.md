@@ -2,7 +2,7 @@
 
 Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp) 开发的开源 Cocos Creator 编辑器扩展。它在编辑器中提供本地 MCP 服务，使兼容的开发助手能够查询并操作 Cocos 工程。
 
-本分支已采用独立的扩展与包标识。当前代码以 Funplay 工具为底座；[需求文档](./docs/REQUIREMENTS.md)中的新增能力仍是计划，尚未视为已实现。场景与资源的实际效果还需在独立测试工程中验证。
+本分支已采用独立的扩展与包标识。当前代码以 Funplay 工具为底座；[需求文档](./docs/REQUIREMENTS.md)和[开发计划](./docs/PLAN.md)记录新增能力的实施状态。场景与资源的实际效果还需在独立测试工程中验证。
 
 ## 本地安装
 
@@ -19,10 +19,12 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 - [工具清单](./docs/TOOLS.md)：当前继承的工具接口。
 - [开发计划](./docs/PLAN.md)：新增能力与验收状态。
 
+节点查询遇到重名或重路径时会拒绝任选一个节点，并返回候选 UUID。同时提供多个定位条件时，它们必须指向同一节点；失效的 UUID 不会静默回退到名称。`get_scene_info` 与 `get_hierarchy` 默认最多返回 200 个节点并报告截断情况；`find_nodes` 同时报告匹配总数和实际返回数。
+
 修改场景、预制体、脚本或资源引用后，须在真实 Creator 中保存并重新打开验证；MCP 返回成功不能单独证明修改已持久化。
 
 ## 致谢与许可
 
 感谢 [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) 的作者与贡献者以 MIT 许可证开放底座代码。本项目在 [LICENSE](./LICENSE) 中保留 `Copyright (c) 2026 Funplay`、完整 MIT 条款及免责声明。本项目是独立分支，不代表 Funplay 官方版本；新增依赖和资源须分别核查许可。
 
-开发约束与代码来源规则见 [AGENTS.md](./AGENTS.md)。
+开发约束与代码来源规则见 [CONTRIBUTING.md](./CONTRIBUTING.md)。

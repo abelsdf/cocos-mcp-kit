@@ -199,9 +199,9 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | `delete_node` | `full` | mutating | Delete a node by path, uuid, or name. |
 | `execute_scene_script` | `core`, `full` | mutating | [compat] Execute JavaScript in the active Cocos scene context. Prefer execute_javascript with context="scene" as the main unified tool; use this when you specifically want the scene-only compatibility entrypoint. |
 | `find_nodes` | `full` | read-only | [core] Find scene nodes by exact name, partial path, or component type. |
-| `get_hierarchy` | `core`, `full` | read-only | [specialist] Return a structured hierarchy tree from the active scene or a specific node path. Prefer execute_javascript for broader reasoning or repair; use this when you want a predictable hierarchy snapshot. |
+| `get_hierarchy` | `core`, `full` | read-only | [specialist] Return a bounded hierarchy tree from the active scene or one uniquely identified node. Reports truncation when depth or node limits hide descendants. |
 | `get_scene_info` | `core`, `full` | read-only | [specialist] Return a structured summary of the active Cocos scene. Prefer execute_javascript for multi-step inspection or mutation; use this when you specifically want a compact scene snapshot. |
-| `inspect_node` | `full` | read-only | [core] Inspect a specific node by path, uuid, or name. |
+| `inspect_node` | `full` | read-only | [core] Inspect a node by UUID, path, or unique name. Multiple selectors must identify the same node; ambiguous matches return candidates. |
 | `set_node_transform` | `full` | mutating | Update node position, rotation, scale, or active state. |
 
 ### Screenshots

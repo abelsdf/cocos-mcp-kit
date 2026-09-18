@@ -4,6 +4,7 @@ module.paths.push(Editor.App.path + '/node_modules');
 
 const cc = require('cc');
 const { attachPrefabMetadata, normalizePrefabNodeLayers } = require('./lib/prefab-metadata');
+const { resolveNode } = require('./lib/node-resolution');
 const { captureScriptExecution } = require('./lib/script-execution');
 
 const {
@@ -87,6 +88,14 @@ function getNodePath(node) {
   return names.join('/');
 }
 
+function readQueryLimit(value, fallback, maximum, label) {
+  if (value == null) return fallback;
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    throw new Error(`${label} must be an integer between 1 and ${maximum}.`);
+  }
+  return value;
+}
+
 function vectorToObject(value) {
   if (!value) {
     return null;
@@ -108,10 +117,15 @@ function colorToObject(value) {
   return { r: value.r, g: value.g, b: value.b, a: value.a };
 }
 
-function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive) {
+function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive, budget) {
   if (!includeInactive && !node.active) {
     return null;
   }
+  if (budget.count >= budget.maxNodes) {
+    budget.truncatedByCount = true;
+    return null;
+  }
+  budget.count += 1;
 
   const summary = {
     name: node.name,
@@ -131,7 +145,7 @@ function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive
   if (depth < maxDepth) {
     const children = [];
     for (const child of node.children) {
-      const childSummary = summarizeNode(child, depth + 1, maxDepth, includeComponents, includeInactive);
+      const childSummary = summarizeNode(child, depth + 1, maxDepth, includeComponents, includeInactive, budget);
       if (childSummary) {
         children.push(childSummary);
       }
@@ -139,6 +153,7 @@ function summarizeNode(node, depth, maxDepth, includeComponents, includeInactive
     summary.children = children;
   } else {
     summary.childCount = node.children.length;
+    if (node.children.length > 0) budget.truncatedByDepth = true;
   }
 
   return summary;
@@ -152,60 +167,11 @@ function walkNodes(visitor, node) {
 }
 
 function findNodeByPath(nodePath) {
-  if (!nodePath) {
-    return null;
-  }
-
-  const segments = String(nodePath)
-    .split('/')
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-
-  let current = getScene();
-  if (segments[0] === current.name) {
-    segments.shift();
-  }
-
-  for (const segment of segments) {
-    current = current.children.find((child) => child.name === segment);
-    if (!current) {
-      return null;
-    }
-  }
-
-  return current;
-}
-
-function findNodeByUuid(uuid) {
-  if (!uuid) {
-    return null;
-  }
-
-  let match = null;
-  walkNodes((node) => {
-    if (!match && node.uuid === uuid) {
-      match = node;
-    }
-  }, getScene());
-  return match;
-}
-
-function findNodeByName(name) {
-  if (!name) {
-    return null;
-  }
-
-  let match = null;
-  walkNodes((node) => {
-    if (!match && node.name === name) {
-      match = node;
-    }
-  }, getScene());
-  return match;
+  return resolveNode(getScene(), { path: nodePath });
 }
 
 function findNode(input) {
-  return findNodeByUuid(input.uuid) || findNodeByPath(input.path) || findNodeByName(input.name);
+  return resolveNode(getScene(), input || {});
 }
 
 function getCceSerializer() {
@@ -619,39 +585,59 @@ async function executeUserCode(code, args, scriptConsole = console) {
 
 exports.methods = {
   async getSceneInfo(options = {}) {
-    const maxDepth = Number.isFinite(options.maxDepth) ? options.maxDepth : 2;
+    const maxDepth = readQueryLimit(options.maxDepth, 2, 32, 'maxDepth');
+    const maxNodes = readQueryLimit(options.maxNodes, 200, 2000, 'maxNodes');
     const includeComponents = options.includeComponents !== false;
     const scene = getScene();
+    const budget = { count: 0, maxNodes, truncatedByCount: false, truncatedByDepth: false };
+    const nodes = scene.children
+      .map((child) => summarizeNode(child, 1, maxDepth, includeComponents, true, budget))
+      .filter(Boolean);
     return {
       sceneName: scene.name,
       uuid: scene.uuid,
       childCount: scene.children.length,
-      nodes: scene.children
-        .map((child) => summarizeNode(child, 1, Math.max(1, maxDepth), includeComponents, true))
-        .filter(Boolean),
+      nodes,
+      returnedNodes: budget.count,
+      truncated: budget.truncatedByCount || budget.truncatedByDepth,
+      truncationReasons: [budget.truncatedByCount && 'maxNodes', budget.truncatedByDepth && 'maxDepth'].filter(Boolean),
     };
   },
 
   async getHierarchy(options = {}) {
-    const root = options.rootPath ? findNodeByPath(options.rootPath) : getScene();
+    const hasSelector = options.rootPath || options.rootUuid || options.rootName;
+    const root = hasSelector
+      ? findNode({ path: options.rootPath, uuid: options.rootUuid, name: options.rootName })
+      : getScene();
     if (!root) {
-      throw new Error(`Node not found: ${options.rootPath}`);
+      throw new Error(`Node not found: ${options.rootUuid || options.rootPath || options.rootName}`);
     }
 
-    const maxDepth = Number.isFinite(options.maxDepth) ? options.maxDepth : 3;
+    const maxDepth = readQueryLimit(options.maxDepth, 3, 32, 'maxDepth');
+    const maxNodes = readQueryLimit(options.maxNodes, 200, 2000, 'maxNodes');
     const includeComponents = options.includeComponents !== false;
     const includeInactive = options.includeInactive !== false;
+    const budget = { count: 0, maxNodes, truncatedByCount: false, truncatedByDepth: false };
 
     if (root === getScene()) {
+      const nodes = root.children
+        .map((child) => summarizeNode(child, 1, maxDepth, includeComponents, includeInactive, budget))
+        .filter(Boolean);
       return {
         sceneName: root.name,
-        nodes: root.children
-          .map((child) => summarizeNode(child, 1, Math.max(1, maxDepth), includeComponents, includeInactive))
-          .filter(Boolean),
+        nodes,
+        returnedNodes: budget.count,
+        truncated: budget.truncatedByCount || budget.truncatedByDepth,
+        truncationReasons: [budget.truncatedByCount && 'maxNodes', budget.truncatedByDepth && 'maxDepth'].filter(Boolean),
       };
     }
 
-    return summarizeNode(root, 0, Math.max(1, maxDepth), includeComponents, includeInactive);
+    const summary = summarizeNode(root, 0, maxDepth, includeComponents, includeInactive, budget);
+    if (!summary) return null;
+    summary.returnedNodes = budget.count;
+    summary.truncated = budget.truncatedByCount || budget.truncatedByDepth;
+    summary.truncationReasons = [budget.truncatedByCount && 'maxNodes', budget.truncatedByDepth && 'maxDepth'].filter(Boolean);
+    return summary;
   },
 
   async inspectNode(options = {}) {
@@ -684,7 +670,9 @@ exports.methods = {
     const pathContains = options.pathContains ? String(options.pathContains) : '';
     const component = options.component ? String(options.component) : '';
     const includeInactive = options.includeInactive !== false;
+    const maxResults = readQueryLimit(options.maxResults, 200, 500, 'maxResults');
     const results = [];
+    let count = 0;
 
     walkNodes((node) => {
       if (node === getScene()) {
@@ -710,18 +698,23 @@ exports.methods = {
         return;
       }
 
-      results.push({
-        name: node.name,
-        path: nodePath,
-        uuid: node.uuid,
-        active: Boolean(node.active),
-        components,
-      });
+      count += 1;
+      if (results.length < maxResults) {
+        results.push({
+          name: node.name,
+          path: nodePath,
+          uuid: node.uuid,
+          active: Boolean(node.active),
+          components,
+        });
+      }
     }, getScene());
 
     return {
-      count: results.length,
-      nodes: results.slice(0, 200),
+      count,
+      returnedCount: results.length,
+      truncated: count > results.length,
+      nodes: results,
     };
   },
 
@@ -731,9 +724,11 @@ exports.methods = {
       throw new Error('name is required.');
     }
 
-    const parent = options.parentPath ? findNodeByPath(options.parentPath) : getScene();
+    const parent = options.parentPath || options.parentUuid || options.parentName
+      ? findNode({ path: options.parentPath, uuid: options.parentUuid, name: options.parentName })
+      : getScene();
     if (!parent) {
-      throw new Error(`Parent not found: ${options.parentPath}`);
+      throw new Error(`Parent not found: ${options.parentUuid || options.parentPath || options.parentName}`);
     }
 
     const node = new Node(name);

@@ -1,4 +1,5 @@
 .DS_Store
+/AGENTS.md
 .mcpregistry_*
 node_modules/
 temp/
