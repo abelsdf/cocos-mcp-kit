@@ -1,0 +1,24 @@
+{
+  "checkedAtDate": "2026-09-18",
+  "documentVersion": "0.5",
+  "scope": "document-integrity-only",
+  "tools": 16,
+  "enumerations": 232,
+  "actions": 224,
+  "topics": 8,
+  "matrixRows": 232,
+  "counts": {
+    "A": 36,
+    "B": 115,
+    "C": 66,
+    "D": 15
+  },
+  "allUntested": true,
+  "localLinksChecked": 6,
+  "issues": [],
+  "funplayMITLicenseUnchanged": true,
+  "notes": [
+    "本记录只验证目录对应、计数、候选名称、来源ID、Markdown/JSON一致性和本地链接。",
+    "没有执行Pro操作或本项目新增能力的运行验收；allUntested仅反映记录状态。"
+  ]
+}

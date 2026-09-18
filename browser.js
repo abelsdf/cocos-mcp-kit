@@ -1,0 +1,997 @@
+'use strict';
+
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const manifest = require('./package.json');
+const { getServerName, formatTargetPreview, buildTargets, configureTarget, getTargetStatuses } = require('./lib/client-config');
+const { readOptionalText, writeTextIfUnchanged } = require('./lib/atomic-file');
+const {
+  loadConfig,
+  getProjectPath,
+  getProjectName,
+  getProjectIdentity,
+  getProjectPort,
+  getCocosVersion,
+  hasRuntimeConfigChanges,
+} = require('./lib/config');
+const { McpServer } = require('./lib/server');
+const { createToolRegistry } = require('./lib/tool-registry');
+const { ResourceProvider } = require('./lib/resources');
+const { PromptProvider } = require('./lib/prompts');
+const { InteractionLog } = require('./lib/interaction-log');
+const { RuntimeLog } = require('./lib/runtime-log');
+const { captureScriptExecution } = require('./lib/script-execution');
+const { checkForUpdate, LATEST_RELEASE_URL } = require('./lib/update-checker');
+const { installLatestUpdate } = require('./lib/updater');
+const {
+  activateGlobalExtension,
+  getGlobalInstallationState,
+  installGlobalExtension,
+} = require('./lib/global-install');
+const { normalizeSavedToolProfiles } = require('./lib/tool-profiles');
+const { detectEditorLanguage, normalizeLanguagePreference, resolveLanguage } = require('./lib/i18n');
+const { createProjectSkill } = require('./lib/project-instructions');
+const { SKILL_PLATFORMS } = require('./lib/skill-platforms');
+const {
+  getProjectSkillsState: readProjectSkillsState,
+  previewBuiltInProjectSkillUpdate,
+  restoreLatestBuiltInProjectSkillBackup,
+  updateBuiltInProjectSkill,
+} = require('./lib/project-skills');
+
+const EXTENSION_NAME = manifest.name || 'cocos-mcp-kit';
+const LOG_PREFIX = '[Cocos MCP Kit]';
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+
+class ExtensionService {
+  constructor() {
+    this.config = null;
+    this.server = null;
+    this.toolRegistry = null;
+    this.resourceProvider = null;
+    this.promptProvider = null;
+    this.interactionLog = new InteractionLog();
+    this.runtimeLog = new RuntimeLog();
+    this.lastUpdateInfo = null;
+    this.lastInstallInfo = null;
+    this.lastGlobalInstallInfo = null;
+  }
+
+  log(level, message, details) {
+    if (this.runtimeLog && typeof this.runtimeLog.add === 'function') {
+      this.runtimeLog.add(level, message, details);
+    }
+    if (this.config && this.config.enableConsoleLogging === false) return;
+    const output = `${LOG_PREFIX} ${message}`;
+    if (level === 'error') {
+      console.error(output);
+    } else if (level === 'warn') {
+      console.warn(output);
+    } else {
+      console.log(output);
+    }
+  }
+
+  load() {
+    this.reloadRuntime();
+    this.log('info', 'Extension loading...');
+    let result;
+    if (this.config.autostart) {
+      this.log('info', 'Autostart is enabled, starting MCP server.');
+      result = this.startServer();
+    } else {
+      this.log('info', 'Autostart is disabled. MCP server is idle.');
+      result = this.getStatus();
+    }
+
+    Promise.resolve(result)
+      .then(() => this.autoCheckUpdates({ reason: 'startup', silent: true }))
+      .catch((error) => this.log('warn', `Automatic update check skipped: ${error.message}`));
+    return result;
+  }
+
+  unload() {
+    this.log('info', 'Extension unloading...');
+    if (this.server) {
+      this.server.stop();
+      this.server = null;
+    }
+    this.log('info', 'Extension unloaded.');
+  }
+
+  openPanel(panelName) {
+    if (!global.Editor || !Editor.Panel || typeof Editor.Panel.open !== 'function') {
+      throw new Error('Editor.Panel.open is unavailable in this Cocos extension host.');
+    }
+    const normalized = String(panelName || 'default').trim();
+    const panelId = !normalized || normalized === 'default'
+      ? EXTENSION_NAME
+      : `${EXTENSION_NAME}.${normalized}`;
+    return Editor.Panel.open(panelId);
+  }
+
+  reloadRuntime() {
+    this.config = loadConfig();
+    this.interactionLog = new InteractionLog(this.config.maxInteractionLogEntries);
+    this.runtimeLog = new RuntimeLog(this.config.maxInteractionLogEntries);
+    this.log(
+      'info',
+      `Runtime config loaded: host=${this.config.host}, port=${this.config.port}, ` +
+      `profile=${this.config.toolProfile}, autostart=${this.config.autostart}`
+    );
+    const sceneBridge = {
+      call: async (method, payload) => {
+        if (!global.Editor || !Editor.Message || typeof Editor.Message.request !== 'function') {
+          throw new Error('Editor.Message.request is unavailable in the Cocos extension host.');
+        }
+
+        return await Editor.Message.request('scene', 'execute-scene-script', {
+          name: EXTENSION_NAME,
+          method,
+          args: [payload || {}],
+        });
+      },
+    };
+
+    const runtimeContext = () => ({
+      extensionName: EXTENSION_NAME,
+      version: manifest.version || '0.0.0',
+      config: this.config,
+      projectPath: getProjectPath(),
+      projectName: getProjectName(),
+      projectIdentity: getProjectIdentity(),
+      cocosVersion: getCocosVersion(),
+      packagePath: path.dirname(__filename),
+    });
+
+    this.toolRegistry = createToolRegistry({
+      getRuntimeContext: runtimeContext,
+      getStatus: () => this.getStatus(),
+      interactionLog: this.interactionLog,
+      runtimeLog: this.runtimeLog,
+      sceneBridge,
+      editorExecutor: async (payload) => await this.executeEditorScript(payload, runtimeContext),
+    });
+    this.resourceProvider = new ResourceProvider(runtimeContext, sceneBridge, this.interactionLog, this.runtimeLog);
+    this.promptProvider = new PromptProvider(runtimeContext, { onWarning: (message) => this.log('warn', message) });
+  }
+
+  async startServer() {
+    if (this.server && this.server.isRunning()) {
+      this.log('info', `Start requested but MCP server is already running at ${this.getStatus().url}`);
+      return this.getStatus();
+    }
+
+    this.log('info', 'Starting MCP server...');
+    this.reloadRuntime();
+    this.server = new McpServer({
+      config: this.config,
+      interactionLog: this.interactionLog,
+      runtimeLog: this.runtimeLog,
+      toolRegistry: this.toolRegistry,
+      resourceProvider: this.resourceProvider,
+      promptProvider: this.promptProvider,
+      serverName: `Cocos MCP Kit - ${getProjectName()}`,
+      serverVersion: manifest.version || '0.0.0',
+      projectName: getProjectName(),
+      projectIdentity: getProjectIdentity(),
+    });
+
+    await this.server.start();
+    this.log('info', `MCP server started at ${this.getStatus().url}`);
+    return this.getStatus();
+  }
+
+  async stopServer() {
+    this.log('info', 'Stop requested.');
+    if (this.server) {
+      await this.server.stop();
+      this.server = null;
+      this.log('info', 'MCP server stopped.');
+    } else {
+      this.log('info', 'Stop requested but MCP server was not running.');
+    }
+    return this.getStatus();
+  }
+
+  async restartServer() {
+    this.log('info', 'Restart requested.');
+    await this.stopServer();
+    const status = await this.startServer();
+    this.log('info', `Restart completed. MCP server running=${status.running}, url=${status.url}`);
+    return status;
+  }
+
+  getEffectiveServerConnection() {
+    const port = this.server && this.server.isRunning() && typeof this.server.getPort === 'function'
+      ? this.server.getPort()
+      : this.config.port;
+    return {
+      host: this.config.host,
+      port,
+      url: `http://${this.config.host}:${port}/`,
+    };
+  }
+
+  getStatus() {
+    const effective = this.getEffectiveServerConnection();
+    const fallbackInfo = this.server && this.server.isRunning() && typeof this.server.getPortFallbackInfo === 'function'
+      ? this.server.getPortFallbackInfo()
+      : null;
+    const attachInfo = this.server && this.server.isRunning() && typeof this.server.getAttachInfo === 'function'
+      ? this.server.getAttachInfo()
+      : null;
+    return {
+      running: Boolean(this.server && this.server.isRunning()),
+      attachedToExisting: Boolean(attachInfo),
+      attachInfo,
+      host: this.config.host,
+      port: effective.port,
+      requestedPort: this.config.port,
+      portMode: this.config.portMode,
+      derivedPort: getProjectPort(),
+      portFallbackActive: Boolean(fallbackInfo),
+      portFallbackInfo: fallbackInfo,
+      toolProfile: this.config.toolProfile,
+      enabledTools: this.config.enabledTools,
+      disabledTools: this.config.disabledTools,
+      enabledToolCategories: this.config.enabledToolCategories,
+      disabledToolCategories: this.config.disabledToolCategories,
+      enableSessions: this.config.enableSessions,
+      enableConsoleLogging: this.config.enableConsoleLogging,
+      executeJavascriptSafetyChecks: this.config.executeJavascriptSafetyChecks,
+      autostart: this.config.autostart,
+      activeToolProfileName: this.config.activeToolProfileName,
+      savedToolProfiles: this.config.savedToolProfiles,
+      language: this.config.language,
+      version: manifest.version || '0.0.0',
+      projectPath: getProjectPath(),
+      projectName: getProjectName(),
+      projectIdentity: getProjectIdentity(),
+      cocosVersion: getCocosVersion(),
+      url: effective.url,
+    };
+  }
+
+  getInstallationState() {
+    return getGlobalInstallationState({
+      ...this.getGlobalInstallEnvironment(),
+      packagePath: path.dirname(__filename),
+      projectPath: getProjectPath(),
+      currentVersion: manifest.version || '0.0.0',
+      availableVersion: this.lastUpdateInfo && this.lastUpdateInfo.ok
+        ? this.lastUpdateInfo.latestVersion
+        : manifest.version || '0.0.0',
+    });
+  }
+
+  getGlobalInstallEnvironment() {
+    const editorApp = global.Editor && global.Editor.App ? global.Editor.App : null;
+    return {
+      editorHomePath: editorApp && editorApp.home ? editorApp.home : '',
+      editorVersion: editorApp && editorApp.version ? editorApp.version : getCocosVersion(),
+    };
+  }
+
+  async activateGlobalInstall(globalPackagePath) {
+    const activation = await activateGlobalExtension({
+      editor: global.Editor,
+      globalPackagePath,
+    });
+    if (activation.errors.length > 0) {
+      this.log('warn', activation.errors.join(' '));
+    }
+    if (activation.shadowedBy) {
+      this.log(
+        'info',
+        `The global extension was registered, but the active project copy has priority at ${activation.shadowedBy}.`
+      );
+    }
+    return activation;
+  }
+
+  getPanelState() {
+    this.ensureRuntime();
+    const status = this.getStatus();
+    const tools = this.toolRegistry.listTools();
+    const toolCatalog = typeof this.toolRegistry.listToolCatalog === 'function'
+      ? this.toolRegistry.listToolCatalog()
+      : tools;
+    const resources = this.resourceProvider.listResources();
+    const prompts = this.promptProvider.listPrompts();
+
+    const detectedLanguage = detectEditorLanguage(global.Editor);
+    return {
+      status,
+      tools,
+      toolCatalog,
+      resources,
+      prompts,
+      recentInteractions: this.interactionLog.list(20),
+      config: this.config,
+      updateInfo: this.lastUpdateInfo,
+      installInfo: this.lastInstallInfo,
+      installation: this.getInstallationState(),
+      globalInstallInfo: this.lastGlobalInstallInfo,
+      projectSkills: this.getProjectSkillsState(),
+      clientConfig: this.getClientConfig(),
+      projectSkillsByClient: Object.fromEntries(SKILL_PLATFORMS.map((platform) => [
+        platform.id, this.getProjectSkillsState({ clientId: platform.id }),
+      ])),
+      clientTargets: getTargetStatuses({
+        ...this.config,
+        host: status.host,
+        port: status.port,
+      }),
+      localization: {
+        preference: this.config.language,
+        detectedLanguage,
+        resolvedLanguage: resolveLanguage(this.config.language, detectedLanguage),
+      },
+    };
+  }
+
+  listToolsForPanel() {
+    this.ensureRuntime();
+    return this.toolRegistry.listTools();
+  }
+
+  clearRecentActivity() {
+    this.ensureRuntime();
+    this.interactionLog.clear();
+    return this.getPanelState();
+  }
+
+  async callToolFromPanel(name, args) {
+    this.ensureRuntime();
+    this.log('info', `Panel calling tool: ${name}`);
+    return await this.toolRegistry.callTool(name, args || {});
+  }
+
+  getProjectSkillsState(options = {}) {
+    this.ensureRuntime();
+    return readProjectSkillsState(getProjectPath(), this.getSkillOptions(options));
+  }
+
+  getSkillOptions(options = {}) {
+    return { ...options, clientId: options.clientId || this.config.lastClientTargetId };
+  }
+
+  previewProjectSkillUpdate(options = {}) {
+    return previewBuiltInProjectSkillUpdate(getProjectPath(), this.getSkillOptions(options));
+  }
+
+  installOrUpdateProjectSkill(options = {}) {
+    const result = updateBuiltInProjectSkill(getProjectPath(), {
+      ...this.getSkillOptions(options),
+      skillName: options.skillName,
+      allowModified: options.allowModified === true,
+      onlyIfMissing: options.onlyIfMissing === true,
+      extensionVersion: manifest.version || '0.0.0',
+    });
+    this.log(
+      'info',
+      result.installed
+        ? `Installed recommended project skill at ${result.write.path}.`
+        : result.updated
+          ? `Updated recommended project skill at ${result.write.path}.`
+          : result.skipped
+            ? `Kept existing project skill at ${result.state.path}.`
+            : 'Recommended project skill is already current.'
+    );
+    return {
+      ...result,
+      projectSkills: this.getProjectSkillsState(),
+    };
+  }
+
+  restoreProjectSkillBackup(options = {}) {
+    const result = restoreLatestBuiltInProjectSkillBackup(getProjectPath(), this.getSkillOptions(options));
+    this.log('info', `Restored project skill backup ${result.source.path}.`);
+    return {
+      ...result,
+      projectSkills: this.getProjectSkillsState(),
+    };
+  }
+
+  createProjectSkillFromPanel(options = {}) {
+    const result = createProjectSkill(getProjectPath(), {
+      ...this.getSkillOptions(options),
+      skillName: options.skillName,
+      title: options.title,
+      description: options.description,
+      instructions: options.instructions,
+      overwrite: false,
+    });
+    this.log('info', `Created project skill at ${result.path}.`);
+    return {
+      created: true,
+      ...result,
+      projectSkills: this.getProjectSkillsState(),
+    };
+  }
+
+  revealProjectSkill(target) {
+    const relativePath = String(target && target.path || target || '').trim();
+    const state = this.getProjectSkillsState(target && typeof target === 'object' ? target : {});
+    const skill = state.skills.find((item) => item.path === relativePath);
+    if (!skill) {
+      throw new Error(`Project skill not found: ${relativePath}`);
+    }
+    const filePath = path.resolve(state.projectPath, skill.path);
+
+    try {
+      const electron = require('electron');
+      if (electron && electron.shell && typeof electron.shell.showItemInFolder === 'function') {
+        electron.shell.showItemInFolder(filePath);
+        return { opened: true, path: skill.path, method: 'electron.shell.showItemInFolder' };
+      }
+    } catch (error) {
+      // Fall through to a platform file manager.
+    }
+
+    const childProcess = require('child_process');
+    const command = process.platform === 'darwin'
+      ? 'open'
+      : process.platform === 'win32'
+        ? 'explorer'
+        : 'xdg-open';
+    const args = process.platform === 'darwin'
+      ? ['-R', filePath]
+      : process.platform === 'win32'
+        ? [`/select,${filePath}`]
+        : [path.dirname(filePath)];
+    const child = childProcess.spawn(command, args, { detached: true, stdio: 'ignore' });
+    child.unref();
+    return { opened: true, path: skill.path, method: command };
+  }
+
+  async checkUpdates(options = {}) {
+    this.ensureRuntime();
+    this.log('info', 'Checking the configured Cocos MCP Kit release source.');
+    this.lastUpdateInfo = await checkForUpdate({
+      currentVersion: manifest.version || '0.0.0',
+      timeoutMs: Number.isFinite(options.timeoutMs) ? options.timeoutMs : 5000,
+      url: options.url,
+    });
+    if (this.lastUpdateInfo.ok) {
+      this.log(
+        'info',
+        `Update check completed: current=${this.lastUpdateInfo.currentVersion}, latest=${this.lastUpdateInfo.latestVersion || 'unknown'}`
+      );
+    } else {
+      this.log('warn', `Update check failed: ${this.lastUpdateInfo.error}`);
+    }
+    return this.getPanelState();
+  }
+
+  async autoCheckUpdates(options = {}) {
+    this.ensureRuntime();
+    if (!LATEST_RELEASE_URL) return this.getPanelState();
+    const now = Date.now();
+    const lastCheckedAt = this.lastUpdateInfo && this.lastUpdateInfo.checkedAt
+      ? new Date(this.lastUpdateInfo.checkedAt).getTime()
+      : 0;
+    const fresh = Number.isFinite(lastCheckedAt) && lastCheckedAt > 0
+      && now - lastCheckedAt < UPDATE_CHECK_INTERVAL_MS;
+    if (!options.force && fresh) {
+      return this.getPanelState();
+    }
+
+    if (!options.silent) {
+      this.log('info', `Running automatic update check (${options.reason || 'panel'}).`);
+    }
+    return await this.checkUpdates({ timeoutMs: options.timeoutMs });
+  }
+
+  async installUpdate(options = {}) {
+    this.ensureRuntime();
+    let updateInfo = this.lastUpdateInfo;
+    if (!updateInfo || !updateInfo.ok || options.forceCheck) {
+      await this.checkUpdates({ timeoutMs: options.timeoutMs });
+      updateInfo = this.lastUpdateInfo;
+    }
+    if (!updateInfo || !updateInfo.ok) {
+      throw new Error(updateInfo && updateInfo.error ? updateInfo.error : 'Update check failed.');
+    }
+    if (!updateInfo.updateAvailable && !options.force) {
+      throw new Error(`Already up to date: ${updateInfo.currentVersion}.`);
+    }
+
+    const installResult = await installLatestUpdate({
+      releaseInfo: updateInfo,
+      currentVersion: manifest.version || '0.0.0',
+      packagePath: path.dirname(__filename),
+      timeoutMs: Number.isFinite(options.timeoutMs) ? options.timeoutMs : 30000,
+      log: (level, message, details) => this.log(level, message, details),
+    });
+    const reload = options.skipReload ? { scheduled: false, reason: 'skipReload requested' } : this.scheduleExtensionReload();
+    this.lastInstallInfo = {
+      ...installResult,
+      installedAt: new Date().toISOString(),
+      reload,
+    };
+    this.log(
+      'info',
+      `Installed Cocos MCP Kit ${installResult.installedVersion}; ` +
+      (reload.scheduled ? 'extension reload scheduled.' : `reload not scheduled: ${reload.reason}`)
+    );
+    return this.getPanelState();
+  }
+
+  async installGlobally(options = {}) {
+    this.ensureRuntime();
+    const installation = this.getInstallationState();
+    if (installation.globalPathExists && !installation.globalInstalled) {
+      throw new Error(
+        `Global extension path is occupied by an invalid package: ${installation.globalPackagePath}. ` +
+        `${installation.globalInstallError || 'Remove or rename it before installing.'}`
+      );
+    }
+    if (!installation.canInstallGlobally && installation.globalInstalled && !options.force) {
+      const activation = await this.activateGlobalInstall(installation.globalPackagePath);
+      this.lastGlobalInstallInfo = {
+        ok: true,
+        installed: false,
+        alreadyInstalled: true,
+        installedVersion: installation.globalVersion,
+        globalPackagePath: installation.globalPackagePath,
+        duplicateInstall: installation.duplicateInstall,
+        restartRequired: !activation.enabled,
+        activation,
+        installedAt: new Date().toISOString(),
+      };
+      return this.getPanelState();
+    }
+
+    let updateInfo = this.lastUpdateInfo;
+    if (!updateInfo || !updateInfo.ok || !updateInfo.downloadAvailable || options.forceCheck) {
+      await this.checkUpdates({ timeoutMs: options.timeoutMs });
+      updateInfo = this.lastUpdateInfo;
+    }
+    if (!updateInfo || !updateInfo.ok) {
+      throw new Error(updateInfo && updateInfo.error ? updateInfo.error : 'Release check failed.');
+    }
+    if (!updateInfo.downloadAvailable) {
+      throw new Error('Latest release does not include the verified extension assets required for global install.');
+    }
+
+    const installResult = await installGlobalExtension({
+      ...this.getGlobalInstallEnvironment(),
+      releaseInfo: updateInfo,
+      packagePath: path.dirname(__filename),
+      projectPath: getProjectPath(),
+      currentVersion: manifest.version || '0.0.0',
+      availableVersion: updateInfo.latestVersion,
+      timeoutMs: Number.isFinite(options.timeoutMs) ? options.timeoutMs : 30000,
+      force: Boolean(options.force),
+      log: (level, message, details) => this.log(level, message, details),
+    });
+    const activation = await this.activateGlobalInstall(installResult.globalPackagePath);
+    this.lastGlobalInstallInfo = {
+      ...installResult,
+      restartRequired: installResult.restartRequired && !activation.enabled,
+      activation,
+      installedAt: new Date().toISOString(),
+    };
+    this.log(
+      'info',
+      installResult.alreadyInstalled
+        ? `Global Cocos MCP Kit ${installResult.installedVersion} is already installed.`
+        : `Installed Cocos MCP Kit ${installResult.installedVersion} for all projects at ` +
+          `${installResult.globalPackagePath}. ` +
+          (activation.enabled
+            ? 'Cocos Creator scanned and enabled the global copy.'
+            : 'Cocos Creator registered the global copy; reopen projects that are already running to activate it.')
+    );
+    return this.getPanelState();
+  }
+
+  openUpdateRelease(url) {
+    const update = this.lastUpdateInfo || {};
+    const targetUrl = String(url || update.releaseUrl || '').trim();
+    if (!targetUrl) throw new Error('No release page is configured for Cocos MCP Kit.');
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      throw new Error(`Refusing to open non-HTTP URL: ${targetUrl}`);
+    }
+
+    try {
+      const electron = require('electron');
+      if (electron && electron.shell && typeof electron.shell.openExternal === 'function') {
+        electron.shell.openExternal(targetUrl);
+        return { opened: true, url: targetUrl, method: 'electron.shell.openExternal' };
+      }
+    } catch (error) {
+      // Fall through to Editor or platform open commands.
+    }
+
+    if (global.Editor && Editor.Utils && Editor.Utils.Shell && typeof Editor.Utils.Shell.openExternal === 'function') {
+      Editor.Utils.Shell.openExternal(targetUrl);
+      return { opened: true, url: targetUrl, method: 'Editor.Utils.Shell.openExternal' };
+    }
+
+    const childProcess = require('child_process');
+    const command = process.platform === 'darwin'
+      ? 'open'
+      : process.platform === 'win32'
+        ? 'cmd'
+        : 'xdg-open';
+    const args = process.platform === 'win32' ? ['/c', 'start', '', targetUrl] : [targetUrl];
+    const child = childProcess.spawn(command, args, {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+    return { opened: true, url: targetUrl, method: command };
+  }
+
+  scheduleExtensionReload(delayMs = 1200) {
+    if (!global.Editor || !Editor.Package) {
+      return { scheduled: false, reason: 'Editor.Package is unavailable' };
+    }
+    const canReload = typeof Editor.Package.reload === 'function';
+    if (!canReload) {
+      return {
+        scheduled: false,
+        reason: 'Cocos Creator does not expose a reliable package reload API; restart Cocos Creator to load the updated extension',
+      };
+    }
+
+    setTimeout(async () => {
+      try {
+        this.log('info', 'Reloading Cocos MCP Kit after update installation.');
+        await Editor.Package.reload(EXTENSION_NAME);
+      } catch (error) {
+        this.log('error', `Extension reload after update failed: ${error.message}`);
+      }
+    }, delayMs);
+    return { scheduled: true, delayMs };
+  }
+
+  async executeEditorScript(payload, runtimeContext) {
+    const code = String(payload && payload.code || '');
+    if (!code.trim()) {
+      throw new Error('code is required.');
+    }
+
+    const args = payload && payload.args ? payload.args : {};
+    const context = runtimeContext();
+    const helpers = {
+      getStatus: () => this.getStatus(),
+      listTools: () => this.toolRegistry.listTools(),
+      readResource: async (uri) => await this.resourceProvider.readResource(uri),
+      callTool: async (name, toolArgs) => await this.toolRegistry.callTool(name, toolArgs || {}),
+      listClientTargets: () => {
+        const effective = this.getEffectiveServerConnection();
+        return getTargetStatuses({
+          ...this.config,
+          host: effective.host,
+          port: effective.port,
+        });
+      },
+      getClientConfig: () => this.getClientConfig(),
+      configureClient: async (targetId) => this.configureClient(targetId),
+    };
+
+    const execute = async (scriptConsole) => {
+      const runner = new AsyncFunction(
+        'require',
+        'Editor',
+        'args',
+        'context',
+        'helpers',
+        'fs',
+        'path',
+        'os',
+        'console',
+        `
+      const module = { exports: {} };
+      const exports = module.exports;
+      ${code}
+      if (typeof run === 'function') {
+        return await run({ Editor, args, context, helpers, fs, path, os, require, console });
+      }
+      if (typeof module.exports === 'function') {
+        return await module.exports({ Editor, args, context, helpers, fs, path, os, require, console });
+      }
+      if (module.exports && typeof module.exports.run === 'function') {
+        return await module.exports.run({ Editor, args, context, helpers, fs, path, os, require, console });
+      }
+        `
+      );
+      return await runner(require, global.Editor, args, context, helpers, fs, path, os, scriptConsole);
+    };
+    return payload.captureActivity
+      ? captureScriptExecution(execute, { context: 'editor', targetConsole: console })
+      : execute(console);
+  }
+
+  async readResourceFromPanel(uri) {
+    this.ensureRuntime();
+    this.log('info', `Panel reading resource: ${uri}`);
+    return await this.resourceProvider.readResource(uri);
+  }
+
+  getClientConfig() {
+    const effective = this.getEffectiveServerConnection();
+    const { url } = effective;
+    const targetConfig = {
+      ...this.config,
+      host: effective.host,
+      port: effective.port,
+    };
+    const targets = buildTargets(targetConfig).map((target) => ({
+      id: target.id,
+      name: target.name,
+      configPath: target.configPath,
+      isToml: Boolean(target.isToml),
+      preview: this.formatClientTargetPreview(target),
+    }));
+    const baseUrl = url.replace(/\/$/, '');
+    return {
+      url,
+      serverName: getServerName(this.config),
+      configurationBlocked: Boolean(this.server && this.server.isRunning() && effective.port !== this.config.port),
+      codex: `[mcp_servers.${getServerName(this.config)}]\nurl = "${url}"\n`,
+      json: JSON.stringify({
+        mcpServers: {
+          [getServerName(this.config)]: {
+            url,
+          },
+        },
+      }, null, 2),
+      opencode: JSON.stringify({
+        mcp: {
+          [getServerName(this.config)]: {
+            type: 'remote',
+            url,
+          },
+        },
+      }, null, 2),
+      targets,
+      curl: {
+        health: `curl ${baseUrl}/health`,
+        tools: `curl ${baseUrl}/tools`,
+        catalog: `curl ${baseUrl}/tools?catalog=1`,
+      },
+    };
+  }
+
+  formatClientTargetPreview(target) {
+    return formatTargetPreview(target);
+  }
+
+  async configureClient(targetId) {
+    this.ensureRuntime();
+    this.log('info', `Configuring MCP client target: ${targetId}`);
+    const effective = this.getEffectiveServerConnection();
+    const result = configureTarget(
+      {
+        ...this.config,
+        host: effective.host,
+        port: effective.port,
+        stablePort: this.config.port,
+        migrateLegacy: Boolean(this.server && this.server.isRunning()),
+      },
+      targetId
+    );
+    await this.saveConfig({
+      clientConfigEntries: {
+        ...this.config.clientConfigEntries,
+        [targetId]: { serverName: result.serverName, url: result.url, configPath: result.configPath, projectIdentity: result.projectIdentity },
+      },
+    });
+    this.log('info', `MCP client configured: ${result.name} -> ${result.configPath}`);
+    return {
+      ...result,
+      clientTargets: getTargetStatuses({
+        ...this.config,
+        host: effective.host,
+        port: effective.port,
+      }),
+    };
+  }
+
+  async saveConfig(partialConfig) {
+    this.ensureRuntime();
+    const originalConfigText = readOptionalText(this.config.configPath);
+    if (this.config.configError) throw new Error(this.config.configError);
+    const nextPortMode = partialConfig && partialConfig.portMode
+      ? (partialConfig.portMode === 'project' ? 'project' : 'fixed')
+      : partialConfig && partialConfig.port !== undefined && Number(partialConfig.port) !== this.config.port
+        ? 'fixed' : this.config.portMode;
+    const nextPort = nextPortMode === 'project' ? getProjectPort() : partialConfig && partialConfig.port !== undefined
+      ? Number(partialConfig.port)
+      : this.config.port;
+    const nextMaxEntries = partialConfig && partialConfig.maxInteractionLogEntries !== undefined
+      ? Number(partialConfig.maxInteractionLogEntries)
+      : this.config.maxInteractionLogEntries;
+    const normalizeList = (value, fallback) => {
+      if (Array.isArray(value)) {
+        return value.map((item) => String(item || '').trim()).filter(Boolean);
+      }
+      if (typeof value === 'string') {
+        return value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
+      }
+      return fallback || [];
+    };
+    const normalizeCategories = (value, fallback) => normalizeList(value, fallback)
+      .map((item) => item.toLowerCase());
+    const nextProfile = partialConfig && partialConfig.toolProfile
+      ? (partialConfig.toolProfile === 'full' || partialConfig.toolProfile === 'custom' ? partialConfig.toolProfile : 'core')
+      : this.config.toolProfile;
+    const nextConfig = {
+      ...(originalConfigText ? JSON.parse(originalConfigText) : {}),
+      host: partialConfig && partialConfig.host ? String(partialConfig.host) : this.config.host,
+      port: Number.isInteger(nextPort) && nextPort > 0 && nextPort <= 65535 ? nextPort : this.config.port,
+      portMode: nextPortMode,
+      clientConfigEntries: partialConfig && partialConfig.clientConfigEntries
+        ? partialConfig.clientConfigEntries : this.config.clientConfigEntries,
+      toolProfile: nextProfile,
+      enabledTools: normalizeList(partialConfig && partialConfig.enabledTools, this.config.enabledTools),
+      disabledTools: normalizeList(partialConfig && partialConfig.disabledTools, this.config.disabledTools),
+      enabledToolCategories: normalizeCategories(
+        partialConfig && partialConfig.enabledToolCategories,
+        this.config.enabledToolCategories
+      ),
+      disabledToolCategories: normalizeCategories(
+        partialConfig && partialConfig.disabledToolCategories,
+        this.config.disabledToolCategories
+      ),
+      enableSessions: partialConfig && typeof partialConfig.enableSessions === 'boolean'
+        ? partialConfig.enableSessions
+        : this.config.enableSessions,
+      enableConsoleLogging: partialConfig && typeof partialConfig.enableConsoleLogging === 'boolean'
+        ? partialConfig.enableConsoleLogging
+        : this.config.enableConsoleLogging,
+      executeJavascriptSafetyChecks: partialConfig && typeof partialConfig.executeJavascriptSafetyChecks === 'boolean'
+        ? partialConfig.executeJavascriptSafetyChecks
+        : this.config.executeJavascriptSafetyChecks,
+      autostart: partialConfig && typeof partialConfig.autostart === 'boolean'
+        ? partialConfig.autostart
+        : this.config.autostart,
+      maxInteractionLogEntries: Number.isInteger(nextMaxEntries)
+        ? Math.max(10, Math.min(500, nextMaxEntries))
+        : this.config.maxInteractionLogEntries,
+      lastClientTargetId: partialConfig && partialConfig.lastClientTargetId
+        ? String(partialConfig.lastClientTargetId)
+        : this.config.lastClientTargetId,
+      activeToolProfileName: partialConfig && typeof partialConfig.activeToolProfileName === 'string'
+        ? String(partialConfig.activeToolProfileName)
+        : this.config.activeToolProfileName,
+      savedToolProfiles: partialConfig && Array.isArray(partialConfig.savedToolProfiles)
+        ? normalizeSavedToolProfiles(partialConfig.savedToolProfiles)
+        : this.config.savedToolProfiles,
+      language: partialConfig && partialConfig.language !== undefined
+        ? normalizeLanguagePreference(partialConfig.language)
+        : this.config.language,
+    };
+
+    const configPath = this.config.configPath;
+    writeTextIfUnchanged(configPath, JSON.stringify(nextConfig, null, 2) + '\n', originalConfigText);
+    const wasRunning = Boolean(this.server && this.server.isRunning());
+    const runtimeConfigChanged = hasRuntimeConfigChanges(this.config, nextConfig);
+    const requiresRestart = wasRunning && runtimeConfigChanged;
+    // Console printing is a live preference, independent of the server lifecycle
+    // and the in-memory diagnostic/activity buffers.
+    this.config.enableConsoleLogging = nextConfig.enableConsoleLogging;
+    if (this.server) this.server.config.enableConsoleLogging = nextConfig.enableConsoleLogging;
+    if (requiresRestart) {
+      await this.stopServer();
+      await this.startServer();
+    } else if (runtimeConfigChanged) {
+      this.reloadRuntime();
+    } else {
+      this.config = {
+        ...this.config,
+        ...nextConfig,
+        configPath,
+        configError: '',
+      };
+    }
+    return this.getPanelState();
+  }
+
+  ensureRuntime() {
+    if (!this.config || !this.toolRegistry || !this.resourceProvider || !this.promptProvider) {
+      this.reloadRuntime();
+    }
+  }
+}
+
+const service = new ExtensionService();
+
+module.exports = {
+  load() {
+    return service.load();
+  },
+  unload() {
+    return service.unload();
+  },
+  methods: {
+    openPanel(panelName) {
+      return service.openPanel(panelName);
+    },
+    openToolExposurePanel() {
+      return service.openPanel('tool-exposure');
+    },
+    openSettingsPanel() {
+      return service.openPanel('settings');
+    },
+    openProjectSkillsPanel() {
+      return service.openPanel('project-skills');
+    },
+    startServer() {
+      return service.startServer();
+    },
+    stopServer() {
+      return service.stopServer();
+    },
+    restartServer() {
+      return service.restartServer();
+    },
+    getStatus() {
+      return service.getStatus();
+    },
+    getPanelState() {
+      return service.getPanelState();
+    },
+    clearRecentActivity() {
+      return service.clearRecentActivity();
+    },
+    saveConfig(config) {
+      return service.saveConfig(config);
+    },
+    listToolsForPanel() {
+      return service.listToolsForPanel();
+    },
+    callToolFromPanel(name, args) {
+      return service.callToolFromPanel(name, args);
+    },
+    getProjectSkillsState(options) {
+      return service.getProjectSkillsState(options);
+    },
+    previewProjectSkillUpdate(options) {
+      return service.previewProjectSkillUpdate(options);
+    },
+    installOrUpdateProjectSkill(options) {
+      return service.installOrUpdateProjectSkill(options);
+    },
+    restoreProjectSkillBackup(options) {
+      return service.restoreProjectSkillBackup(options);
+    },
+    createProjectSkillFromPanel(options) {
+      return service.createProjectSkillFromPanel(options);
+    },
+    revealProjectSkill(target) {
+      return service.revealProjectSkill(target);
+    },
+    checkUpdates() {
+      return service.checkUpdates();
+    },
+    autoCheckUpdates() {
+      return service.autoCheckUpdates({ reason: 'panel' });
+    },
+    installUpdate(options) {
+      return service.installUpdate(options);
+    },
+    installGlobally(options) {
+      return service.installGlobally(options);
+    },
+    openUpdateRelease(url) {
+      return service.openUpdateRelease(url);
+    },
+    readResourceFromPanel(uri) {
+      return service.readResourceFromPanel(uri);
+    },
+    getClientConfig() {
+      return service.getClientConfig();
+    },
+    configureClient(targetId) {
+      return service.configureClient(targetId);
+    },
+  },
+};

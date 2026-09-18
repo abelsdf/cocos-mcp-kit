@@ -1,0 +1,5361 @@
+{
+  "schemaVersion": 1,
+  "documentVersion": "0.5",
+  "analysisDate": "2026-09-12",
+  "scopeRevisionDate": "2026-09-18",
+  "target": {
+    "creator": "3.8.8",
+    "os": "Windows"
+  },
+  "scope": "normal-tools-list-enumeration",
+  "sourceLocalLinkBase": "docs/reference",
+  "tools": 16,
+  "actions": 224,
+  "topics": 8,
+  "total": 232,
+  "feasibilityCounts": {
+    "A": 36,
+    "B": 115,
+    "C": 66,
+    "D": 15
+  },
+  "classifications": {
+    "A": "公开 API 明确",
+    "B": "组合实现可行",
+    "C": "原生适配待核验",
+    "D": "可提供替代实现"
+  },
+  "verificationStatus": "未测试",
+  "sources": [
+    {
+      "id": "S01",
+      "title": "Cocos Creator 3.8 中文手册",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/",
+      "note": "版本入口，不能据此推断每个原生编辑器消息。"
+    },
+    {
+      "id": "S02",
+      "title": "扩展消息系统",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html",
+      "note": "说明消息注册与请求；具体原生消息需在目标编辑器的开发者→消息列表核对。"
+    },
+    {
+      "id": "S03",
+      "title": "Editor.Message API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/message.html",
+      "note": "文档提供 send/request/broadcast，以及 scene query-dirty 示例。"
+    },
+    {
+      "id": "S04",
+      "title": "场景脚本",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html",
+      "note": "扩展可在场景进程使用引擎 API；跨进程参数和返回值须为可传输数据。"
+    },
+    {
+      "id": "S05",
+      "title": "Node API",
+      "url": "https://docs.cocos.com/creator/3.8/api/zh/class/Node",
+      "note": "节点变换、层级和组件基础能力；不能单凭该 API 保证撤销及资产保存。"
+    },
+    {
+      "id": "S06",
+      "title": "预制体手册",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/asset/prefab.html",
+      "note": "编辑、应用、还原及嵌套规则；手册工作流不等于对应扩展消息签名。"
+    },
+    {
+      "id": "S07",
+      "title": "Editor.Profile API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/profile.html",
+      "note": "get/set/removeConfig 与 get/set/removeProject；须区分配置层级。"
+    },
+    {
+      "id": "S08",
+      "title": "Editor.Selection API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/selection.html",
+      "note": "选择类型与 UUID；不能把选择状态当成操作完成。"
+    },
+    {
+      "id": "S09",
+      "title": "Editor.Clipboard API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/clipboard.html",
+      "note": "文本、图片及自定义剪贴板数据；没有给出原生节点剪贴板序列化契约。"
+    },
+    {
+      "id": "S10",
+      "title": "Editor.Network API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/network.html",
+      "note": "IP 和端口检查；testConnectServer 的文档目标不是本项目 MCP 服务。"
+    },
+    {
+      "id": "S11",
+      "title": "Editor.Logger API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/logger.html",
+      "note": "编辑器日志查询和清理；不同于浏览器游戏控制台。"
+    },
+    {
+      "id": "S12",
+      "title": "Editor.Project API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/project.html",
+      "note": "项目名称、路径、临时目录和 UUID。"
+    },
+    {
+      "id": "S13",
+      "title": "Editor.App API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/app.html",
+      "note": "编辑器版本和路径等；未据此确认原生 reload 消息。"
+    },
+    {
+      "id": "S14",
+      "title": "Editor.Panel API",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/panel.html",
+      "note": "扩展面板定义、打开、关闭和聚焦；原生面板 ID 须核对。"
+    },
+    {
+      "id": "S15",
+      "title": "场景编辑器",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/scene/",
+      "note": "Gizmo、网格、2D/3D 和相机对齐交互；此页未给出自动化消息签名。"
+    },
+    {
+      "id": "S16",
+      "title": "UITransform",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/ui-transform.html",
+      "note": "尺寸、锚点和 UI 边界；兄弟顺序使用节点接口。"
+    },
+    {
+      "id": "S17",
+      "title": "Button",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/button.html",
+      "note": "点击事件目标、组件和方法；方法名需与脚本一致。"
+    },
+    {
+      "id": "S18",
+      "title": "Label 手册",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/label.html",
+      "note": "字体、换行、溢出和缓存；不同字体模式有功能差异。"
+    },
+    {
+      "id": "S19",
+      "title": "Label API",
+      "url": "https://docs.cocos.com/creator/3.8/api/zh/class/Label",
+      "note": "文字属性 API；具体描边阴影属性已补充核对本机 3.8.8 引擎。"
+    },
+    {
+      "id": "S20",
+      "title": "RichText",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/richtext.html",
+      "note": "图文标记、字体和点击事件；不能直接套用全部 Label 属性。"
+    },
+    {
+      "id": "S21",
+      "title": "Widget",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/widget.html",
+      "note": "对齐边距与更新模式；ALWAYS 可能覆盖位置动画。"
+    },
+    {
+      "id": "S22",
+      "title": "Animation 组件与事件",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/animation/animation-component.html",
+      "note": "播放控制、状态与事件；事件 frame 字段单位为秒。"
+    },
+    {
+      "id": "S23",
+      "title": "程序化动画曲线",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/animation/use-animation-curve.html",
+      "note": "轨道、路径、曲线及插值；外部导入 ExoticAnimation 不能按普通轨道编辑。"
+    },
+    {
+      "id": "S24",
+      "title": "AnimationClip API",
+      "url": "https://docs.cocos.com/creator/3.8/api/zh/class/AnimationClip",
+      "note": "轨道、事件、时长、采样、速度和循环；对象创建不等于保存动画资产。"
+    },
+    {
+      "id": "S25",
+      "title": "RealCurve API",
+      "url": "https://docs.cocos.com/creator/3.8/api/zh/class/RealCurve",
+      "note": "关键帧读取、时间更新、增删、assignSorted 与插值参数。"
+    },
+    {
+      "id": "S26",
+      "title": "命令行构建",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/publish/publish-in-command-line.html",
+      "note": "Creator 构建仍需图形环境；成功退出码为36，需按官方码表判断。"
+    },
+    {
+      "id": "S27",
+      "title": "Spine 组件",
+      "url": "https://docs.cocos.com/creator/3.8/manual/zh/editor/components/spine.html",
+      "note": "资源、动画、皮肤、缓存和挂点；实时/缓存模式的混合能力不同。"
+    },
+    {
+      "id": "L01",
+      "title": "本机官方 Creator 3.8.8 引擎",
+      "url": "C:/ProgramData/cocos/editors/Creator/3.8.8/resources/resources/3d/engine",
+      "note": "只读核对 Node、AnimationClip、Label 和 cocos/spine/skeleton.ts；不复制实现。"
+    },
+    {
+      "id": "F01",
+      "title": "Funplay 已注册工具文档",
+      "url": "../TOOLS.md",
+      "note": "105 个 full 工具作为候选复用入口，文档描述不代表已通过本项目真实编辑器验收。"
+    },
+    {
+      "id": "F02",
+      "title": "Funplay 资源适配代码",
+      "url": "../../lib/assets.js",
+      "note": "候选 asset-db 请求；在线文档未确认全部原生消息签名。"
+    },
+    {
+      "id": "F03",
+      "title": "Funplay 场景持久化代码",
+      "url": "../../lib/scenes.js",
+      "note": "存在文件直写回退，须在首版之前审查资产导入、UUID 与保存一致性。"
+    },
+    {
+      "id": "F04",
+      "title": "Funplay 预制体代码",
+      "url": "../../lib/prefabs.js",
+      "note": "预制体持久化和 JSON 编辑候选；文件直写与内部元数据须审查。"
+    },
+    {
+      "id": "P01",
+      "title": "已激活 Pro 正常 tools/list",
+      "url": "./pro-tools-list.json",
+      "note": "仅正常接口定义用于需求对照；不是实现来源，也不是运行通过证据。"
+    }
+  ],
+  "operations": [
+    {
+      "id": "OP-001",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "get_info",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "在场景脚本读取根节点和组件，输出版本化摘要。",
+      "funplayCandidates": [
+        "get_scene_info"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-002",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "list",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "查询场景资产，支持目录过滤和分页。",
+      "funplayCandidates": [
+        "list_scenes"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-003",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "open",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "复用候选打开场景消息，先检查未保存状态，再校验场景 UUID。",
+      "funplayCandidates": [
+        "open_scene"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-004",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "save",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对目标版本保存消息及完成通知，禁止以文件写入成功代替场景保存。",
+      "funplayCandidates": [
+        "save_current_scene"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "F03"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-005",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "create",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "创建场景对象后通过已验证序列化/asset-db 导入；审查现有文件直写回退。",
+      "funplayCandidates": [
+        "create_scene"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S04",
+        "F03"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-006",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "close",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对原生关闭消息和未保存内容处理。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-007",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "hierarchy",
+      "requirement": "FR-03",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "遍历 Node.children，控制深度和节点数，序列化可传输字段。",
+      "funplayCandidates": [
+        "get_hierarchy"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-008",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "is_ready",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "监听 scene:ready 并结合查询探测，维护超时与失效状态。",
+      "funplayCandidates": [
+        "get_scene_info"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-009",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "is_dirty",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用官方 Editor.Message.request('scene','query-dirty') 示例入口，验证返回类型。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-010",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "snapshot",
+      "requirement": "FR-13",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生场景快照生命周期；自有结构快照只能作查询替代，不能冒充原生事务。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-011",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "snapshot_abort",
+      "requirement": "FR-13",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生场景快照生命周期；自有结构快照只能作查询替代，不能冒充原生事务。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-012",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "undo_begin",
+      "requirement": "FR-13",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生撤销分组消息及取消边界，跨资源文件不默认处于同一事务。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-013",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "undo_end",
+      "requirement": "FR-13",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生撤销分组消息及取消边界，跨资源文件不默认处于同一事务。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-014",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "undo_cancel",
+      "requirement": "FR-13",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生撤销分组消息及取消边界，跨资源文件不默认处于同一事务。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-015",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "execute_method",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "解析目标组件，校验方法可调用并仅传输 JSON 参数和结果。",
+      "funplayCandidates": [
+        "invoke_component_method"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-016",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "execute_script",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "按官方 execute-scene-script 扩展机制执行自有场景脚本。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-017",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "soft_reload",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "调查原生刷新/脚本重载消息，验证状态保留与失效处理。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-018",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "list_classes",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "从已注册类型和节点组件构建有范围的清单；动态/私有类型不能声称全部可列。",
+      "funplayCandidates": [
+        "list_components",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-019",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "list_components",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "从已注册类型和节点组件构建有范围的清单；动态/私有类型不能声称全部可列。",
+      "funplayCandidates": [
+        "list_components",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-020",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "check_script",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合 TypeScript 诊断、资产导入状态与已注册组件检查。",
+      "funplayCandidates": [
+        "run_script_diagnostics",
+        "get_script_diagnostic_context"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-021",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "find_nodes_by_asset",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "遍历可查询组件的资产引用并匹配 UUID；不覆盖任意动态加载。",
+      "funplayCandidates": [
+        "get_hierarchy",
+        "inspect_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-022",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "restore_prefab",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对预制体还原消息，受手册中实例还原/嵌套限制约束。",
+      "funplayCandidates": [
+        "revert_prefab_instance"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-023",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "query_mode",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "调查编辑场景/预制体模式查询消息，不能以引擎 director 推断编辑器模式。",
+      "funplayCandidates": [
+        "get_editor_state"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-024",
+      "tool": "cocos_scene",
+      "enumKey": "action",
+      "operation": "validate_scene",
+      "requirement": "FR-10",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合结构、资源和脚本诊断，自行定义检查范围与严重性。",
+      "funplayCandidates": [
+        "validate_scene"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "caveat": "须区分编辑场景与游戏预览；变更需保存重开验证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-025",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "find",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "统一 UUID/路径/名称解析，重名返回候选；分层查询并裁剪输出。",
+      "funplayCandidates": [
+        "find_nodes",
+        "inspect_node",
+        "get_hierarchy"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-026",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "info",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "统一 UUID/路径/名称解析，重名返回候选；分层查询并裁剪输出。",
+      "funplayCandidates": [
+        "find_nodes",
+        "inspect_node",
+        "get_hierarchy"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-027",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "list",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "统一 UUID/路径/名称解析，重名返回候选；分层查询并裁剪输出。",
+      "funplayCandidates": [
+        "find_nodes",
+        "inspect_node",
+        "get_hierarchy"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-028",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "tree",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "统一 UUID/路径/名称解析，重名返回候选；分层查询并裁剪输出。",
+      "funplayCandidates": [
+        "find_nodes",
+        "inspect_node",
+        "get_hierarchy"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-029",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "create",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "new Node 后设置父节点、变换和必要 UITransform。",
+      "funplayCandidates": [
+        "create_node"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-030",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "delete",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "调用 Node.destroy；等待销毁阶段完成并验证引用影响。",
+      "funplayCandidates": [
+        "delete_node"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-031",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "modify",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用公开变换、active、layer 与名称属性；白名单校验参数。",
+      "funplayCandidates": [
+        "set_node_transform"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-032",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "move",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用 Node.setParent，并按请求保持世界变换；校验祖先循环。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-033",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "reorder",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用 Node.setSiblingIndex，验证父节点及实际顺序。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-034",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "duplicate",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "独立克隆方案并重建节点内交叉引用；预制体关联与外部引用另行验证。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-035",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "copy",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "实现自有节点剪贴板格式和复制/粘贴重映射；剪切在粘贴成功后删除。不能承诺与原生节点剪贴板互通。",
+      "funplayCandidates": [
+        "execute_scene_script",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S09"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-036",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "paste",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "实现自有节点剪贴板格式和复制/粘贴重映射；剪切在粘贴成功后删除。不能承诺与原生节点剪贴板互通。",
+      "funplayCandidates": [
+        "execute_scene_script",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S09"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-037",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "cut",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "实现自有节点剪贴板格式和复制/粘贴重映射；剪切在粘贴成功后删除。不能承诺与原生节点剪贴板互通。",
+      "funplayCandidates": [
+        "execute_scene_script",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S09"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-038",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "mount_script",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "解析脚本资产到已注册组件类，等待编译后 addComponent 并检查持久引用。",
+      "funplayCandidates": [
+        "add_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-039",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "remove_script",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "解析脚本组件后 destroy，检查事件/属性引用并保存。",
+      "funplayCandidates": [
+        "remove_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-040",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "reset",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "定义重置的变换/属性范围；预制体实例还原和类默认值重置分别处理。",
+      "funplayCandidates": [
+        "set_node_transform",
+        "reset_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-041",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "detect_type",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "按组件组合识别 UI/Camera/普通节点，输出规则与歧义。",
+      "funplayCandidates": [
+        "inspect_node"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-042",
+      "tool": "cocos_node",
+      "enumKey": "action",
+      "operation": "batch_modify",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "串行执行解析后的属性修改，记录逐项结果与遇错策略。",
+      "funplayCandidates": [
+        "set_node_transform"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "基础引擎操作可用；脏标记、撤销、UI层及持久化必须由编辑器适配与真实验收保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-043",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "add",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用 Node.addComponent 与 Component.destroy，校验依赖、单例及类型。",
+      "funplayCandidates": [
+        "add_component",
+        "remove_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-044",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "remove",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用 Node.addComponent 与 Component.destroy，校验依赖、单例及类型。",
+      "funplayCandidates": [
+        "add_component",
+        "remove_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-045",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "list",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "getComponents 并序列化公开属性；明确运行值与可持久化值差异。",
+      "funplayCandidates": [
+        "list_components",
+        "inspect_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-046",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "info",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "getComponents 并序列化公开属性；明确运行值与可持久化值差异。",
+      "funplayCandidates": [
+        "list_components",
+        "inspect_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-047",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "set_property",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "白名单赋值公开属性，转换 Color/Vec/节点及资产引用。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-048",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "available_types",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "整理内置类型与已注册自定义类型目录，标注缺失或不可用类。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-049",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "click_event",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "构建 Button 的 EventHandler 绑定，验证目标组件/方法及自定义数据。",
+      "funplayCandidates": [
+        "bind_button_click_event",
+        "list_button_click_events"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S17"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-050",
+      "tool": "cocos_component",
+      "enumKey": "action",
+      "operation": "batch_click_event",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "逐一解析按钮与目标脚本，建立事件列表并返回部分失败。",
+      "funplayCandidates": [
+        "bind_button_click_event"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S17"
+      ],
+      "caveat": "对象/资产引用须解析成正确类型；只设置可编辑公开属性，不默认全部私有字段可写。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-051",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "list",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合资源目录、元信息与实例关联查询。",
+      "funplayCandidates": [
+        "list_prefabs",
+        "inspect_prefab",
+        "inspect_prefab_instance"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-052",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "info",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合资源目录、元信息与实例关联查询。",
+      "funplayCandidates": [
+        "list_prefabs",
+        "inspect_prefab",
+        "inspect_prefab_instance"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-053",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "validate",
+      "requirement": "FR-10",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "检查可解析 UUID 引用、嵌套关系与缺失组件，记录动态引用边界。",
+      "funplayCandidates": [
+        "validate_prefab_references"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-054",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "create",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "审查节点序列化、导入及链接机制；移除未经验证的格式/文件回退假设。",
+      "funplayCandidates": [
+        "create_prefab_from_node"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-055",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "delete",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对 asset-db 删除行为、引用影响及完成状态，不仅删除磁盘文件。",
+      "funplayCandidates": [
+        "delete_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-056",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "instantiate",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "可用引擎实例化得到节点，但编辑器关联实例需核对 create-node 等候选消息。",
+      "funplayCandidates": [
+        "create_prefab_instance",
+        "instantiate_prefab"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-057",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "unlink",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对原生解除关联/应用/还原消息，并分别验证嵌套实例与引用保存。",
+      "funplayCandidates": [
+        "apply_prefab_instance",
+        "revert_prefab_instance",
+        "inspect_prefab_instance"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-058",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "apply",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对原生解除关联/应用/还原消息，并分别验证嵌套实例与引用保存。",
+      "funplayCandidates": [
+        "apply_prefab_instance",
+        "revert_prefab_instance",
+        "inspect_prefab_instance"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-059",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "revert",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对原生解除关联/应用/还原消息，并分别验证嵌套实例与引用保存。",
+      "funplayCandidates": [
+        "apply_prefab_instance",
+        "revert_prefab_instance",
+        "inspect_prefab_instance"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-060",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "edit_enter",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "调查原生预制体编辑模式消息、脏状态与退出确认；不能以直接改 JSON 冒充该模式。",
+      "funplayCandidates": [
+        "open_asset",
+        "save_current_scene",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-061",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "edit_save",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "调查原生预制体编辑模式消息、脏状态与退出确认；不能以直接改 JSON 冒充该模式。",
+      "funplayCandidates": [
+        "open_asset",
+        "save_current_scene",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-062",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "edit_exit",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "调查原生预制体编辑模式消息、脏状态与退出确认；不能以直接改 JSON 冒充该模式。",
+      "funplayCandidates": [
+        "open_asset",
+        "save_current_scene",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-063",
+      "tool": "cocos_prefab",
+      "enumKey": "action",
+      "operation": "edit_test",
+      "requirement": "FR-05",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "定义编辑态能力探测和测试对象；进入/退出/保存不能在生产场景静默试验。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S06",
+        "F04"
+      ],
+      "caveat": "保留 UUID 和关联；嵌套/实例有编辑限制；还原不等于恢复所有名称、位置和旋转。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-064",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "query_info",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "复用资源信息/元数据查询，区分原文件、子资产及导入器信息。",
+      "funplayCandidates": [
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-065",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "search",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "复用资产查询，增加名称、类型、目录过滤及重名候选。",
+      "funplayCandidates": [
+        "list_assets"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-066",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "find_by_name",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "复用资产查询，增加名称、类型、目录过滤及重名候选。",
+      "funplayCandidates": [
+        "list_assets"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-067",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "details",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "复用资源信息/元数据查询，区分原文件、子资产及导入器信息。",
+      "funplayCandidates": [
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-068",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "create",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "通过已验证资产创建/导入入口建立资源，校验格式和 meta，而不是任意直写场景格式。",
+      "funplayCandidates": [
+        "write_file",
+        "refresh_assets"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-069",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "copy",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对 asset-db 复制/移动与 UUID 语义，禁止复制 meta UUID 或破坏已存在引用。",
+      "funplayCandidates": [
+        "duplicate_prefab",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-070",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "move",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对 asset-db 复制/移动与 UUID 语义，禁止复制 meta UUID 或破坏已存在引用。",
+      "funplayCandidates": [
+        "duplicate_prefab",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-071",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "delete",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对 asset-db 删除和引用影响，校验路径边界及导入完成。",
+      "funplayCandidates": [
+        "delete_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-072",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "save",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "按资产类型选择保存入口；动画/场景/预制体分别验证，不使用通用文本替换承诺可靠。",
+      "funplayCandidates": [
+        "write_file",
+        "refresh_assets"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-073",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "reimport",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对导入器/刷新消息、排队状态、目录边界与子资产生成，等待就绪。",
+      "funplayCandidates": [
+        "refresh_assets",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-074",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "import",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对导入器/刷新消息、排队状态、目录边界与子资产生成，等待就绪。",
+      "funplayCandidates": [
+        "refresh_assets",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-075",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "import_folder",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对导入器/刷新消息、排队状态、目录边界与子资产生成，等待就绪。",
+      "funplayCandidates": [
+        "refresh_assets",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-076",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "refresh",
+      "requirement": "FR-05",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对导入器/刷新消息、排队状态、目录边界与子资产生成，等待就绪。",
+      "funplayCandidates": [
+        "refresh_assets",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-077",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "dependencies",
+      "requirement": "FR-10",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "复用 UUID 引用扫描与数据库校验；标注无法证明动态加载或运行时引用完整。",
+      "funplayCandidates": [
+        "inspect_asset_dependencies"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-078",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "manifest",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "按目录和可查询引用生成自有资产清单，注明版本/时间及扫描范围。",
+      "funplayCandidates": [
+        "list_assets",
+        "inspect_asset_dependencies"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-079",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "check_ready",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "C",
+      "route": "核对导入任务/查询就绪消息，必要时有限重试，超时不伪报完成。",
+      "funplayCandidates": [
+        "refresh_assets",
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-080",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "query_path",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合 Funplay 资源定位候选，规范路径、db URL、UUID 并处理子资产。",
+      "funplayCandidates": [
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-081",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "query_uuid",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合 Funplay 资源定位候选，规范路径、db URL、UUID 并处理子资产。",
+      "funplayCandidates": [
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-082",
+      "tool": "cocos_asset",
+      "enumKey": "action",
+      "operation": "query_url",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合 Funplay 资源定位候选，规范路径、db URL、UUID 并处理子资产。",
+      "funplayCandidates": [
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "F02"
+      ],
+      "caveat": "Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源消息契约，需核对目标版本消息列表。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-083",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "project_info",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "读取 Editor.Project 与 Editor.App 的公开项目和版本信息。",
+      "funplayCandidates": [
+        "get_project_info"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S12",
+        "S13"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-084",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "project_settings",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "使用 Profile 项目层读取已确认键；未知设置不按私有文件布局推断。",
+      "funplayCandidates": [
+        "get_editor_preference",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07",
+        "S12"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-085",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "run",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "复用预览入口，核对原生模式切换/启动消息和实际启动状态。",
+      "funplayCandidates": [
+        "run_project_preview",
+        "set_preview_mode",
+        "get_runtime_state"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-086",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "stop",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "针对实际预览模式核对停止入口，避免影响编辑场景 director。",
+      "funplayCandidates": [
+        "get_runtime_state",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-087",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "refresh_preview",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对浏览器/Game View/模拟器刷新方式与完成状态，不能用资产刷新替代。",
+      "funplayCandidates": [
+        "get_preview_mode",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-088",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "build",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "可独立调用官方 Creator CLI 构建；任务调度/进度另适配，成功码36且仍需图形环境。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S26"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-089",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "build_settings",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "读取已确认构建配置，生成校验后的 CLI configPath；不宣称涵盖所有原生选项。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07",
+        "S26"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-090",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "open_build_panel",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "Editor.Panel.open 能力明确，但 builder 面板 ID/生命周期需目标版本确认。",
+      "funplayCandidates": [
+        "open_build_panel"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S26"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-091",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "builder_status",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "复用 builder 状态候选消息，区分原生任务状态与自有 CLI 进程状态。",
+      "funplayCandidates": [
+        "get_build_status"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S26"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-092",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "start_preview",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "复用预览入口，核对原生模式切换/启动消息和实际启动状态。",
+      "funplayCandidates": [
+        "run_project_preview",
+        "set_preview_mode",
+        "get_runtime_state"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-093",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "stop_preview",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "针对实际预览模式核对停止入口，避免影响编辑场景 director。",
+      "funplayCandidates": [
+        "get_runtime_state",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S03"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-094",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "console_logs",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "Editor.Logger.query/clear 用于编辑器日志；游戏运行控制台须另行连接。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S11"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-095",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "console_clear",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "Editor.Logger.query/clear 用于编辑器日志；游戏运行控制台须另行连接。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S11"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-096",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "log_read",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "读取有边界的项目日志，分页/限制行数并过滤敏感数据；不删除用户日志。",
+      "funplayCandidates": [
+        "get_recent_logs",
+        "search_project_logs"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S11",
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-097",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "log_search",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "读取有边界的项目日志，分页/限制行数并过滤敏感数据；不删除用户日志。",
+      "funplayCandidates": [
+        "get_recent_logs",
+        "search_project_logs"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S11",
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-098",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "log_info",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "读取有边界的项目日志，分页/限制行数并过滤敏感数据；不删除用户日志。",
+      "funplayCandidates": [
+        "get_recent_logs",
+        "search_project_logs"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S11",
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-099",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "mcp_log_read",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "管理本扩展自己的内存/文件日志，清理不涉及其他工程日志。",
+      "funplayCandidates": [
+        "get_recent_logs",
+        "clear_logs"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-100",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "mcp_log_clear",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "管理本扩展自己的内存/文件日志，清理不涉及其他工程日志。",
+      "funplayCandidates": [
+        "get_recent_logs",
+        "clear_logs"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-101",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "editor_info",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "读取 Editor.App.version/path 等已公开信息，明示其他信息缺失。",
+      "funplayCandidates": [
+        "get_editor_state"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S13",
+        "S12"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-102",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "performance",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "组合节点/组件数量和进程计数；真实游戏 FPS/耗时需运行环境采样。",
+      "funplayCandidates": [
+        "get_performance_snapshot"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-103",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_open",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对偏好设置原生面板 ID 与分类定位消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-104",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_get",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "使用 Editor.Profile.getConfig，区分默认/全局/本地层与项目配置。",
+      "funplayCandidates": [
+        "get_editor_preference"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-105",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_set",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "使用 Editor.Profile.setConfig/setProject 写入已确认键并回读，记录覆盖层。",
+      "funplayCandidates": [
+        "set_editor_preference"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-106",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_reset",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "移除指定层覆盖值并回读默认；重置不默认删除整个用户配置。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-107",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_all",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "建立自有允许配置目录和搜索；官方文档未提供完整原生偏好项枚举，不能承诺全量。",
+      "funplayCandidates": [
+        "get_editor_preference",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-108",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_categories",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "建立自有允许配置目录和搜索；官方文档未提供完整原生偏好项枚举，不能承诺全量。",
+      "funplayCandidates": [
+        "get_editor_preference",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-109",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_search",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "建立自有允许配置目录和搜索；官方文档未提供完整原生偏好项枚举，不能承诺全量。",
+      "funplayCandidates": [
+        "get_editor_preference",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-110",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "pref_export",
+      "requirement": "FR-22",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "导出自有已确认配置目录，校验版本并过滤凭据；不是任意全局设置备份。",
+      "funplayCandidates": [
+        "get_editor_preference"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S07"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-111",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "server_ips",
+      "requirement": "FR-02",
+      "priority": "P0",
+      "feasibility": "A",
+      "route": "使用 Editor.Network.queryIPList，区分可见网络地址与实际监听地址。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S10"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-112",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "server_port",
+      "requirement": "FR-02",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "读取本扩展监听配置、服务状态和已注册工具目录。",
+      "funplayCandidates": [
+        "get_project_info",
+        "get_tool_catalog"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "F01",
+        "S10"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-113",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "server_status",
+      "requirement": "FR-02",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "读取本扩展监听配置、服务状态和已注册工具目录。",
+      "funplayCandidates": [
+        "get_project_info",
+        "get_tool_catalog"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "F01",
+        "S10"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-114",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "server_test",
+      "requirement": "FR-02",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "对本扩展地址做正常 MCP 初始化/目录或健康检查；不用 Cocos 账号连通测试代替。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S10",
+        "F01"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-115",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "server_interfaces",
+      "requirement": "FR-02",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "读取本扩展监听配置、服务状态和已注册工具目录。",
+      "funplayCandidates": [
+        "get_project_info",
+        "get_tool_catalog"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "F01",
+        "S10"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-116",
+      "tool": "cocos_editor",
+      "enumKey": "action",
+      "operation": "reload",
+      "requirement": "FR-21",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "调查扩展重载/编辑器刷新入口及连接恢复；App.quit 不能证明 reload 能力。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S13"
+      ],
+      "caveat": "项目、编辑器、Game View、浏览器和模拟器状态分开记录；原生工作流消息需版本核验。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-117",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_tool",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对 W/E/R/T 对应原生工具切换消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-118",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_tool_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对当前 Gizmo 工具查询消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-119",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_pivot",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对中心/轴心模式设置消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-120",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_pivot_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对当前轴心模式查询消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-121",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_coordinate",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对本地/世界坐标模式设置消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-122",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_coordinate_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对当前坐标模式查询消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-123",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "gizmo_view_mode",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "确认参数含义与原生 Gizmo 视图模式消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-124",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "mode_2d_3d",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对场景视图 2D/3D 切换与状态同步。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-125",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "mode_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对场景视图模式查询，不能使用游戏摄像机维度推断。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-126",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "grid_set",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对网格显示/设置原生消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-127",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "grid_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对当前网格状态查询。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-128",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "icon_3d_mode",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对组件图标 3D 显示模式设置。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-129",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "icon_3d_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对组件图标 3D 状态查询。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-130",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "icon_size",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对场景图标尺寸设置范围和消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-131",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "icon_size_query",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对图标尺寸状态查询。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-132",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "camera_focus",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对选中节点聚焦消息，避免以游戏 Camera 移动代替。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-133",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "camera_align_view",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "按手册核对游戏 Camera 与场景观察视图对齐方向和消息。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-134",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "camera_align_node",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对观察视图对齐到节点的原生消息和方向。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-135",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "status",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "汇总经验证的原生视图查询结果，缺项标记未知。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-136",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "reset_view",
+      "requirement": "FR-17",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生重置观察视图范围，禁止重置游戏节点变换。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S15"
+      ],
+      "caveat": "手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-137",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_add",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "在自有面板添加许可兼容参考图，不加入游戏资产/层级。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-138",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_remove",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "删除指定参考图记录及显示对象，保留用户源文件。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-139",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_switch",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "在自有面板切换当前参考图。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-140",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_clear",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "清除自有参考图记录和临时内容，不清理工程 assets。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-141",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_config",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "保存自有参考面板配置，校验图像路径及数值。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-142",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_current",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "查询自有面板当前参考图 ID 与参数。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-143",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_list",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "分页列出自有参考图记录。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-144",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_position",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "设置面板参考图位置，明确坐标是面板像素。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-145",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_scale",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "设置面板参考图缩放并限制数值。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-146",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_opacity",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "设置参考图透明度并限定0到1。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-147",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_data",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "导入/导出自有参考图数据格式，禁止引入 Pro 实现或资产。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-148",
+      "tool": "cocos_view",
+      "enumKey": "action",
+      "operation": "ref_refresh",
+      "requirement": "FR-18",
+      "priority": "P1",
+      "feasibility": "D",
+      "route": "重新加载自有参考图并清理缓存，处理源文件不存在。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S14",
+        "S07",
+        "S15"
+      ],
+      "caveat": "可实现独立参考面板；不承诺原生 Scene 叠加/坐标完全一致。若必须原生叠加，先核对消息后再评估。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-149",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "create_button",
+      "requirement": "FR-06",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合 UITransform、Button、Label/Sprite 并建立点击事件。",
+      "funplayCandidates": [
+        "create_button",
+        "bind_button_click_event"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-150",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "create_label",
+      "requirement": "FR-06",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "创建 Label 并解析布局和字体属性。",
+      "funplayCandidates": [
+        "create_label"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S16",
+        "S18",
+        "S19"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-151",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "create_image",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "创建 Sprite/UITransform 并解析正确 SpriteFrame 子资产。",
+      "funplayCandidates": [
+        "create_sprite"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-152",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "create_ui",
+      "requirement": "FR-06",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "定义自有 UI 组件构造规则；只承诺已登记/可测试组件。",
+      "funplayCandidates": [
+        "create_canvas",
+        "create_button",
+        "create_label",
+        "create_sprite"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-153",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "mount_and_bind",
+      "requirement": "FR-04",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "挂载已编译自定义组件，分阶段绑定节点/资产引用。",
+      "funplayCandidates": [
+        "add_component",
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-154",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "setup_widget",
+      "requirement": "FR-06",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "设置 Widget 目标、边距、绝对/百分比单位及更新模式。",
+      "funplayCandidates": [
+        "add_component",
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S21",
+        "S16"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-155",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "batch",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "校验并顺序执行自有步骤 schema，返回逐项结果和恢复范围。",
+      "funplayCandidates": [
+        "execute_javascript"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-156",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "batch_create_button",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "重复调用自有构造器，分配局部 ID 并校验引用与重复策略。",
+      "funplayCandidates": [
+        "create_button",
+        "create_label",
+        "create_sprite"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-157",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "batch_create_label",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "重复调用自有构造器，分配局部 ID 并校验引用与重复策略。",
+      "funplayCandidates": [
+        "create_button",
+        "create_label",
+        "create_sprite"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-158",
+      "tool": "cocos_composite",
+      "enumKey": "action",
+      "operation": "batch_create_image",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "重复调用自有构造器，分配局部 ID 并校验引用与重复策略。",
+      "funplayCandidates": [
+        "create_button",
+        "create_label",
+        "create_sprite"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "独立组合公开组件；平台组件限制、引用及事件要逐项校验，组合不等于全事务。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-159",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "component_properties",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S05",
+        "S16",
+        "S17",
+        "S18",
+        "S19",
+        "S20",
+        "S21"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-160",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "ui_design_rules",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S16",
+        "S18",
+        "S21"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-161",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "layout_patterns",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S16",
+        "S21"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-162",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "widget_strategy",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S21"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-163",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "node_structure",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S05",
+        "S16"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-164",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "animation_patterns",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S22",
+        "S23"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-165",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "best_practices",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S04",
+        "S06",
+        "S23",
+        "S26"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-166",
+      "tool": "cocos_knowledge",
+      "enumKey": "topic",
+      "operation": "tool_guide",
+      "requirement": "FR-09",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "自行整理该主题的官方规则、版本边界和本扩展示例，支持按查询裁剪。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "F01",
+        "S02",
+        "S04"
+      ],
+      "caveat": "知识正文独立编写并记录来源/版本；不读取或复制 Pro 知识库和模板正文。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-167",
+      "tool": "cocos_validate",
+      "enumKey": "action",
+      "operation": "layout",
+      "requirement": "FR-10",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "计算 UI 边界、锚点、Widget 冲突和缺失 UITransform，支持合法越界排除。",
+      "funplayCandidates": [
+        "get_hierarchy",
+        "inspect_node",
+        "validate_scene"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "确定性结构规则可实现；结构检查不证明画面美观、无遮挡或运行时逻辑正确。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-168",
+      "tool": "cocos_validate",
+      "enumKey": "action",
+      "operation": "references",
+      "requirement": "FR-10",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合资产 UUID、节点及事件引用校验，标记动态引用范围。",
+      "funplayCandidates": [
+        "validate_asset_dependencies",
+        "validate_prefab_references",
+        "list_button_click_events"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "确定性结构规则可实现；结构检查不证明画面美观、无遮挡或运行时逻辑正确。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-169",
+      "tool": "cocos_validate",
+      "enumKey": "action",
+      "operation": "hierarchy",
+      "requirement": "FR-10",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "检查层级深度、UI父子层级、重名和错误祖先引用，输出规则 ID。",
+      "funplayCandidates": [
+        "get_hierarchy",
+        "validate_scene"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "确定性结构规则可实现；结构检查不证明画面美观、无遮挡或运行时逻辑正确。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-170",
+      "tool": "cocos_template",
+      "enumKey": "action",
+      "operation": "list",
+      "requirement": "FR-08",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "维护自有参数化模板目录，列出 schema、版本和组件需求。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "模板由本项目独立设计；不能复制 Pro 模板内容，支持名称/行为无需保持其数据格式。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-171",
+      "tool": "cocos_template",
+      "enumKey": "action",
+      "operation": "apply",
+      "requirement": "FR-08",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "通过自有构建器应用暂停菜单/设置/结果模板，记录映射并保存验证。",
+      "funplayCandidates": [
+        "create_button",
+        "create_label",
+        "create_sprite"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "模板由本项目独立设计；不能复制 Pro 模板内容，支持名称/行为无需保持其数据格式。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-172",
+      "tool": "cocos_capture",
+      "enumKey": "action",
+      "operation": "scene_snapshot",
+      "requirement": "FR-12",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "查询并序列化自有结构快照，记录范围、时间与易变字段规则。",
+      "funplayCandidates": [
+        "get_hierarchy",
+        "inspect_node"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "F01"
+      ],
+      "caveat": "结构 JSON 和 PNG 分开；截图来源与时间明确，截图成功不等于视觉验收通过。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-173",
+      "tool": "cocos_capture",
+      "enumKey": "action",
+      "operation": "node_snapshot",
+      "requirement": "FR-12",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "查询并序列化自有结构快照，记录范围、时间与易变字段规则。",
+      "funplayCandidates": [
+        "get_hierarchy",
+        "inspect_node"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "F01"
+      ],
+      "caveat": "结构 JSON 和 PNG 分开；截图来源与时间明确，截图成功不等于视觉验收通过。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-174",
+      "tool": "cocos_capture",
+      "enumKey": "action",
+      "operation": "screenshot",
+      "requirement": "FR-25",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "窗口/预览复用截图工具；内容模式独立构建并浏览器渲染，报告缓存时间、分辨率和重建状态。",
+      "funplayCandidates": [
+        "capture_editor_screenshot",
+        "capture_scene_screenshot",
+        "capture_preview_screenshot"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "F01",
+        "S26"
+      ],
+      "caveat": "浏览器可无头截图，但 Creator 构建仍需图形环境；首次/强制构建耗时与状态明确，任意工程像素确定性不作保证。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-175",
+      "tool": "cocos_builder",
+      "enumKey": "action",
+      "operation": "build",
+      "requirement": "FR-06",
+      "priority": "P0",
+      "feasibility": "B",
+      "route": "组合统一解析、UI构造、脚本/资产/事件绑定及结果映射，执行前校验。",
+      "funplayCandidates": [
+        "create_node",
+        "add_component",
+        "set_component_property",
+        "bind_button_click_event"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S04",
+        "S05",
+        "S16",
+        "S17",
+        "S21"
+      ],
+      "caveat": "自有 JSON schema，分阶段创建/配置/引用/验证；失败至少清理本次新建节点。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-176",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "play",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "使用 Animation 的对应控制方法；先确认目标上下文和 clip/state。",
+      "funplayCandidates": [
+        "play_animation",
+        "stop_animation",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-177",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "pause",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "使用 Animation 的对应控制方法；先确认目标上下文和 clip/state。",
+      "funplayCandidates": [
+        "play_animation",
+        "stop_animation",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-178",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "resume",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "使用 Animation 的对应控制方法；先确认目标上下文和 clip/state。",
+      "funplayCandidates": [
+        "play_animation",
+        "stop_animation",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-179",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "stop",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "使用 Animation 的对应控制方法；先确认目标上下文和 clip/state。",
+      "funplayCandidates": [
+        "play_animation",
+        "stop_animation",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-180",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "change_sample",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "设置 AnimationClip.sample，并重新解释帧号；改变采样率不默认缩放关键帧时间。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-181",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "change_speed",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "区分 AnimationClip.speed 与播放 AnimationState.speed，设置后验证目标行为。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-182",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "change_wrap_mode",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "设置公开 wrapMode，区分 clip 默认和 state 实际模式。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-183",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "create_prop",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "构造对应 Real/Vector/Quat/Color/Size/Object 轨道及 TrackPath，验证目标属性类型。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-184",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "remove_prop",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "按公开轨道路径筛选并 removeTrack，校验混合轨道影响。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-185",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "create_key",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "按通道类型新增关键帧并维护排序/插值类型，验证重复时间策略。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-186",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "update_key",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "更新指定时间的键值/插值参数，校验标量、向量和离散资产类型。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-187",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "remove_key",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "定位时间或索引并删除键；帧号先按 sample 换算秒。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-188",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "move_keys",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "整体移动键时间，检测负时间、碰撞和长度策略后重排。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-189",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "copy_keys_to",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "复制键值和插值到兼容目标轨道，重映射 ObjectTrack 引用。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-190",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "spacing_keys",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "独立计算键时间间隔并重排，明确端点和时长策略。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-191",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "clear_keys",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "通过通道曲线公开赋值/删除接口清空键，保留轨道元信息策略。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-192",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "modify_curve",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "通过 RealCurve 键值的插值/切线参数修改曲线；非数值轨道另定规则。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-193",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "add_event",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "编辑 AnimationClip.events 的自有列表；事件 frame 为秒，校验根节点组件方法。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-194",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "delete_event",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "编辑 AnimationClip.events 的自有列表；事件 frame 为秒，校验根节点组件方法。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-195",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "update_event",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "编辑 AnimationClip.events 的自有列表；事件 frame 为秒，校验根节点组件方法。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-196",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "move_events",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "按秒移动事件时间，处理排序、负值和重复事件策略。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-197",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "copy_events_to",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "复制事件到目标 clip，重新验证目标根节点方法和参数。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-198",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "remove_node",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "筛选 TrackPath 中对应层级路径的轨道并 removeTrack；不删除游戏节点。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-199",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "change_node_path",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "重建选中轨道的 TrackPath，校验目标层级存在及路径歧义。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-200",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_clips_info",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "读取 Animation.clips 并结合资源信息，返回 clip UUID/时长/采样率。",
+      "funplayCandidates": [
+        "list_animations",
+        "inspect_asset"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-201",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_clip",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "按公开 tracks/events/clip 属性生成自有只读 DTO。",
+      "funplayCandidates": [
+        "inspect_asset",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-202",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_clip_dump",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "原生编辑器 dump schema 尚未确认；可用公开 clip DTO 替代，但不能承诺兼容其内部转储格式。",
+      "funplayCandidates": [
+        "inspect_asset",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-203",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_value_at_frame",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "先换算秒，再逐类型求值；旋转、多通道、离散轨道不能只套 RealCurve.evaluate。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-204",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_properties",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "遍历公开轨道路径与目标属性，输出可编辑类型/不支持项。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-205",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_state",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "通过 Animation.getState 读取指定状态，多个混合状态不概括为唯一当前动画。",
+      "funplayCandidates": [
+        "list_animations",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-206",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "query_edit_info",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生动画编辑器模式、当前 clip、切换/退出消息及未保存处理；不以 Animation.play 代替编辑模式。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-207",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "enter_edit",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生动画编辑器模式、当前 clip、切换/退出消息及未保存处理；不以 Animation.play 代替编辑模式。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-208",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "exit_edit",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "核对原生动画编辑器模式、当前 clip、切换/退出消息及未保存处理；不以 Animation.play 代替编辑模式。",
+      "funplayCandidates": [
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-209",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "save_clip",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "C",
+      "route": "验证公开对象序列化、资产创建/保存/重导入路径；保留 UUID，保存重开核对轨道和事件。",
+      "funplayCandidates": [
+        "refresh_assets",
+        "execute_editor_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S02",
+        "S24",
+        "F02"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-210",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "create_clip",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "new AnimationClip 并添加普通轨道/事件；持久化依赖 save_clip 适配完成。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S23",
+        "S24"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-211",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "batch",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "顺序执行自有 clip 编辑 schema，预校验、部分失败及时间单位明确。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-212",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "batch_file",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "加载资产后通过公开轨道模型批处理，再由已验证保存入口写回；不文本替换内部 .anim 字段。",
+      "funplayCandidates": [
+        "inspect_asset",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "依赖 save_clip 的 C 类持久化核验；复杂导入轨道不默认支持，未通过前不开放写回。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-213",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "preset_list",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "列出本项目自行定义的 UI 动画预设和参数，不读取 Pro 预设。",
+      "funplayCandidates": [],
+      "gap": "新增自有实现；不复用商业包内容。",
+      "references": [
+        "S22",
+        "S23",
+        "S24",
+        "S25"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-214",
+      "tool": "cocos_animation",
+      "enumKey": "action",
+      "operation": "preset",
+      "requirement": "FR-14",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "从自有位移/缩放/颜色预设生成轨道，检查 Widget ALWAYS 与动画冲突。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S23",
+        "S24",
+        "S21"
+      ],
+      "caveat": "仅普通可编辑轨道；明确编辑预览/游戏运行上下文；内存编辑不等于动画资产保存。统一以秒为时间，帧号需 sample 转换。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-215",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "info",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "B",
+      "route": "读取 sp.Skeleton 的公开配置与数据引用，明确当前上下文。",
+      "funplayCandidates": [
+        "inspect_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-216",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "list_animations",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "B",
+      "route": "通过 skeletonData 的公开动画枚举/数据接口列出可用动画，处理无效数据。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-217",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "list_skins",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "B",
+      "route": "使用 skeletonData.getSkinsEnum 等公开数据接口列出皮肤。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-218",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "set_animation",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "A",
+      "route": "使用 sp.Skeleton.setAnimation(trackIndex,name,loop)，验证缓存模式限制。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-219",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "set_skin",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "A",
+      "route": "使用 sp.Skeleton.setSkin 并校验皮肤名称及当前数据。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-220",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "set_property",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "A",
+      "route": "白名单设置 loop/timeScale 等公开属性；混合经 setMix 且检查实时模式。",
+      "funplayCandidates": [
+        "set_component_property",
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-221",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "set_data",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "A",
+      "route": "解析合法 SkeletonData 后赋值 skeletonData，重新校验动画/皮肤和层。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-222",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "add_socket",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "A",
+      "route": "使用文档的 sp.SpineSocket(path,target) 与 sockets；校验骨骼路径和挂点容器。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-223",
+      "tool": "cocos_spine",
+      "enumKey": "action",
+      "operation": "remove_socket",
+      "requirement": "FR-15",
+      "priority": "P2",
+      "feasibility": "B",
+      "route": "过滤 sockets 并重新赋值，是否保留挂点目标节点须明确。",
+      "funplayCandidates": [
+        "execute_scene_script"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S27",
+        "L01"
+      ],
+      "caveat": "需有效且许可兼容的 Spine 样例；实时/缓存模式及内置 runtime 版本影响多轨与混合，不能承诺完整骨骼创作。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-224",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "info",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "读取 Label 公开属性与字体引用，RichText 单独按组件 schema。",
+      "funplayCandidates": [
+        "inspect_component"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-225",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "list",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "遍历 Label 节点并按文本/路径筛选，控制数量。",
+      "funplayCandidates": [
+        "find_nodes",
+        "list_components"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-226",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "set_text",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "设置 Label.string；富文本内容按 RichText.string 和标记规则处理。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "S20"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-227",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "set_font",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "区分系统字体与资产 font，解析 TTF/BMFont 类型和字体引用。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-228",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "set_style",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "白名单设置字号、行高、对齐、overflow/wrap/cacheMode 等，检查冲突。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-229",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "set_outline",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "3.8.8 使用 enableOutline/outlineColor/outlineWidth，核对位图字体限制。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-230",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "set_shadow",
+      "requirement": "FR-19",
+      "priority": "P1",
+      "feasibility": "A",
+      "route": "3.8.8 使用 enableShadow/shadowColor/shadowOffset/shadowBlur，排除不支持字体缓存模式。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-231",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "batch_set_font",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "逐节点转换和校验字体/样式，返回部分失败与持久化状态。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    },
+    {
+      "id": "OP-232",
+      "tool": "cocos_label",
+      "enumKey": "action",
+      "operation": "batch_set_style",
+      "requirement": "FR-20",
+      "priority": "P1",
+      "feasibility": "B",
+      "route": "逐节点转换和校验字体/样式，返回部分失败与持久化状态。",
+      "funplayCandidates": [
+        "set_component_property"
+      ],
+      "gap": "将候选入口适配为自有schema，并补齐所列路线和边界；候选不代表完整对等实现。",
+      "references": [
+        "S18",
+        "S19",
+        "L01"
+      ],
+      "caveat": "使用本机3.8.8确认属性；BMFont/CHAR等模式限制样式和阴影；字体文件须另查商用许可。",
+      "verificationStatus": "未测试",
+      "verificationEvidence": null
+    }
+  ]
+}
