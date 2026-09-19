@@ -100,6 +100,34 @@ function getNodePath(node) {
   return names.join('/');
 }
 
+function hasLinkedPrefabAncestor(node, scene) {
+  for (let current = node; current && current !== scene; current = current.parent) {
+    const prefab = current._prefab;
+    if (prefab && (prefab.instance || prefab.asset || prefab._asset || prefab.fileId || prefab.root)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function assertCloneableSceneSubtree(root, scene) {
+  if (hasLinkedPrefabAncestor(root, scene)) {
+    throw new Error('Duplicating a linked prefab hierarchy is not supported by duplicate_node.');
+  }
+  const pending = [root];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!isSceneContentNode(node)) {
+      throw new Error('Duplicating a subtree with editor-only nodes is not supported by duplicate_node.');
+    }
+    const prefab = node._prefab;
+    if (prefab && (prefab.instance || prefab.asset || prefab._asset || prefab.fileId || prefab.root)) {
+      throw new Error('Duplicating a subtree containing a linked prefab is not supported by duplicate_node.');
+    }
+    for (const child of node.children) pending.push(child);
+  }
+}
+
 function readQueryLimit(value, fallback, maximum, label) {
   if (value == null) return fallback;
   if (!Number.isInteger(value) || value < 1 || value > maximum) {
@@ -875,13 +903,8 @@ exports.methods = {
 
     // Direct reparenting of a linked prefab hierarchy may not be recorded as
     // an instance override. Keep this operation limited to ordinary scene nodes.
-    for (const candidate of [node, parent]) {
-      for (let current = candidate; current && current !== scene; current = current.parent) {
-        const prefab = current._prefab;
-        if (prefab && (prefab.instance || prefab.asset || prefab._asset || prefab.fileId || prefab.root)) {
-          throw new Error('Moving a linked prefab instance or moving into one is not supported by move_node.');
-        }
-      }
+    if (hasLinkedPrefabAncestor(node, scene) || hasLinkedPrefabAncestor(parent, scene)) {
+      throw new Error('Moving a linked prefab instance or moving into one is not supported by move_node.');
     }
 
     const previousParent = node.parent;
@@ -914,6 +937,167 @@ exports.methods = {
       position: vectorToObject(node.position),
       worldPosition: vectorToObject(node.worldPosition),
     };
+  },
+
+  async reorderNode(options = {}) {
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node) {
+      throw new Error('Target node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (node === scene) {
+      throw new Error('The scene root cannot be reordered.');
+    }
+    const parent = node.parent;
+    if (!parent || hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Reordering a linked prefab hierarchy is not supported by reorder_node.');
+    }
+    const parentSelector = {
+      uuid: options.parentUuid,
+      path: options.parentPath,
+      name: options.parentName,
+    };
+    if (Object.values(parentSelector).some((value) => value != null && String(value).trim() !== '')) {
+      const expectedParent = findNode(parentSelector);
+      if (expectedParent !== parent) {
+        throw new Error('The node is no longer under the specified parent.');
+      }
+    }
+
+    const siblings = sceneContentChildren(parent);
+    const previousIndex = siblings.indexOf(node);
+    if (previousIndex < 0) {
+      throw new Error('The node is not a serializable child of its parent.');
+    }
+    const index = options.index;
+    if (!Number.isInteger(index) || index < 0 || index >= siblings.length) {
+      throw new Error(`index must be an integer between 0 and ${siblings.length - 1}.`);
+    }
+    if (index === previousIndex) {
+      return {
+        reordered: false,
+        uuid: node.uuid,
+        path: getNodePath(node),
+        parentUuid: parent.uuid,
+        parentPath: getNodePath(parent),
+        previousIndex,
+        index,
+        siblingUuids: siblings.map((sibling) => sibling.uuid),
+      };
+    }
+
+    // Translate the index among serializable nodes into the actual children
+    // array, which may contain Creator-only DontSave helper nodes.
+    const remaining = siblings.filter((sibling) => sibling !== node);
+    const rawRemaining = parent.children.filter((sibling) => sibling !== node);
+    const next = remaining[index];
+    const rawIndex = next
+      ? rawRemaining.indexOf(next)
+      : rawRemaining.indexOf(remaining[remaining.length - 1]) + 1;
+    const previousRawIndex = node.getSiblingIndex();
+    node.setSiblingIndex(rawIndex);
+    const reorderedSiblings = sceneContentChildren(parent);
+    if (node.parent !== parent || reorderedSiblings[index] !== node) {
+      if (node.parent === parent) node.setSiblingIndex(previousRawIndex);
+      throw new Error('Node.setSiblingIndex did not produce the requested sibling order.');
+    }
+    return {
+      reordered: true,
+      uuid: node.uuid,
+      path: getNodePath(node),
+      parentUuid: parent.uuid,
+      parentPath: getNodePath(parent),
+      previousIndex,
+      index,
+      siblingUuids: reorderedSiblings.map((sibling) => sibling.uuid),
+    };
+  },
+
+  async duplicateNode(options = {}) {
+    const scene = getScene();
+    const source = findNode(options);
+    if (!source) {
+      throw new Error('Target node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (source === scene) {
+      throw new Error('The scene root cannot be duplicated.');
+    }
+    assertCloneableSceneSubtree(source, scene);
+
+    const parent = source.parent;
+    const siblings = sceneContentChildren(parent);
+    const sourceIndex = siblings.indexOf(source);
+    if (sourceIndex < 0) {
+      throw new Error('The source is not a serializable child of its parent.');
+    }
+    if (options.newName != null && typeof options.newName !== 'string') {
+      throw new Error('newName must be a string.');
+    }
+    const requestedName = typeof options.newName === 'string' ? options.newName.trim() : '';
+    if (options.newName != null && !requestedName) {
+      throw new Error('newName cannot be empty.');
+    }
+    const usedNames = new Set(siblings.map((sibling) => sibling.name));
+    let cloneName = requestedName;
+    if (cloneName) {
+      if (usedNames.has(cloneName)) {
+        throw new Error(`A sibling named '${cloneName}' already exists.`);
+      }
+    } else {
+      const base = `${source.name || 'Node'} Copy`;
+      cloneName = base;
+      for (let suffix = 2; usedNames.has(cloneName); suffix += 1) {
+        cloneName = `${base} ${suffix}`;
+      }
+    }
+    if (cloneName.includes('/') || cloneName.includes('\\')) {
+      throw new Error('The duplicate name cannot contain a path separator.');
+    }
+
+    let clone = null;
+    try {
+      clone = instantiate(source);
+      if (!(clone instanceof Node) || clone === source) {
+        throw new Error('Cocos instantiate did not create a distinct Node.');
+      }
+      clone.name = cloneName;
+      clone.parent = parent;
+      clone.setSiblingIndex(source.getSiblingIndex() + 1);
+
+      const pending = [[source, clone]];
+      let clonedNodes = 0;
+      while (pending.length) {
+        const [original, copy] = pending.pop();
+        if (original.uuid === copy.uuid || original.children.length !== copy.children.length
+          || original.components.length !== copy.components.length) {
+          throw new Error('The duplicate hierarchy or component count does not match the source.');
+        }
+        clonedNodes += 1;
+        for (let index = 0; index < original.children.length; index += 1) {
+          pending.push([original.children[index], copy.children[index]]);
+        }
+      }
+      if (clone.parent !== parent || sceneContentChildren(parent)[sourceIndex + 1] !== clone) {
+        throw new Error('The duplicate was not inserted immediately after its source.');
+      }
+      return {
+        duplicated: true,
+        sourceUuid: source.uuid,
+        sourcePath: getNodePath(source),
+        uuid: clone.uuid,
+        path: getNodePath(clone),
+        name: clone.name,
+        parentUuid: parent.uuid,
+        siblingIndex: sourceIndex + 1,
+        clonedNodes,
+      };
+    } catch (error) {
+      if (clone && clone !== source && clone instanceof Node) {
+        if (clone.parent) clone.removeFromParent();
+        clone.destroy();
+      }
+      throw error;
+    }
   },
 
   async setNodeTransform(options = {}) {

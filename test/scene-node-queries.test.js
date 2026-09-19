@@ -53,6 +53,28 @@ class MockNode {
   }
 
   getSiblingIndex() { return this.parent ? this.parent.children.indexOf(this) : 0; }
+
+  setSiblingIndex(index) {
+    if (!this.parent) throw new Error('Node has no parent');
+    const siblings = this.parent.children;
+    siblings.splice(siblings.indexOf(this), 1);
+    siblings.splice(Math.min(index, siblings.length), 0, this);
+  }
+
+  removeFromParent() { this.parent = null; }
+  destroy() { this.destroyed = true; }
+}
+
+function instantiateNode(source) {
+  const copy = new MockNode(source.name);
+  copy.active = source.active;
+  copy.layer = source.layer;
+  copy.position = { ...source.position };
+  copy.rotation = { ...source.rotation };
+  copy.scale = { ...source.scale };
+  copy.components = source.components.map((component) => ({ ...component }));
+  for (const child of source.children) instantiateNode(child).parent = copy;
+  return copy;
 }
 
 function sceneMethods() {
@@ -76,7 +98,7 @@ function sceneMethods() {
     module: { paths: [] },
     exports,
     require: (id) => id === 'cc'
-      ? { Node: MockNode, CCObjectFlags: { DontSave: 8 }, director: { getScene: () => scene } }
+      ? { Node: MockNode, instantiate: instantiateNode, CCObjectFlags: { DontSave: 8 }, director: { getScene: () => scene } }
       : localRequire(id),
     console,
   }, { filename: sceneFile });
@@ -193,4 +215,111 @@ test('moveNode rejects ambiguous targets, cycles, invalid modes, and linked pref
 
   first._prefab = { fileId: 'linked-file-id' };
   await assert.rejects(() => methods.moveNode({ uuid: button.uuid, parentUuid: second.uuid }), /linked prefab/);
+});
+
+test('reorderNode changes visible sibling order while ignoring editor-only helper nodes', async () => {
+  const { methods, scene, first, second, camera } = sceneMethods();
+  const helper = new MockNode('Editor Helper', 'editor-helper');
+  helper._objFlags = 8;
+  helper.parent = scene;
+  helper.setSiblingIndex(1);
+  assert.deepEqual(scene.children.map((node) => node.uuid), ['canvas-a', 'editor-helper', 'canvas-b', 'camera']);
+
+  const moved = await methods.reorderNode({ uuid: camera.uuid, parentPath: '/', index: 0 });
+  assert.equal(moved.reordered, true);
+  assert.equal(moved.previousIndex, 2);
+  assert.equal(moved.index, 0);
+  assert.deepEqual(moved.siblingUuids, ['camera', 'canvas-a', 'canvas-b']);
+  assert.deepEqual(scene.children.map((node) => node.uuid), ['camera', 'canvas-a', 'editor-helper', 'canvas-b']);
+
+  const last = await methods.reorderNode({ uuid: camera.uuid, parentUuid: scene.uuid, index: 2 });
+  assert.equal(last.reordered, true);
+  assert.deepEqual(last.siblingUuids, ['canvas-a', 'canvas-b', 'camera']);
+  assert.equal(camera.parent, scene);
+  assert.equal(first.parent, scene);
+  assert.equal(second.parent, scene);
+  const noOp = await methods.reorderNode({ uuid: camera.uuid, index: 2 });
+  assert.equal(noOp.reordered, false);
+});
+
+test('reorderNode rejects stale or ambiguous parents, invalid indices, and prefab nodes without mutation', async () => {
+  const { methods, scene, first, second, camera } = sceneMethods();
+  const initial = scene.children.map((node) => node.uuid);
+  await assert.rejects(() => methods.reorderNode({ name: 'Canvas', index: 0 }), /Candidates:.*canvas-a.*canvas-b/);
+  await assert.rejects(() => methods.reorderNode({ uuid: camera.uuid, parentUuid: first.uuid, index: 0 }), /no longer under/);
+  await assert.rejects(() => methods.reorderNode({ uuid: camera.uuid, parentName: 'Canvas', index: 0 }), /Candidates:.*canvas-a.*canvas-b/);
+  await assert.rejects(() => methods.reorderNode({ uuid: scene.uuid, index: 0 }), /scene root/);
+  for (const index of [-1, 3, 1.5, '1', undefined]) {
+    await assert.rejects(() => methods.reorderNode({ uuid: camera.uuid, index }), /index must be an integer/);
+  }
+  assert.deepEqual(scene.children.map((node) => node.uuid), initial);
+
+  first._prefab = { instance: {} };
+  await assert.rejects(() => methods.reorderNode({ uuid: first.children[0].uuid, index: 0 }), /linked prefab/);
+  await assert.rejects(() => methods.reorderNode({ uuid: first.uuid, index: 0 }), /linked prefab/);
+  assert.deepEqual(scene.children.map((node) => node.uuid), initial);
+});
+
+test('duplicateNode clones an ordinary subtree next to its source with fresh identities', async () => {
+  const { methods, scene, first } = sceneMethods();
+  first.position = { x: 45, y: 2, z: 0 };
+  first.children[0].components.push({ kind: 'example' });
+  const copy = await methods.duplicateNode({ uuid: first.uuid });
+  assert.equal(copy.duplicated, true);
+  assert.equal(copy.name, 'Canvas Copy');
+  assert.equal(copy.clonedNodes, 2);
+  assert.equal(copy.siblingIndex, 1);
+  assert.notEqual(copy.uuid, first.uuid);
+  assert.equal(scene.children[1].uuid, copy.uuid);
+  assert.equal(scene.children[1].position.x, 45);
+  assert.equal(scene.children[1].children[0].components[0].kind, 'example');
+  assert.notEqual(scene.children[1].children[0].uuid, first.children[0].uuid);
+
+  const secondCopy = await methods.duplicateNode({ uuid: first.uuid });
+  assert.equal(secondCopy.name, 'Canvas Copy 2');
+  assert.equal(scene.children[1].uuid, secondCopy.uuid);
+  assert.equal(scene.children[2].uuid, copy.uuid);
+});
+
+test('duplicateNode rejects unsafe sources and invalid names before changing the scene', async () => {
+  const { methods, scene, first, second } = sceneMethods();
+  const original = scene.children.map((node) => node.uuid);
+  await assert.rejects(() => methods.duplicateNode({ name: 'Canvas' }), /Candidates:.*canvas-a.*canvas-b/);
+  await assert.rejects(() => methods.duplicateNode({ uuid: scene.uuid }), /scene root/);
+  await assert.rejects(() => methods.duplicateNode({ uuid: first.uuid, newName: '' }), /cannot be empty/);
+  await assert.rejects(() => methods.duplicateNode({ uuid: first.uuid, newName: 'Camera' }), /already exists/);
+  await assert.rejects(() => methods.duplicateNode({ uuid: first.uuid, newName: 'bad\/name' }), /path separator/);
+  await assert.rejects(() => methods.duplicateNode({ uuid: first.uuid, newName: 4 }), /must be a string/);
+  assert.deepEqual(scene.children.map((node) => node.uuid), original);
+
+  first._prefab = { instance: {} };
+  await assert.rejects(() => methods.duplicateNode({ uuid: first.uuid }), /linked prefab/);
+  first._prefab = null;
+  first.children[0]._prefab = { fileId: 'nested-prefab-node' };
+  await assert.rejects(() => methods.duplicateNode({ uuid: first.uuid }), /linked prefab/);
+  first.children[0]._prefab = null;
+  const helper = new MockNode('Helper', 'hidden');
+  helper._objFlags = 8;
+  helper.parent = second;
+  await assert.rejects(() => methods.duplicateNode({ uuid: second.uuid }), /editor-only nodes/);
+  assert.deepEqual(scene.children.map((node) => node.uuid), original);
+});
+
+test('duplicateNode removes a partially attached clone when insertion fails', async () => {
+  const { methods, scene, camera } = sceneMethods();
+  const original = scene.children.map((node) => node.uuid);
+  const setSiblingIndex = MockNode.prototype.setSiblingIndex;
+  MockNode.prototype.setSiblingIndex = function (index) {
+    if (this.name === 'Broken Copy') throw new Error('Injected insertion failure');
+    return setSiblingIndex.call(this, index);
+  };
+  try {
+    await assert.rejects(
+      () => methods.duplicateNode({ uuid: camera.uuid, newName: 'Broken Copy' }),
+      /Injected insertion failure/
+    );
+    assert.deepEqual(scene.children.map((node) => node.uuid), original);
+  } finally {
+    MockNode.prototype.setSiblingIndex = setSiblingIndex;
+  }
 });

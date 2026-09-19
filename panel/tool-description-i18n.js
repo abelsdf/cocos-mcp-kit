@@ -28,6 +28,8 @@ const ZH_TOOL_DESCRIPTIONS = {
   create_node: '在当前场景或指定父节点路径下创建新节点。',
   delete_node: '按路径、uuid 或名称删除节点。',
   move_node: '将普通场景节点移至另一父节点；默认保持世界变换，也可选择保持局部变换。拒绝循环层级和关联预制体层级。',
+  reorder_node: '按可保存的同级节点从零开始的索引调整普通场景节点顺序；可指定预期父节点以防止误改。',
+  duplicate_node: '在原节点后复制普通场景节点及其子树，生成新节点标识；关联预制体层级暂不支持。',
   set_node_transform: '更新节点的位置、旋转、缩放或激活状态。',
   get_project_info: '返回当前 Cocos 项目路径、版本和 MCP 服务配置。需要快速结构化项目摘要时优先使用；需要在检查后立即操作时使用 execute_javascript。',
   save_current_scene: '使用可用的编辑器场景消息保存当前打开的 Cocos 场景。',
