@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 105);
+  assert.equal(tools.length, 106);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -122,6 +122,7 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'broadcast_editor_message'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_selection'), true);
+  assert.equal(tools.some((tool) => tool.name === 'set_sprite_frame'), true);
 });
 
 test('create_sprite resolves an image target before creating a scene node', async (t) => {
@@ -178,6 +179,53 @@ test('create_sprite does not create a node when resource resolution is invalid',
       spriteFrameTarget: 'assets/icons/arrow.png', spriteFrameUuid: 'other-frame',
     }),
     /either spriteFrameTarget or spriteFrameUuid/
+  );
+});
+
+test('set_sprite_frame resolves an image before changing an existing Sprite', async (t) => {
+  const imageUrl = 'db://assets/icons/new.png';
+  const frameUuid = 'new-image@frame';
+  mockEditorRequests(t, async (channel, method, target) => {
+    assert.equal(channel, 'asset-db');
+    assert.equal(method, 'query-asset-info');
+    if (target === imageUrl) return {
+      uuid: 'new-image', url: imageUrl, type: 'cc.ImageAsset', imported: true,
+      subAssets: { frame: { uuid: frameUuid, type: 'cc.SpriteFrame' } },
+    };
+    if (target === frameUuid) return {
+      uuid: frameUuid, url: `${imageUrl}/spriteFrame`, type: 'cc.SpriteFrame', imported: true,
+    };
+    throw new Error(`Unexpected target: ${target}`);
+  });
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, payload) => {
+      calls.push({ method, payload });
+      return { updated: true, previousSpriteFrameUuid: 'old-image@frame', spriteFrameUuid: frameUuid };
+    } },
+  });
+  const result = await registry.callToolDetailed('set_sprite_frame', {
+    path: 'Canvas/Icon', spriteFrameTarget: 'assets/icons/new.png',
+  });
+  assert.equal(result.value.data.previousSpriteFrameUuid, 'old-image@frame');
+  assert.equal(result.value.data.spriteFrameResolution.spriteFrame.uuid, frameUuid);
+  assert.deepEqual(calls, [{ method: 'setSpriteFrame', payload: {
+    path: 'Canvas/Icon', uuid: undefined, name: undefined, spriteFrameUuid: frameUuid,
+  } }]);
+});
+
+test('set_sprite_frame rejects an invalid target before touching the scene', async (t) => {
+  mockEditorRequests(t, async () => ({
+    uuid: 'texture-uuid', type: 'cc.Texture2D', imported: true,
+  }));
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async () => assert.fail('Invalid image must not change the scene') },
+  });
+  await assert.rejects(
+    () => registry.callToolDetailed('set_sprite_frame', {
+      path: 'Canvas/Icon', spriteFrameTarget: 'texture-uuid',
+    }),
+    /Expected cc.SpriteFrame or cc.ImageAsset/
   );
 });
 

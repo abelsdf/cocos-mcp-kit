@@ -132,6 +132,12 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - 在 `arrow-puzzle` Creator 3.8.8 中加载当前解析与工具注册源码，通过图片路径和主 UUID 各建一个 Sprite；独立场景保存、切到 `Main.scene`、重新打开后，运行中的 SpriteFrame UUID 和磁盘引用均为 `7222d7a1-b348-41ec-9f8a-4eea647d8774@f9941`。Texture2D 与参数冲突输入均拒绝，场景节点数未变。临时场景及 `.meta` 已由 asset-db 删除，编辑器回到 `ComplexRefs.scene`。详见[验收记录](./verification/SPRITE_FRAME_RESOLUTION_2026-09-19.md)。
 - 这是 FR-04 的图片 SpriteFrame 子资源局部实现和 Creator 实测；尚未统一覆盖其他资源类型、组件引用和事件目标，故阶段 1 的总任务不勾选。
 
+### 已有 Sprite 图片替换验收（2026-09-19）
+
+- 新增 `set_sprite_frame`：通过节点 UUID、路径或唯一名称定位已有 Sprite，接收图片路径、ImageAsset 主 UUID 或精确 SpriteFrame 子 UUID；先经 asset-db 解析，再在场景进程加载并验证 `cc.SpriteFrame` 类型，最后替换组件引用，返回前后 UUID。未导入、类型错误、节点或 Sprite 组件不存在时不修改引用。
+- 在 `arrow-puzzle` Creator 3.8.8 中，独立测试场景 `ReplaceSprite` 初始引用 Hammer 图片，调用当前源码将其切换为 Hint 图片；保存、切到 `Main.scene`、重开后，运行对象与磁盘引用均为 `1b3c2630-2ff7-4455-a872-072e320c0d8c@f9941`。Texture2D 输入在调用场景前被拒绝；测试场景及 `.meta` 已由 asset-db 清理。详见[验收记录](./verification/SPRITE_FRAME_REPLACEMENT_2026-09-19.md)。
+- 本轮仅覆盖普通场景节点的 Sprite 引用；预制体实例覆盖、Prefab 资源本体修改及其他类型资源仍待验证，FR-04/05 与阶段 1 总任务继续保持未完成。
+
 ### 场景与预制体资产保存加固（2026-09-19）
 
 - `create_scene` 与 `create_prefab_from_node` 的资产写入统一走 Creator `asset-db:create-asset` / `save-asset`。编辑器不可用、消息拒绝、写盘内容未更新或资产数据库未完成导入时明确报错；不再把文件直写或文件存在当作成功。Creator 导入场景时将根 `cc.Scene._id` 改为新资产 UUID，这一已实测的正常改写纳入语义校验。保存后等待 400 毫秒复查磁盘和导入状态，防止把短暂写入随后回退算作成功；已有资产内容不一致时最多重试一次。

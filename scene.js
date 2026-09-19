@@ -1232,6 +1232,35 @@ exports.methods = {
     };
   },
 
+  async setSpriteFrame(options = {}) {
+    const node = findNode(options);
+    if (!node) {
+      throw new Error('Target node was not found.');
+    }
+    const sprite = node.getComponent(Sprite);
+    if (!sprite) {
+      throw new Error('Sprite component was not found on target node.');
+    }
+    const spriteFrameUuid = String(options.spriteFrameUuid || '').trim();
+    if (!spriteFrameUuid) {
+      throw new Error('spriteFrameUuid is required.');
+    }
+    const spriteFrame = await loadAssetByUuid(spriteFrameUuid);
+    if (!(spriteFrame instanceof SpriteFrame)) {
+      throw new Error(`spriteFrameUuid must resolve to a cc.SpriteFrame: ${spriteFrameUuid}`);
+    }
+
+    const previousSpriteFrameUuid = sprite.spriteFrame ? sprite.spriteFrame.uuid : null;
+    sprite.spriteFrame = spriteFrame;
+    return {
+      updated: true,
+      node: getNodePath(node),
+      uuid: node.uuid,
+      previousSpriteFrameUuid,
+      spriteFrameUuid: spriteFrame.uuid,
+    };
+  },
+
   async listCameras() {
     const cameras = findComponentsByClass(Camera);
     return {
