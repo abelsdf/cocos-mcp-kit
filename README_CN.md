@@ -27,6 +27,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `batch_modify_nodes` 可按顺序修改 1—50 个普通场景节点的局部位置、缩放、欧拉旋转或激活状态。每项须用 UUID、路径或唯一名称定位，并给出至少一个完整字段；`onError` 可选 `"stop"`（默认）或 `"continue"`。返回值列出已尝试步骤、失败项及停止位置；失败项的 `rollbackStatus` 区分无需恢复、已恢复与恢复失败。失败步骤会尝试恢复自身原值，但此前成功的步骤保持修改；保存场景后才会持久化。不直接修改关联预制体实例，也不处理任意组件属性。
 
+`add_component` 接受已注册的 Cocos 组件类名，为普通场景节点添加组件，并报告 Creator 自动补齐的依赖组件。无效类型和关联预制体层级会被拒绝；组件是否允许重复由 Creator 判断。保存场景后才会持久化。
+
 在 `full` 工具配置中，`move_node` 可用 `uuid`、`path` 或唯一 `name` 定位普通场景节点，并用 `parentUuid`、`parentPath` 或唯一 `parentName` 指定新父节点。默认保持世界变换；设置 `keepWorldTransform: false` 则保持局部变换。`parentPath: "/"` 指向场景根节点。关联预制体层级需使用单独的编辑器工作流。
 
 `reorder_node` 按可保存的同级节点从零开始的 `index` 调整普通场景节点顺序。用 `uuid`、`path` 或唯一 `name` 定位节点；可选的 `parentUuid`、`parentPath` 或 `parentName` 用于核对预期父节点。越界索引和关联预制体层级会被拒绝。保存场景后顺序才会持久化。

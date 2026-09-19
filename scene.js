@@ -1496,22 +1496,74 @@ exports.methods = {
   },
 
   async addComponent(options = {}) {
-    const node = findNode(options);
-    if (!node) {
-      throw new Error('Target node was not found.');
+    const componentName = typeof options.componentName === 'string' ? options.componentName.trim() : '';
+    if (!componentName) {
+      throw new Error('componentName must be a non-empty registered Cocos Component class name.');
     }
-
-    const componentClass = resolveComponentClass(options.componentName);
+    const componentClass = resolveComponentClass(componentName);
     if (!componentClass) {
-      throw new Error(`Component class not found: ${options.componentName}`);
+      throw new Error(`Component class not found: ${componentName}`);
     }
-
-    const component = node.addComponent(componentClass);
+    if (!Component || !componentClass.prototype || !(componentClass.prototype instanceof Component)) {
+      throw new Error(`${componentName} is not a Cocos Component class.`);
+    }
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Adding a component directly to a linked prefab hierarchy is not supported by add_component.');
+    }
+    const before = new Set(node.components);
+    const removeNewComponents = async () => {
+      let removalError = null;
+      for (const item of node.components.slice().reverse()) {
+        if (item && !before.has(item)) {
+          try {
+            node.removeComponent(item);
+          } catch (error) {
+            removalError = error;
+          }
+        }
+      }
+      for (let attempt = 0; node.components.some((item) => item && !before.has(item)) && attempt < 20; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      return {
+        clean: !node.components.some((item) => item && !before.has(item)),
+        removalError,
+      };
+    };
+    let component;
+    try {
+      component = node.addComponent(componentClass);
+      if (getScene() !== scene || !component || component.node !== node
+        || !node.components.includes(component) || !(component instanceof componentClass)
+        || before.has(component)) {
+        throw new Error('Creator did not attach a new component of the requested class to the target node.');
+      }
+    } catch (error) {
+      const cleanup = await removeNewComponents();
+      const cleanupDetail = cleanup.removalError ? ` Cleanup error: ${cleanup.removalError.message}.` : '';
+      throw new Error(`Could not add ${componentName}: ${error.message}${cleanup.clean ? '' : ' Newly added components could not be fully removed; inspect the node before saving.'}${cleanupDetail}`);
+    }
+    const addedComponents = node.components
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item && !before.has(item))
+      .map(({ item, index }) => ({
+        name: (js && typeof js.getClassName === 'function' && js.getClassName(item.constructor))
+          || item.constructor.name || 'UnknownComponent',
+        index,
+        requested: item === component,
+      }));
     return {
       added: true,
       node: getNodePath(node),
-      component: component.constructor ? component.constructor.name : options.componentName,
+      nodeUuid: node.uuid,
+      component: component.constructor ? component.constructor.name : componentName,
       index: node.components.indexOf(component),
+      addedComponents,
     };
   },
 

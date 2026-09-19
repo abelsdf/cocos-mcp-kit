@@ -70,7 +70,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 
 | Tool | Profiles | Access | Description |
 |---|---|---|---|
-| `add_component` | `full` | stateful | Add a component to a node by component class name. |
+| `add_component` | `full` | stateful | Add a registered Cocos Component to an ordinary scene node by class name. Reports automatically added dependencies; Creator enforces duplicate rules. Save the scene to persist the change. |
 | `attach_script_component` | `full` | stateful | Attach an imported project script as a component by its asset path or UUID. Resolves the registered class from the script UUID, waits briefly for compilation, and avoids duplicate attachment. Save the scene to persist it. |
 | `detach_script_component` | `full` | mutating | Remove an imported project script component from an ordinary scene node by script asset path or UUID. Refuses removal when active-scene component properties or Button click events still reference it. Save the scene to persist the change. |
 | `inspect_component` | `full` | read-only | [core] Inspect a component attached to a node. |

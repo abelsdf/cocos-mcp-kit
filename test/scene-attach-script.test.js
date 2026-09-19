@@ -30,6 +30,8 @@ class ProbeComponent extends MockComponent {
 class MockButton extends MockComponent { constructor() { super(); this.clickEvents = []; } }
 class MockCanvas extends MockComponent {}
 class MockUITransform extends MockComponent {}
+class MockSprite extends MockComponent {}
+class MockBrokenSprite extends MockComponent {}
 class MockCamera extends MockComponent {}
 class ReferenceComponent extends MockComponent { constructor() { super(); this.link = null; } }
 class NonComponent {}
@@ -43,6 +45,13 @@ class MockNode {
     this.parent = null;
   }
   addComponent(Cls) {
+    if (Cls === MockUITransform && this.components.some((item) => item instanceof Cls)) {
+      throw new Error('UITransform already exists');
+    }
+    if ((Cls === MockSprite || Cls === MockBrokenSprite) && !this.components.some((item) => item instanceof MockUITransform)) {
+      this.addComponent(MockUITransform);
+    }
+    if (Cls === MockBrokenSprite) throw new Error('Sprite construction failed');
     const component = new Cls();
     component.node = this;
     this.components.push(component);
@@ -98,6 +107,12 @@ function createSceneMethods(registeredClass = ProbeComponent) {
           js: {
             getClassById: () => registeredClass,
             getClassName: (Cls) => Cls.name,
+            getClassByName: (name) => ({
+              'cc.UITransform': MockUITransform,
+              'cc.Sprite': MockSprite,
+              'cc.BrokenSprite': MockBrokenSprite,
+              'cc.NonComponent': NonComponent,
+            }[name] || null),
           },
         }
       : localRequire(id),
@@ -144,6 +159,37 @@ test('detectNodeType reuses strict node resolution and rejects scene root', asyn
   duplicate.parent = scene;
   scene.children.push(duplicate);
   await assert.rejects(() => methods.detectNodeType({ name: target.name }), /Candidates:/);
+});
+
+test('addComponent verifies class and target, and reports engine-added dependencies', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  const added = await methods.addComponent({ uuid: target.uuid, componentName: 'cc.Sprite' });
+  assert.equal(added.added, true);
+  assert.equal(added.nodeUuid, target.uuid);
+  assert.equal(added.index, 1);
+  assert.deepEqual(Array.from(added.addedComponents, (item) => [item.name, item.index, item.requested]), [
+    ['MockUITransform', 0, false],
+    ['MockSprite', 1, true],
+  ]);
+  assert.equal(target.components[1].node, target);
+  for (const componentName of ['', 'missing', 'cc.NonComponent']) {
+    await assert.rejects(() => methods.addComponent({ uuid: target.uuid, componentName }), /componentName|not found|not a Cocos Component/);
+  }
+  await assert.rejects(() => methods.addComponent({ uuid: scene.uuid, componentName: 'cc.Sprite' }), /Target scene node/);
+  await assert.rejects(() => methods.addComponent({ uuid: 'stale', componentName: 'cc.Sprite' }), /Target scene node/);
+  await assert.rejects(() => methods.addComponent({ uuid: target.uuid, componentName: 'cc.UITransform' }), /already exists/);
+  assert.equal(target.components.length, 2);
+  target._prefab = { instance: {} };
+  await assert.rejects(() => methods.addComponent({ uuid: target.uuid, componentName: 'cc.Sprite' }), /linked prefab/);
+  assert.equal(target.components.length, 2);
+});
+
+test('addComponent removes only dependencies introduced by a failed attachment', async () => {
+  const { target, methods } = createSceneMethods();
+  const existing = target.addComponent(ProbeComponent);
+  await assert.rejects(() => methods.addComponent({ uuid: target.uuid, componentName: 'cc.BrokenSprite' }), /construction failed/);
+  assert.deepEqual(target.components, [existing]);
+  assert.equal(existing.node, target);
 });
 
 test('attachScriptComponent matches script identity and avoids duplicate components', async () => {
