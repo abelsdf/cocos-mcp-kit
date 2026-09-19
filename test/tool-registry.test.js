@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 114);
+  assert.equal(tools.length, 115);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -131,6 +131,20 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'detach_script_component'), true);
   assert.equal(tools.some((tool) => tool.name === 'reset_node_transform'), true);
   assert.equal(tools.some((tool) => tool.name === 'reset_component_property_to_default'), true);
+  assert.equal(tools.some((tool) => tool.name === 'detect_node_type'), true);
+});
+
+test('detect_node_type forwards strict node selectors to the scene bridge', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { type: 'ui', candidates: ['ui'], ambiguous: false };
+    } },
+  });
+  const result = await registry.callToolDetailed('detect_node_type', { uuid: 'node-uuid' });
+  assert.equal(result.value.data.type, 'ui');
+  assert.deepEqual(calls, [{ method: 'detectNodeType', args: { uuid: 'node-uuid' } }]);
 });
 
 test('reset_component_property_to_default forwards the exact selector and field', async () => {

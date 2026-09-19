@@ -23,6 +23,8 @@ The extension's panel also includes tool exposure and client configuration. For 
 
 Node queries now reject ambiguous names or paths and report candidate UUIDs. When supplying multiple selectors, all of them must identify the same node; a stale UUID will not silently fall back to a name. `get_scene_info` and `get_hierarchy` default to at most 200 returned nodes and report truncation; `find_nodes` reports both the total match count and the returned count.
 
+`detect_node_type` classifies a node from its attached Cocos components as `camera`, `ui`, or `plain`. A node with both Camera and UI components returns `ambiguous` with both candidates and the matching components. Names are never used as type evidence; custom UI components without recognized built-in UI components may appear as `plain`.
+
 In the `full` tool profile, `move_node` reparents an ordinary scene node using a `uuid`, `path`, or unique `name` and a destination `parentUuid`, `parentPath`, or unique `parentName`. It preserves world transform by default; set `keepWorldTransform: false` to preserve local transform. Use `parentPath: "/"` for the scene root. Linked prefab hierarchies require a separate editor-aware workflow.
 
 `reorder_node` changes an ordinary node's zero-based index among its serializable siblings. Supply `uuid`, `path`, or a unique `name`, plus `index`; optional `parentUuid`, `parentPath`, or `parentName` checks that the node is still under the expected parent. Out-of-range indices and linked prefab hierarchies are rejected. Save the scene to persist the order.

@@ -71,6 +71,40 @@ function getComponentNames(node) {
     .filter(Boolean);
 }
 
+function detectNodeType(node) {
+  const components = Array.isArray(node.components) ? node.components.filter(Boolean) : [];
+  const uiClasses = [Canvas, UITransform, cc.UIRenderer, Label, Sprite, Button, Widget]
+    .filter((type) => typeof type === 'function');
+  const matchingNames = (types) => components
+    .filter((component) => types.some((type) => component instanceof type))
+    .map((component) => component.constructor.name);
+  const cameraComponents = typeof Camera === 'function' ? matchingNames([Camera]) : [];
+  const uiComponents = matchingNames(uiClasses);
+  const candidates = [];
+  const matchedRules = [];
+  if (cameraComponents.length) {
+    candidates.push('camera');
+    matchedRules.push({ id: 'camera-component', components: cameraComponents });
+  }
+  if (uiComponents.length) {
+    candidates.push('ui');
+    matchedRules.push({ id: 'ui-component', components: uiComponents });
+  }
+  if (!candidates.length) {
+    candidates.push('plain');
+    matchedRules.push({ id: 'no-recognized-camera-or-ui-component', components: [] });
+  }
+  return {
+    type: candidates.length > 1 ? 'ambiguous' : candidates[0],
+    candidates,
+    ambiguous: candidates.length > 1,
+    matchedRules,
+    ambiguity: candidates.length > 1
+      ? 'Camera and UI components coexist on this node; choose a role using the reported components.'
+      : null,
+  };
+}
+
 function getSerializableKeys(target) {
   const keys = new Set();
   let current = target;
@@ -820,6 +854,20 @@ exports.methods = {
         uuid: child.uuid,
       })),
       components: getComponentNames(node),
+    };
+  },
+
+  async detectNodeType(options = {}) {
+    const node = findNode(options);
+    if (!node || node === getScene()) {
+      throw new Error('Target scene node was not found. Provide a node uuid, path, or unique name.');
+    }
+    return {
+      name: node.name,
+      path: getNodePath(node),
+      uuid: node.uuid,
+      components: getComponentNames(node),
+      ...detectNodeType(node),
     };
   },
 

@@ -25,6 +25,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   get_hierarchy: '返回当前场景或指定节点路径下的结构化层级树。复杂推理或修复优先使用 execute_javascript；需要稳定层级快照时使用此工具。',
   find_nodes: '按精确名称、部分路径或组件类型查找场景节点。',
   inspect_node: '按路径、uuid 或名称检查指定节点。',
+  detect_node_type: '根据实际组件识别相机、UI 或普通节点；同时有相机与 UI 组件时报告歧义，不根据名称猜测。',
   create_node: '在当前场景或指定父节点路径下创建新节点。',
   delete_node: '按路径、uuid 或名称删除节点。',
   move_node: '将普通场景节点移至另一父节点；默认保持世界变换，也可选择保持局部变换。拒绝循环层级和关联预制体层级。',

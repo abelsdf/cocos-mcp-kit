@@ -23,6 +23,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 节点查询遇到重名或重路径时会拒绝任选一个节点，并返回候选 UUID。同时提供多个定位条件时，它们必须指向同一节点；失效的 UUID 不会静默回退到名称。`get_scene_info` 与 `get_hierarchy` 默认最多返回 200 个节点并报告截断情况；`find_nodes` 同时报告匹配总数和实际返回数。
 
+`detect_node_type` 根据节点上实际挂载的 Cocos 组件识别 `camera`（相机）、`ui`（具备 UI 组件）或 `plain`（普通节点）。相机与 UI 组件共存时返回 `ambiguous`，列出两个候选及命中的组件。节点名称不作为类型依据；若自定义 UI 组件未搭配可识别的内置 UI 组件，可能被归为 `plain`。
+
 在 `full` 工具配置中，`move_node` 可用 `uuid`、`path` 或唯一 `name` 定位普通场景节点，并用 `parentUuid`、`parentPath` 或唯一 `parentName` 指定新父节点。默认保持世界变换；设置 `keepWorldTransform: false` 则保持局部变换。`parentPath: "/"` 指向场景根节点。关联预制体层级需使用单独的编辑器工作流。
 
 `reorder_node` 按可保存的同级节点从零开始的 `index` 调整普通场景节点顺序。用 `uuid`、`path` 或唯一 `name` 定位节点；可选的 `parentUuid`、`parentPath` 或 `parentName` 用于核对预期父节点。越界索引和关联预制体层级会被拒绝。保存场景后顺序才会持久化。

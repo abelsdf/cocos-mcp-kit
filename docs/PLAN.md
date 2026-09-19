@@ -169,6 +169,7 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - OP-039 新增 `detach_script_component`：通过 asset-db 与脚本 UUID 精确定位组件；移除前检查活动场景内 Button 点击事件及其他组件属性的直接引用，有引用则拒绝。Creator 3.8.8 实测删除需等待下一帧，工具确认节点组件列表已更新后才返回；隔离场景保存、切换、重开及磁盘序列化均确认组件已移除。探针及 `.meta` 已删除。详见 [脚本移除验证](verification/SCRIPT_DETACH_2026-09-19.md)。跨场景/预制体资源引用与关联预制体层级尚未覆盖，FR-05 总项保持未勾选。
 - OP-040 第一部分新增 `reset_node_transform`：默认将普通节点的局部位置、旋转、缩放归零/归一，也可只选其中字段；拒绝关联预制体层级并在应用失败时尝试回滚。Creator 3.8.8 已验证局部重置、保存切换重开及磁盘值；临时场景和 `.meta` 已删除。旧 `reset_component_property` 只是清除字段，类默认值重置由下一条独立工具处理。详见 [节点变换重置验证](verification/NODE_TRANSFORM_RESET_2026-09-19.md)。
 - OP-040 第二部分新增 `reset_component_property_to_default`：仅对具有 CCClass 默认值元数据的公开、可写、可序列化顶层字段生效，支持基本值、ValueType 与有界数组；拒绝访问器、无默认值、复杂默认对象和关联预制体层级。Creator 3.8.8 临时脚本的数字、字符串、Vec3、节点引用已验证恢复默认、保存、切换、重开与磁盘值；探针及 `.meta` 已删除。旧 `reset_component_property` 继续作为清除字段入口；预制体实例还原及更多内置组件类别单独验收，OP-040 总项仍保留边界。详见 [组件属性默认值验证](verification/COMPONENT_DEFAULT_RESET_2026-09-19.md)。
+- OP-041 新增只读 `detect_node_type`：依据实际挂载的 Camera 和内置 UI 组件返回 `camera`、`ui` 或 `plain`；共存时明确返回 `ambiguous`、候选和命中规则，不根据名称猜测。Creator 3.8.8 的 `ComplexRefs.scene` 已验证普通节点、Sprite/UITransform、Canvas、重名拒绝；短暂创建并移除未保存节点验证 Camera 及混合角色。同步并重开扩展后，115 项工具目录包含该工具，正式 MCP 调用返回预期 UI 证据。自定义 UI 组件若无可识别内置组件，仍只能归为 `plain`。详见 [节点类型识别验证](verification/NODE_TYPE_DETECTION_2026-09-19.md)。
 
 ## 阶段 2：构建器与 UI 模板
 

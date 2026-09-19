@@ -28,6 +28,9 @@ class ProbeComponent extends MockComponent {
   }
 }
 class MockButton extends MockComponent { constructor() { super(); this.clickEvents = []; } }
+class MockCanvas extends MockComponent {}
+class MockUITransform extends MockComponent {}
+class MockCamera extends MockComponent {}
 class ReferenceComponent extends MockComponent { constructor() { super(); this.link = null; } }
 class NonComponent {}
 class MockNode {
@@ -75,6 +78,9 @@ function createSceneMethods(registeredClass = ProbeComponent) {
           Quat: class MockQuat {},
           Color: class MockColor {},
           Button: MockButton,
+          Canvas: MockCanvas,
+          UITransform: MockUITransform,
+          Camera: MockCamera,
           CCClass: {
             attr: (Cls, key) => Cls === ProbeComponent ? ({
               count: { default: 17 },
@@ -100,6 +106,45 @@ function createSceneMethods(registeredClass = ProbeComponent) {
   }, { filename: scriptPath });
   return { scene, target, methods: exports.methods };
 }
+
+test('detectNodeType uses component identity and reports mixed roles explicitly', async () => {
+  const { target, methods } = createSceneMethods();
+  target.name = 'Camera';
+  const plain = await methods.detectNodeType({ uuid: target.uuid });
+  assert.equal(plain.type, 'plain');
+  assert.deepEqual(Array.from(plain.candidates), ['plain']);
+  assert.equal(plain.matchedRules[0].id, 'no-recognized-camera-or-ui-component');
+
+  target.addComponent(MockUITransform);
+  const ui = await methods.detectNodeType({ path: 'Camera' });
+  assert.equal(ui.type, 'ui');
+  assert.equal(ui.ambiguous, false);
+  assert.deepEqual(Array.from(ui.matchedRules[0].components), ['MockUITransform']);
+
+  target.addComponent(MockCamera);
+  const mixed = await methods.detectNodeType({ uuid: target.uuid, path: 'Camera' });
+  assert.equal(mixed.type, 'ambiguous');
+  assert.deepEqual(Array.from(mixed.candidates), ['camera', 'ui']);
+  assert.equal(mixed.ambiguous, true);
+  assert.match(mixed.ambiguity, /coexist/);
+  assert.deepEqual(Array.from(mixed.matchedRules, (rule) => rule.id), ['camera-component', 'ui-component']);
+
+  target.components.splice(0, 1);
+  const camera = await methods.detectNodeType({ uuid: target.uuid });
+  assert.equal(camera.type, 'camera');
+  assert.equal(camera.ambiguity, null);
+});
+
+test('detectNodeType reuses strict node resolution and rejects scene root', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  await assert.rejects(() => methods.detectNodeType({}), /Target scene node was not found/);
+  await assert.rejects(() => methods.detectNodeType({ uuid: scene.uuid }), /Target scene node was not found/);
+  await assert.rejects(() => methods.detectNodeType({ uuid: 'stale', name: target.name }), /Target scene node was not found/);
+  const duplicate = new MockNode(target.name, 'duplicate-uuid');
+  duplicate.parent = scene;
+  scene.children.push(duplicate);
+  await assert.rejects(() => methods.detectNodeType({ name: target.name }), /Candidates:/);
+});
 
 test('attachScriptComponent matches script identity and avoids duplicate components', async () => {
   const { methods, target } = createSceneMethods();
