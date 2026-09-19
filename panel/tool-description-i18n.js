@@ -67,7 +67,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   inspect_asset_dependencies: '检查 Cocos 序列化资源中引用的 UUID 类型依赖。',
   validate_asset_dependencies: '验证单个资源或项目资源查询结果中的 UUID 类型依赖。',
   get_editor_selection: '返回 Cocos 编辑器当前选择的节点和资源。优先使用 get_selection 作为主要结构化选择读取工具。',
-  list_components: '列出场景节点上挂载的组件。',
+  list_components: '有界列出场景节点组件的运行时公开属性快照；直接序列化元数据仅供参考，持久化结果需保存并重开核对。',
   inspect_component: '检查节点上挂载的组件。',
   add_component: '按已注册 Cocos 组件类名向普通场景节点添加组件，报告自动补齐的依赖组件；保存场景后持久化。',
   attach_script_component: '通过已导入脚本的资源路径或 UUID 挂载组件；按脚本身份校验已注册类，并避免重复挂载。',

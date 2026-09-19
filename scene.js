@@ -105,20 +105,99 @@ function detectNodeType(node) {
   };
 }
 
-function getSerializableKeys(target) {
-  const keys = new Set();
-  let current = target;
-  let depth = 0;
-  while (current && current !== Object.prototype && depth < 4) {
-    for (const key of Object.keys(current)) {
-      if (!key.startsWith('_')) {
-        keys.add(key);
-      }
+function getComponentPropertyNames(component) {
+  const names = new Set();
+  let truncated = false;
+  const include = (name) => {
+    if (/^[A-Za-z][A-Za-z0-9_]*$/.test(name) && name !== 'node' && name !== 'constructor') {
+      if (names.size < 80 || names.has(name)) names.add(name);
+      else truncated = true;
     }
-    current = Object.getPrototypeOf(current);
-    depth += 1;
+  };
+  const declared = component.constructor && component.constructor.__props__;
+  if (Array.isArray(declared)) {
+    if (declared.length > 100) truncated = true;
+    declared.slice(0, 100).forEach(include);
   }
-  return Array.from(keys);
+  for (const name of Object.getOwnPropertyNames(component)) {
+    const descriptor = Object.getOwnPropertyDescriptor(component, name);
+    if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
+        typeof descriptor.value !== 'function') {
+      include(name);
+    }
+  }
+  return { names: [...names], truncated };
+}
+
+function componentPropertyMetadata(componentClass, propertyName) {
+  let attrs;
+  try {
+    attrs = cc.CCClass && typeof cc.CCClass.attr === 'function'
+      ? cc.CCClass.attr(componentClass, propertyName) : null;
+  } catch (_) {
+    attrs = null;
+  }
+  if (attrs && attrs.visible === false) return { visible: false, serialization: 'unknown' };
+  if (attrs && attrs.serializable === false) return { visible: true, serialization: 'excluded' };
+  if (attrs && (attrs.serializable === true || Object.prototype.hasOwnProperty.call(attrs, 'default'))) {
+    return { visible: true, serialization: 'declared' };
+  }
+  return { visible: true, serialization: 'unknown' };
+}
+
+function readComponentRuntimeProperty(component, propertyName, registeredName) {
+  for (let current = component, depth = 0; current && depth < 6; current = Object.getPrototypeOf(current), depth += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, propertyName);
+    if (!descriptor) continue;
+    if (typeof descriptor.get === 'function' && !registeredName.startsWith('cc.')) {
+      return { unreadAccessor: true };
+    }
+    break;
+  }
+  return { value: component[propertyName] };
+}
+
+function componentRuntimeValue(value, depth = 0, seen = new WeakSet()) {
+  if (value == null || typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.length > 160 ? `${value.slice(0, 160)}…` : value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
+  if (typeof value !== 'object') return { kind: 'unsupported', type: typeof value };
+  if (value instanceof Node) return { kind: 'node', uuid: value.uuid || '', name: value.name || '' };
+  if (value instanceof Component) return {
+    kind: 'component',
+    name: value.constructor && value.constructor.name || '',
+    nodeUuid: value.node && value.node.uuid || '',
+  };
+  if (cc.Asset && value instanceof cc.Asset) return {
+    kind: 'asset', name: value.name || '', uuid: value.uuid || value._uuid || '',
+  };
+  if (value instanceof Color) return { kind: 'value-type', type: 'Color', fields: colorToObject(value) };
+  if (seen.has(value)) return { kind: 'circular' };
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) return {
+      kind: 'array', length: value.length,
+      items: depth < 2 ? value.slice(0, 6).map((item) => componentRuntimeValue(item, depth + 1, seen)) : [],
+      truncated: value.length > 6 || depth >= 2,
+    };
+    const type = value.constructor && value.constructor.name || 'Object';
+    if (depth >= 2 || (Object.getPrototypeOf(value) !== Object.prototype &&
+        !(cc.ValueType && value instanceof cc.ValueType))) {
+      return { kind: 'object', type };
+    }
+    const fields = {};
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Object.keys(descriptors).filter((key) => !key.startsWith('_') &&
+      Object.prototype.hasOwnProperty.call(descriptors[key], 'value') &&
+      typeof descriptors[key].value !== 'function');
+    for (const key of keys.slice(0, 8)) {
+      fields[key] = componentRuntimeValue(descriptors[key].value, depth + 1, seen);
+    }
+    return { kind: cc.ValueType && value instanceof cc.ValueType ? 'value-type' : 'object',
+      type, fields, truncated: keys.length > 8 };
+  } finally {
+    seen.delete(value);
+  }
 }
 
 function getNodePath(node) {
@@ -1475,23 +1554,55 @@ exports.methods = {
   },
 
   async listComponents(options = {}) {
+    const maxComponents = readQueryLimit(options.maxComponents, 32, 128, 'maxComponents');
+    const maxProperties = readQueryLimit(options.maxProperties, 12, 32, 'maxProperties');
+    const scene = getScene();
     const node = findNode(options);
-    if (!node) {
-      throw new Error('Target node was not found.');
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
     }
-
+    const components = Array.isArray(node.components) ? node.components : [];
     return {
       node: {
         name: node.name,
         path: getNodePath(node),
         uuid: node.uuid,
       },
-      components: node.components.map((component, index) => ({
-        index,
-        name: component && component.constructor ? component.constructor.name : 'UnknownComponent',
-        enabled: typeof component.enabled === 'boolean' ? component.enabled : undefined,
-        keys: getSerializableKeys(component).slice(0, 50),
-      })),
+      componentCount: components.length,
+      returnedComponents: Math.min(components.length, maxComponents),
+      truncated: components.length > maxComponents,
+      valueSource: 'live-scene',
+      serializationNote: 'A public property marked excluded may persist through a different backing field; save and reopen to verify disk state.',
+      components: components.slice(0, maxComponents).map((component, index) => {
+        if (!component) return { index, name: 'UnknownComponent', keys: [], properties: [] };
+        const registeredName = (js && typeof js.getClassName === 'function' && js.getClassName(component.constructor)) || '';
+        const enumerated = getComponentPropertyNames(component);
+        const names = enumerated.names
+          .map((name) => ({ name, metadata: componentPropertyMetadata(component.constructor, name) }))
+          .filter(({ metadata }) => metadata.visible);
+        const properties = names.slice(0, maxProperties).map(({ name, metadata }) => {
+          let value;
+          try {
+            const read = readComponentRuntimeProperty(component, name, registeredName);
+            value = read.unreadAccessor ? { kind: 'accessor-not-read' } : componentRuntimeValue(read.value);
+          } catch (_) {
+            value = { kind: 'unavailable' };
+          }
+          return { name, runtimeValue: value, directSerialization: metadata.serialization };
+        });
+        return {
+          index,
+          name: component.constructor && component.constructor.name || 'UnknownComponent',
+          registeredName,
+          enabled: typeof component.enabled === 'boolean' ? component.enabled : undefined,
+          keys: names.slice(0, 50).map(({ name }) => name),
+          keysTruncated: names.length > 50 || enumerated.truncated,
+          propertyCount: names.length,
+          propertyEnumerationTruncated: enumerated.truncated,
+          propertiesTruncated: names.length > maxProperties || enumerated.truncated,
+          properties,
+        };
+      }),
     };
   },
 

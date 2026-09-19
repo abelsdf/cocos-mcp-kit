@@ -75,7 +75,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | `detach_script_component` | `full` | mutating | Remove an imported project script component from an ordinary scene node by script asset path or UUID. Refuses removal when active-scene component properties or Button click events still reference it. Save the scene to persist the change. |
 | `inspect_component` | `full` | read-only | [core] Inspect a component attached to a node. |
 | `invoke_component_method` | `full` | mutating | [core] Invoke a method on a component for runtime validation and test hooks. |
-| `list_components` | `full` | read-only | [core] List components attached to a scene node. |
+| `list_components` | `full` | read-only | [core] List bounded live component property snapshots on a scene node. Direct serialization metadata is advisory; save and reopen to verify persisted values. |
 | `remove_component` | `full` | mutating | Remove exactly one component from an ordinary scene node by class name or index. Rejects required or referenced components and waits for Creator to finish removal. Save the scene to persist the change. |
 | `reset_component_property` | `full` | mutating | Clear a component property by dot path. This does not restore the Cocos class default; inspect and save the scene to verify persistence. |
 | `reset_component_property_to_default` | `full` | mutating | Restore a writable, serialized, public component field to its declared Cocos CCClass default. Supports primitives, Cocos ValueTypes, and bounded arrays; rejects linked prefab instances and unsupported defaults. Save the scene to persist the change. |

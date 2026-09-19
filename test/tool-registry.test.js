@@ -165,6 +165,24 @@ test('detect_node_type forwards strict node selectors to the scene bridge', asyn
   assert.deepEqual(calls, [{ method: 'detectNodeType', args: { uuid: 'node-uuid' } }]);
 });
 
+test('list_components exposes bounded parameters and forwards the live query', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { valueSource: 'live-scene', componentCount: 2 };
+    } },
+  });
+  const tool = registry.listTools().find((item) => item.name === 'list_components');
+  assert.equal(tool.inputSchema.properties.maxComponents.maximum, 128);
+  assert.equal(tool.inputSchema.properties.maxProperties.maximum, 32);
+  assert.equal(tool.annotations.readOnlyHint, true);
+  const args = { path: 'Canvas/HammerIcon', maxComponents: 4, maxProperties: 8 };
+  const result = await registry.callToolDetailed('list_components', args);
+  assert.equal(result.value.data.valueSource, 'live-scene');
+  assert.deepEqual(calls, [{ method: 'listComponents', args }]);
+});
+
 test('reset_component_property_to_default forwards the exact selector and field', async () => {
   const calls = [];
   const registry = createRegistry('full', undefined, {}, {

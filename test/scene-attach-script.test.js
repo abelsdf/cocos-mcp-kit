@@ -25,6 +25,7 @@ class ProbeComponent extends MockComponent {
     this.steps = [1, 2];
     this.unsupported = { nested: 1 };
     this.transient = 4;
+    this.hidden = 5;
   }
 }
 class MockButton extends MockComponent { constructor() { super(); this.clickEvents = []; } }
@@ -161,6 +162,70 @@ test('detectNodeType reuses strict node resolution and rejects scene root', asyn
   duplicate.parent = scene;
   scene.children.push(duplicate);
   await assert.rejects(() => methods.detectNodeType({ name: target.name }), /Candidates:/);
+});
+
+test('listComponents bounds live values and distinguishes direct serialization metadata', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  const probe = target.addComponent(ProbeComponent);
+  probe.title = 'x'.repeat(200);
+  probe.steps = Array.from({ length: 10 }, (_, index) => index);
+  const shared = new MockValueType(9, 8, 7);
+  probe.unsupported = [shared, shared];
+  const reference = target.addComponent(ReferenceComponent);
+  reference.link = target;
+  const listed = await methods.listComponents({ uuid: target.uuid, maxProperties: 12 });
+  assert.equal(listed.valueSource, 'live-scene');
+  assert.equal(listed.componentCount, 2);
+  assert.equal(listed.returnedComponents, 2);
+  const fields = new Map(Array.from(listed.components[0].properties, (property) => [property.name, property]));
+  assert.equal(fields.get('count').runtimeValue, 17);
+  assert.equal(fields.get('count').directSerialization, 'declared');
+  assert.equal(fields.get('transient').directSerialization, 'excluded');
+  assert.equal(fields.get('title').runtimeValue.length, 161);
+  assert.equal(fields.get('steps').runtimeValue.length, 10);
+  assert.equal(fields.get('steps').runtimeValue.items.length, 6);
+  assert.equal(fields.get('unsupported').runtimeValue.items[1].fields.x, 9);
+  assert.deepEqual(JSON.parse(JSON.stringify(fields.get('offset').runtimeValue.fields)), { x: 3, y: 4, z: 5 });
+  assert.equal(fields.has('hidden'), false);
+  assert.equal(fields.has('node'), false);
+  assert.equal(listed.components[1].properties.find((property) => property.name === 'link').runtimeValue.uuid, target.uuid);
+  const bounded = await methods.listComponents({ uuid: target.uuid, maxComponents: 1, maxProperties: 2 });
+  assert.equal(bounded.truncated, true);
+  assert.equal(bounded.components.length, 1);
+  assert.equal(bounded.components[0].properties.length, 2);
+  assert.equal(bounded.components[0].propertiesTruncated, true);
+  await assert.rejects(() => methods.listComponents({ uuid: target.uuid, maxProperties: 0 }), /maxProperties/);
+  await assert.rejects(() => methods.listComponents({ uuid: scene.uuid }), /Target scene node/);
+});
+
+test('listComponents does not invoke project-defined accessors', async () => {
+  let getterReads = 0;
+  class AccessorComponent extends MockComponent {
+    get danger() { getterReads += 1; return 'side effect'; }
+  }
+  AccessorComponent.__props__ = ['danger'];
+  const { target, methods } = createSceneMethods();
+  target.addComponent(AccessorComponent);
+  const listed = await methods.listComponents({ uuid: target.uuid });
+  assert.equal(getterReads, 0);
+  assert.equal(listed.components[0].properties[0].runtimeValue.kind, 'accessor-not-read');
+});
+
+test('listComponents marks bounded property enumeration as truncated', async () => {
+  class ManyFields extends MockComponent {
+    constructor() {
+      super();
+      for (let index = 0; index < 90; index += 1) this[`field${index}`] = index;
+    }
+  }
+  const { target, methods } = createSceneMethods();
+  target.addComponent(ManyFields);
+  const listed = await methods.listComponents({ uuid: target.uuid, maxProperties: 32 });
+  const component = listed.components[0];
+  assert.equal(component.propertyCount, 80);
+  assert.equal(component.propertyEnumerationTruncated, true);
+  assert.equal(component.propertiesTruncated, true);
+  assert.equal(component.keysTruncated, true);
 });
 
 test('addComponent verifies class and target, and reports engine-added dependencies', async () => {
