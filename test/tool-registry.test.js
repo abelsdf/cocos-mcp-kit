@@ -176,11 +176,32 @@ test('list_components exposes bounded parameters and forwards the live query', a
   const tool = registry.listTools().find((item) => item.name === 'list_components');
   assert.equal(tool.inputSchema.properties.maxComponents.maximum, 128);
   assert.equal(tool.inputSchema.properties.maxProperties.maximum, 32);
+  assert.equal(tool.inputSchema.properties.includeRuntimeFields.type, 'boolean');
   assert.equal(tool.annotations.readOnlyHint, true);
   const args = { path: 'Canvas/HammerIcon', maxComponents: 4, maxProperties: 8 };
   const result = await registry.callToolDetailed('list_components', args);
   assert.equal(result.value.data.valueSource, 'live-scene');
   assert.deepEqual(calls, [{ method: 'listComponents', args }]);
+});
+
+test('inspect_component requires exact selection and forwards the bounded query', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { valueSource: 'live-scene', component: { index: 1, properties: [] } };
+    } },
+  });
+  const tool = registry.listTools().find((item) => item.name === 'inspect_component');
+  assert.equal(tool.inputSchema.properties.index.type, 'integer');
+  assert.equal(tool.inputSchema.properties.index.minimum, 0);
+  assert.equal(tool.inputSchema.properties.maxProperties.maximum, 80);
+  assert.equal(tool.inputSchema.properties.includeRuntimeFields.type, 'boolean');
+  assert.equal(tool.annotations.readOnlyHint, true);
+  const args = { uuid: 'target-node', componentName: 'cc.Sprite', index: 1, maxProperties: 24 };
+  const result = await registry.callToolDetailed('inspect_component', args);
+  assert.equal(result.value.data.component.index, 1);
+  assert.deepEqual(calls, [{ method: 'inspectComponent', args }]);
 });
 
 test('reset_component_property_to_default forwards the exact selector and field', async () => {

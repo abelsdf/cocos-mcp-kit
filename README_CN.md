@@ -31,7 +31,9 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `remove_component` 按类名或从零开始的索引从普通场景节点精确移除一个组件。同类组件有多个时必须提供索引；同时提供类名和索引时两者须匹配。被其他组件依赖或引用的组件会被拒绝，调用后等待 Creator 确认移除。关联预制体层级暂不支持；保存场景后才会持久化。
 
-`list_components` 有界返回当前场景中组件公开属性的运行值快照，同时标明 CCClass 对该公开属性的直接序列化元数据。标为不直接序列化的公开属性也可能经底层字段持久化；需要核对持久化效果时，应保存并重开后检查资源。可用 `maxComponents` 和 `maxProperties` 控制输出；不会调用项目自定义的 getter。
+`list_components` 有界返回当前场景中组件属性的运行值快照，同时标明 CCClass 的直接序列化元数据与字段来源。项目脚本默认只列出 CCClass 声明的字段；`includeRuntimeFields: true` 可额外查看未声明的实例字段，其中可能包含 TypeScript 私有状态，不能据此推断公开性或持久化。标为不直接序列化的属性也可能经底层字段持久化；需要核对持久化效果时，应保存并重开后检查资源。可用 `maxComponents` 和 `maxProperties` 控制输出；不会调用项目自定义的 getter。
+
+`inspect_component` 通过 `componentName` 或从零开始的 `index` 精确选择一个组件；同类多实例须用索引消歧，同时提供两个条件时必须一致。它采用与 `list_components` 相同的字段筛选和有界摘要，默认返回最多 32 项，可用 `maxProperties` 提高到 80 项；项目脚本未声明字段也须显式设置 `includeRuntimeFields: true`。不再返回旧版内部对象的原始 `data` 展开。持久化引用仍须在保存并重开后复查。
 
 在 `full` 工具配置中，`move_node` 可用 `uuid`、`path` 或唯一 `name` 定位普通场景节点，并用 `parentUuid`、`parentPath` 或唯一 `parentName` 指定新父节点。默认保持世界变换；设置 `keepWorldTransform: false` 则保持局部变换。`parentPath: "/"` 指向场景根节点。关联预制体层级需使用单独的编辑器工作流。
 

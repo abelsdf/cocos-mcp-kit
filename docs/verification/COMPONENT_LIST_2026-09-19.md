@@ -10,4 +10,4 @@ Creator 的 `CCClass.attr` 将上述公开属性的 `serializable` 标为 false�
 
 重开 Creator 后，`tools/list` 共 116 项，`list_components` 的描述和 schema 包含 `maxComponents`（1—128）与 `maxProperties`（1—32）。正式调用 `path: McpValidationRoot/HammerIcon, maxComponents: 4, maxProperties: 20` 返回 2 个组件、`valueSource: live-scene`；UITransform 尺寸与锚点、Sprite 颜色和 SpriteFrame UUID 均与前述动态探针及磁盘数据一致。以 UUID 定位并设置 `maxComponents: 1, maxProperties: 2` 后，结果只返回 1 个组件和 2 个属性，并分别报告组件及属性截断；`maxProperties: 0` 被拒绝，错误指出有效范围 1—32。安装目录中 `scene.js` 与 `lib/tool-registry.js` 的 SHA-256 均与工作树一致。
 
-自定义脚本、复杂循环对象及预制体实例的运行值尚未逐类验收。直接序列化元数据依赖 Creator 3.8 的 `__props__` / `CCClass.attr` 内部机制，未来版本需重新验证。需要确认新写入是否持久化时，仍须保存并重开目标资源。
+自定义脚本与预制体实例的运行值已按类别现场检查，见[复杂工程组件逐类验收](COMPONENT_COMPLEX_CLASS_ACCEPTANCE_2026-09-19.md)；修正后的 `GameController` 脚本字段默认范围已从重开后的正式 `list_components` 入口复核。直接序列化元数据依赖 Creator 3.8 的 `__props__` / `CCClass.attr` 内部机制，未来版本需重新验证。需要确认新写入是否持久化时，仍须保存并重开目标资源。

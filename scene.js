@@ -105,11 +105,14 @@ function detectNodeType(node) {
   };
 }
 
-function getComponentPropertyNames(component) {
+function getComponentPropertyNames(component, registeredName, includeRuntimeFields) {
   const names = new Set();
+  const declaredNames = new Set();
   let truncated = false;
+  const isPublicName = (name) =>
+    /^[A-Za-z][A-Za-z0-9_]*$/.test(name) && name !== 'node' && name !== 'constructor';
   const include = (name) => {
-    if (/^[A-Za-z][A-Za-z0-9_]*$/.test(name) && name !== 'node' && name !== 'constructor') {
+    if (isPublicName(name)) {
       if (names.size < 80 || names.has(name)) names.add(name);
       else truncated = true;
     }
@@ -117,16 +120,32 @@ function getComponentPropertyNames(component) {
   const declared = component.constructor && component.constructor.__props__;
   if (Array.isArray(declared)) {
     if (declared.length > 100) truncated = true;
-    declared.slice(0, 100).forEach(include);
+    declared.slice(0, 100).forEach((name) => {
+      if (isPublicName(name)) declaredNames.add(name);
+      include(name);
+    });
   }
+  const projectScript = Boolean(registeredName && !registeredName.startsWith('cc.'));
+  let runtimeFieldCount = 0;
   for (const name of Object.getOwnPropertyNames(component)) {
     const descriptor = Object.getOwnPropertyDescriptor(component, name);
-    if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
+    if (isPublicName(name) && !declaredNames.has(name) && descriptor &&
+        Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
         typeof descriptor.value !== 'function') {
-      include(name);
+      runtimeFieldCount += 1;
+      if (!projectScript || includeRuntimeFields) include(name);
     }
   }
-  return { names: [...names], truncated };
+  return { names: [...names], declaredNames, truncated, runtimeFieldCount,
+    runtimeFieldsIncluded: !projectScript || includeRuntimeFields };
+}
+
+function readIncludeRuntimeFields(options) {
+  if (options.includeRuntimeFields == null) return false;
+  if (typeof options.includeRuntimeFields !== 'boolean') {
+    throw new Error('includeRuntimeFields must be a boolean.');
+  }
+  return options.includeRuntimeFields;
 }
 
 function componentPropertyMetadata(componentClass, propertyName) {
@@ -158,7 +177,8 @@ function readComponentRuntimeProperty(component, propertyName, registeredName) {
 }
 
 function componentRuntimeValue(value, depth = 0, seen = new WeakSet()) {
-  if (value == null || typeof value === 'boolean') return value;
+  if (value === undefined) return { kind: 'undefined' };
+  if (value === null || typeof value === 'boolean') return value;
   if (typeof value === 'string') return value.length > 160 ? `${value.slice(0, 160)}…` : value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
   if (typeof value !== 'object') return { kind: 'unsupported', type: typeof value };
@@ -198,6 +218,43 @@ function componentRuntimeValue(value, depth = 0, seen = new WeakSet()) {
   } finally {
     seen.delete(value);
   }
+}
+
+function describeComponent(component, index, maxProperties, includeRuntimeFields) {
+  const componentClass = component.constructor;
+  const registeredName = (js && typeof js.getClassName === 'function' && js.getClassName(componentClass)) || '';
+  const enabledDescriptor = Object.getOwnPropertyDescriptor(component, '_enabled');
+  const enabled = enabledDescriptor && typeof enabledDescriptor.value === 'boolean'
+    ? enabledDescriptor.value : undefined;
+  const enumerated = getComponentPropertyNames(component, registeredName, includeRuntimeFields);
+  const names = enumerated.names
+    .map((name) => ({ name, metadata: componentPropertyMetadata(componentClass, name) }))
+    .filter(({ metadata }) => metadata.visible);
+  const properties = names.slice(0, maxProperties).map(({ name, metadata }) => {
+    let value;
+    try {
+      const read = readComponentRuntimeProperty(component, name, registeredName);
+      value = read.unreadAccessor ? { kind: 'accessor-not-read' } : componentRuntimeValue(read.value);
+    } catch (_) {
+      value = { kind: 'unavailable' };
+    }
+    return { name, runtimeValue: value, directSerialization: metadata.serialization,
+      origin: enumerated.declaredNames.has(name) ? 'ccclass-declared' : 'runtime-own' };
+  });
+  return {
+    index,
+    name: componentClass && componentClass.name || 'UnknownComponent',
+    registeredName,
+    enabled,
+    keys: names.slice(0, 50).map(({ name }) => name),
+    keysTruncated: names.length > 50 || enumerated.truncated,
+    propertyCount: names.length,
+    runtimeFieldCount: enumerated.runtimeFieldCount,
+    runtimeFieldsIncluded: enumerated.runtimeFieldsIncluded,
+    propertyEnumerationTruncated: enumerated.truncated,
+    propertiesTruncated: names.length > maxProperties || enumerated.truncated,
+    properties,
+  };
 }
 
 function getNodePath(node) {
@@ -1556,6 +1613,7 @@ exports.methods = {
   async listComponents(options = {}) {
     const maxComponents = readQueryLimit(options.maxComponents, 32, 128, 'maxComponents');
     const maxProperties = readQueryLimit(options.maxProperties, 12, 32, 'maxProperties');
+    const includeRuntimeFields = readIncludeRuntimeFields(options);
     const scene = getScene();
     const node = findNode(options);
     if (!node || node === scene) {
@@ -1575,33 +1633,7 @@ exports.methods = {
       serializationNote: 'A public property marked excluded may persist through a different backing field; save and reopen to verify disk state.',
       components: components.slice(0, maxComponents).map((component, index) => {
         if (!component) return { index, name: 'UnknownComponent', keys: [], properties: [] };
-        const registeredName = (js && typeof js.getClassName === 'function' && js.getClassName(component.constructor)) || '';
-        const enumerated = getComponentPropertyNames(component);
-        const names = enumerated.names
-          .map((name) => ({ name, metadata: componentPropertyMetadata(component.constructor, name) }))
-          .filter(({ metadata }) => metadata.visible);
-        const properties = names.slice(0, maxProperties).map(({ name, metadata }) => {
-          let value;
-          try {
-            const read = readComponentRuntimeProperty(component, name, registeredName);
-            value = read.unreadAccessor ? { kind: 'accessor-not-read' } : componentRuntimeValue(read.value);
-          } catch (_) {
-            value = { kind: 'unavailable' };
-          }
-          return { name, runtimeValue: value, directSerialization: metadata.serialization };
-        });
-        return {
-          index,
-          name: component.constructor && component.constructor.name || 'UnknownComponent',
-          registeredName,
-          enabled: typeof component.enabled === 'boolean' ? component.enabled : undefined,
-          keys: names.slice(0, 50).map(({ name }) => name),
-          keysTruncated: names.length > 50 || enumerated.truncated,
-          propertyCount: names.length,
-          propertyEnumerationTruncated: enumerated.truncated,
-          propertiesTruncated: names.length > maxProperties || enumerated.truncated,
-          properties,
-        };
+        return describeComponent(component, index, maxProperties, includeRuntimeFields);
       }),
     };
   },
@@ -1878,27 +1910,50 @@ exports.methods = {
   },
 
   async inspectComponent(options = {}) {
-    const node = findNode(options);
-    if (!node) {
-      throw new Error('Target node was not found.');
+    const maxProperties = readQueryLimit(options.maxProperties, 32, 80, 'maxProperties');
+    const includeRuntimeFields = readIncludeRuntimeFields(options);
+    const hasIndex = Object.prototype.hasOwnProperty.call(options, 'index');
+    const componentName = typeof options.componentName === 'string' ? options.componentName.trim() : '';
+    if (hasIndex && (!Number.isInteger(options.index) || options.index < 0)) {
+      throw new Error('index must be a non-negative integer.');
     }
-
-    const component = findComponent(node, options);
+    if (options.componentName != null && !componentName) {
+      throw new Error('componentName must be a non-empty string.');
+    }
+    if (!hasIndex && !componentName) {
+      throw new Error('Provide componentName or index to inspect exactly one component.');
+    }
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    const componentClass = componentName ? resolveComponentClass(componentName) : null;
+    const matchesName = (item) => item && item.constructor && (
+      item.constructor.name === componentName
+      || (js && typeof js.getClassName === 'function' && js.getClassName(item.constructor) === componentName)
+      || (componentClass && item.constructor === componentClass)
+    );
+    const matches = componentName ? node.components.filter(matchesName) : [];
+    if (!hasIndex && matches.length > 1) {
+      throw new Error(`Multiple ${componentName} components are attached at indices ${matches.map((item) => node.components.indexOf(item)).join(', ')}; specify index.`);
+    }
+    const component = hasIndex ? node.components[options.index] : matches[0];
     if (!component) {
       throw new Error('Target component was not found.');
     }
-
+    if (componentName && !matchesName(component)) {
+      throw new Error(`Component at index ${options.index} does not match ${componentName}.`);
+    }
     return {
       node: {
         name: node.name,
         path: getNodePath(node),
         uuid: node.uuid,
       },
-      component: {
-        name: component.constructor ? component.constructor.name : 'UnknownComponent',
-        enabled: typeof component.enabled === 'boolean' ? component.enabled : undefined,
-        data: plain(component),
-      },
+      valueSource: 'live-scene',
+      serializationNote: 'A public property marked excluded may persist through a different backing field; save and reopen to verify disk state.',
+      component: describeComponent(component, node.components.indexOf(component), maxProperties, includeRuntimeFields),
     };
   },
 

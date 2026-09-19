@@ -28,6 +28,7 @@ class ProbeComponent extends MockComponent {
     this.hidden = 5;
   }
 }
+ProbeComponent.__props__ = ['count', 'title', 'offset', 'steps', 'unsupported', 'transient', 'hidden'];
 class MockButton extends MockComponent { constructor() { super(); this.clickEvents = []; } }
 class MockCanvas extends MockComponent {}
 class MockUITransform extends MockComponent {}
@@ -36,6 +37,7 @@ class MockBrokenSprite extends MockComponent {}
 MockSprite._requireComponent = MockUITransform;
 class MockCamera extends MockComponent {}
 class ReferenceComponent extends MockComponent { constructor() { super(); this.link = null; } }
+ReferenceComponent.__props__ = ['link'];
 class NonComponent {}
 class MockNode {
   constructor(name, uuid) {
@@ -180,6 +182,7 @@ test('listComponents bounds live values and distinguishes direct serialization m
   const fields = new Map(Array.from(listed.components[0].properties, (property) => [property.name, property]));
   assert.equal(fields.get('count').runtimeValue, 17);
   assert.equal(fields.get('count').directSerialization, 'declared');
+  assert.equal(fields.get('count').origin, 'ccclass-declared');
   assert.equal(fields.get('transient').directSerialization, 'excluded');
   assert.equal(fields.get('title').runtimeValue.length, 161);
   assert.equal(fields.get('steps').runtimeValue.length, 10);
@@ -221,11 +224,72 @@ test('listComponents marks bounded property enumeration as truncated', async () 
   const { target, methods } = createSceneMethods();
   target.addComponent(ManyFields);
   const listed = await methods.listComponents({ uuid: target.uuid, maxProperties: 32 });
-  const component = listed.components[0];
+  assert.equal(listed.components[0].propertyCount, 0);
+  assert.equal(listed.components[0].runtimeFieldCount, 90);
+  const expanded = await methods.listComponents({ uuid: target.uuid, maxProperties: 32, includeRuntimeFields: true });
+  const component = expanded.components[0];
   assert.equal(component.propertyCount, 80);
   assert.equal(component.propertyEnumerationTruncated, true);
   assert.equal(component.propertiesTruncated, true);
   assert.equal(component.keysTruncated, true);
+  assert.equal(component.properties[0].origin, 'runtime-own');
+});
+
+test('project script runtime fields require an explicit opt-in', async () => {
+  class ProjectScript extends MockComponent {
+    constructor() { super(); this.declared = 4; this.internalState = { secret: true }; this.pending = undefined; }
+  }
+  ProjectScript.__props__ = ['declared'];
+  const { target, methods } = createSceneMethods();
+  target.addComponent(ProjectScript);
+  const normal = await methods.inspectComponent({ uuid: target.uuid, componentName: 'ProjectScript' });
+  assert.deepEqual(Array.from(normal.component.properties, (item) => item.name), ['declared']);
+  assert.equal(normal.component.runtimeFieldCount, 2);
+  assert.equal(normal.component.runtimeFieldsIncluded, false);
+  const expanded = await methods.inspectComponent({ uuid: target.uuid, index: 0, includeRuntimeFields: true });
+  assert.equal(expanded.component.properties.find((item) => item.name === 'internalState').origin, 'runtime-own');
+  assert.equal(expanded.component.properties.find((item) => item.name === 'pending').runtimeValue.kind, 'undefined');
+  assert.equal(expanded.component.runtimeFieldsIncluded, true);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, index: 0, includeRuntimeFields: 'yes' }), /includeRuntimeFields/);
+  await assert.rejects(() => methods.listComponents({ uuid: target.uuid, includeRuntimeFields: 1 }), /includeRuntimeFields/);
+});
+
+test('inspectComponent selects one component exactly and returns bounded public values', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  target.addComponent(ProbeComponent);
+  target.addComponent(ProbeComponent);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, componentName: 'ProbeComponent' }), /Multiple ProbeComponent/);
+  const inspected = await methods.inspectComponent({ uuid: target.uuid, componentName: 'ProbeComponent', index: 1, maxProperties: 2 });
+  assert.equal(inspected.valueSource, 'live-scene');
+  assert.equal(inspected.component.index, 1);
+  assert.equal(inspected.component.name, 'ProbeComponent');
+  assert.equal(inspected.component.properties.length, 2);
+  assert.equal(inspected.component.propertiesTruncated, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(inspected.component, 'data'), false);
+  const detailed = await methods.inspectComponent({ uuid: target.uuid, index: 0 });
+  assert.equal(detailed.component.properties.find((item) => item.name === 'count').runtimeValue, 17);
+  assert.equal(detailed.component.properties.find((item) => item.name === 'count').directSerialization, 'declared');
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid }), /componentName or index/);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, index: -1 }), /index/);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, index: 1.5 }), /index/);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, index: 1, componentName: 'MockSprite' }), /does not match/);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, index: 9 }), /not found/);
+  await assert.rejects(() => methods.inspectComponent({ uuid: target.uuid, index: 0, maxProperties: 0 }), /maxProperties/);
+  await assert.rejects(() => methods.inspectComponent({ uuid: scene.uuid, index: 0 }), /Target scene node/);
+});
+
+test('inspectComponent does not invoke project-defined getters', async () => {
+  let getterReads = 0;
+  class AccessorComponent extends MockComponent {
+    get danger() { getterReads += 1; return 'side effect'; }
+    get enabled() { getterReads += 1; return true; }
+  }
+  AccessorComponent.__props__ = ['danger'];
+  const { target, methods } = createSceneMethods();
+  target.addComponent(AccessorComponent);
+  const inspected = await methods.inspectComponent({ uuid: target.uuid, componentName: 'AccessorComponent' });
+  assert.equal(getterReads, 0);
+  assert.equal(inspected.component.properties[0].runtimeValue.kind, 'accessor-not-read');
 });
 
 test('addComponent verifies class and target, and reports engine-added dependencies', async () => {
