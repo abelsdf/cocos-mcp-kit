@@ -79,7 +79,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | `remove_component` | `full` | mutating | Remove exactly one component from an ordinary scene node by class name or index. Rejects required or referenced components and waits for Creator to finish removal. Save the scene to persist the change. |
 | `reset_component_property` | `full` | mutating | Clear a component property by dot path. This does not restore the Cocos class default; inspect and save the scene to verify persistence. |
 | `reset_component_property_to_default` | `full` | mutating | Restore a writable, serialized, public component field to its declared Cocos CCClass default. Supports primitives, Cocos ValueTypes, and bounded arrays; rejects linked prefab instances and unsupported defaults. Save the scene to persist the change. |
-| `set_component_property` | `full` | mutating | Set a component property by dot path using a JSON value. |
+| `set_component_property` | `full` | mutating | Set one editable top-level component property with validated JSON. Supports declared script fields and selected Cocos UI properties, with typed Color, Vec, node, component, and asset references; linked prefab instances are excluded. Save and reopen to verify persistence. |
 
 ### Diagnostics
 

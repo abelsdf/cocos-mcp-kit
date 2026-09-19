@@ -11,8 +11,12 @@ const {
   Node,
   director,
   Vec3,
+  Vec2,
+  Vec4,
+  Size,
   Quat,
   Color,
+  Asset,
   assetManager,
   instantiate,
   Prefab,
@@ -785,26 +789,141 @@ function getValueByPath(target, propertyPath) {
   return current;
 }
 
-function setValueByPath(target, propertyPath, value) {
-  const segments = String(propertyPath || '')
-    .split('.')
-    .map((segment) => segment.trim())
-    .filter(Boolean);
+function classIs(type, base) {
+  return typeof type === 'function' && typeof base === 'function' &&
+    (type === base || type.prototype instanceof base);
+}
 
-  if (!segments.length) {
-    throw new Error('propertyPath is required.');
+function editableComponentProperty(component, propertyName) {
+  const cls = component.constructor;
+  let attrs;
+  try {
+    attrs = cc.CCClass && typeof cc.CCClass.attr === 'function' ? cc.CCClass.attr(cls, propertyName) : null;
+  } catch (_) {
+    attrs = null;
   }
-
-  let current = target;
-  for (let index = 0; index < segments.length - 1; index += 1) {
-    const segment = segments[index];
-    if (current[segment] == null || typeof current[segment] !== 'object') {
-      current[segment] = {};
+  if (attrs && (attrs.visible === false || attrs.readonly === true)) {
+    throw new Error(`${propertyName} is hidden or readonly.`);
+  }
+  const builtins = typeof Sprite === 'function' && cls === Sprite
+    ? { color: 'color', spriteFrame: 'asset' }
+    : typeof UITransform === 'function' && cls === UITransform
+      ? { anchorPoint: 'vec2', contentSize: 'size' }
+      : typeof Label === 'function' && cls === Label
+        ? { string: 'string', color: 'color' } : {};
+  const builtinKind = builtins[propertyName];
+  const declared = Array.isArray(cls.__props__) && cls.__props__.includes(propertyName);
+  if (!builtinKind && (!declared || !attrs || attrs.serializable === false)) {
+    throw new Error(`${propertyName} is not an editable declared field or supported built-in property.`);
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(component, propertyName);
+  if (!builtinKind && (!descriptor || descriptor.writable !== true ||
+      !Object.prototype.hasOwnProperty.call(descriptor, 'value'))) {
+    throw new Error(`${propertyName} is not a writable own data field.`);
+  }
+  if (builtinKind) {
+    let writableAccessor = false;
+    for (let proto = component; proto; proto = Object.getPrototypeOf(proto)) {
+      const candidate = Object.getOwnPropertyDescriptor(proto, propertyName);
+      if (candidate) {
+        writableAccessor = typeof candidate.set === 'function';
+        break;
+      }
     }
-    current = current[segment];
+    if (!writableAccessor) throw new Error(`${propertyName} has no writable Cocos setter.`);
   }
+  const current = component[propertyName];
+  const ctor = attrs && attrs.ctor;
+  let kind = builtinKind;
+  if (!kind) {
+    if (classIs(ctor, Node) || current instanceof Node) kind = 'node';
+    else if (classIs(ctor, Component) || current instanceof Component) kind = 'component';
+    else if (classIs(ctor, Asset) || (typeof Asset === 'function' && current instanceof Asset)) kind = 'asset';
+    else if (current instanceof Color || classIs(ctor, Color)) kind = 'color';
+    else if (typeof Vec2 === 'function' && (current instanceof Vec2 || classIs(ctor, Vec2))) kind = 'vec2';
+    else if (current instanceof Vec3 || classIs(ctor, Vec3)) kind = 'vec3';
+    else if (typeof Vec4 === 'function' && (current instanceof Vec4 || classIs(ctor, Vec4))) kind = 'vec4';
+    else if (typeof Size === 'function' && (current instanceof Size || classIs(ctor, Size))) kind = 'size';
+    else if (['boolean', 'number', 'string'].includes(typeof current)) kind = typeof current;
+  }
+  if (!kind) throw new Error(`${propertyName} has no supported editable value type.`);
+  return { kind, expectedClass: ctor || (current && current.constructor), current };
+}
 
-  current[segments[segments.length - 1]] = value;
+function exactObject(value, required, optional = []) {
+  if (!value || Object.prototype.toString.call(value) !== '[object Object]') {
+    throw new Error(`Value must be an object with ${required.join(', ')}.`);
+  }
+  const keys = Object.keys(value);
+  if (required.some((key) => !Object.prototype.hasOwnProperty.call(value, key)) ||
+      keys.some((key) => !required.includes(key) && !optional.includes(key))) {
+    throw new Error(`Value must contain only ${[...required, ...optional].join(', ')}.`);
+  }
+  return value;
+}
+
+function finiteFields(value, keys, { integer = false, min = -Infinity, max = Infinity } = {}) {
+  exactObject(value, keys);
+  for (const key of keys) {
+    if (typeof value[key] !== 'number' || !Number.isFinite(value[key]) ||
+        (integer && !Number.isInteger(value[key])) || value[key] < min || value[key] > max) {
+      throw new Error(`${key} must be a finite ${integer ? 'integer' : 'number'} between ${min} and ${max}.`);
+    }
+  }
+  return value;
+}
+
+async function convertEditableComponentValue(edit, input) {
+  const { kind, expectedClass } = edit;
+  if (kind === 'boolean' || kind === 'string') {
+    if (typeof input !== kind) throw new Error(`Value must be ${kind}.`);
+    return input;
+  }
+  if (kind === 'number') {
+    if (typeof input !== 'number' || !Number.isFinite(input)) throw new Error('Value must be a finite number.');
+    return input;
+  }
+  if (input === null && ['node', 'component', 'asset'].includes(kind)) return null;
+  if (kind === 'color') {
+    if (typeof input === 'string') {
+      if (!/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(input)) throw new Error('Color must be #RRGGBB or #RRGGBBAA.');
+      const hex = input.slice(1);
+      return new Color(...[0, 2, 4, 6].map((offset) => offset < hex.length
+        ? Number.parseInt(hex.slice(offset, offset + 2), 16) : 255));
+    }
+    exactObject(input, ['r', 'g', 'b'], ['a']);
+    finiteFields({ r: input.r, g: input.g, b: input.b, a: input.a == null ? 255 : input.a },
+      ['r', 'g', 'b', 'a'], { integer: true, min: 0, max: 255 });
+    return new Color(input.r, input.g, input.b, input.a == null ? 255 : input.a);
+  }
+  if (['vec2', 'vec3', 'vec4', 'size'].includes(kind)) {
+    const keys = kind === 'size' ? ['width', 'height'] :
+      kind === 'vec2' ? ['x', 'y'] : kind === 'vec3' ? ['x', 'y', 'z'] : ['x', 'y', 'z', 'w'];
+    finiteFields(input, keys, kind === 'size' ? { min: 0 } : {});
+    const cls = { vec2: Vec2, vec3: Vec3, vec4: Vec4, size: Size }[kind];
+    if (typeof cls !== 'function') throw new Error(`${kind} is unavailable in this Creator version.`);
+    return new cls(...keys.map((key) => input[key]));
+  }
+  if (kind === 'node' || kind === 'component') {
+    const node = findNode(exactObject(input, [], ['uuid', 'path', 'name']));
+    if (!node || node === getScene()) throw new Error('Referenced scene node was not found.');
+    if (kind === 'node') return node;
+    const matches = node.components.filter((item) => classIs(item && item.constructor, expectedClass));
+    if (matches.length !== 1) throw new Error('Referenced node must contain exactly one matching component.');
+    return matches[0];
+  }
+  if (kind === 'asset') {
+    const { assetUuid } = exactObject(input, ['assetUuid']);
+    if (typeof assetUuid !== 'string' || !assetUuid.trim() || assetUuid.length > 200) {
+      throw new Error('assetUuid must be a non-empty asset identifier of at most 200 characters.');
+    }
+    const asset = await loadAssetByUuid(assetUuid.trim());
+    if (!classIs(asset && asset.constructor, expectedClass)) {
+      throw new Error(`Asset '${assetUuid}' is not the declared component asset type.`);
+    }
+    return asset;
+  }
+  throw new Error(`Unsupported editable value type: ${kind}.`);
 }
 
 function resetValueByPath(target, propertyPath) {
@@ -1958,24 +2077,76 @@ exports.methods = {
   },
 
   async setComponentProperty(options = {}) {
+    const propertyName = typeof options.propertyPath === 'string' ? options.propertyPath.trim() : '';
+    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(propertyName) ||
+        ['constructor', 'prototype', '__proto__'].includes(propertyName)) {
+      throw new Error('propertyPath must name one public top-level component field; dot paths are not supported.');
+    }
+    const hasIndex = Object.prototype.hasOwnProperty.call(options, 'index');
+    const componentName = typeof options.componentName === 'string' ? options.componentName.trim() : '';
+    if (hasIndex && (!Number.isInteger(options.index) || options.index < 0)) {
+      throw new Error('index must be a non-negative integer.');
+    }
+    if (!hasIndex && !componentName) {
+      throw new Error('componentName or index is required to select the component.');
+    }
+    const scene = getScene();
     const node = findNode(options);
-    if (!node) {
-      throw new Error('Target node was not found.');
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
     }
-
-    const component = findComponent(node, options);
-    if (!component) {
-      throw new Error('Target component was not found.');
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Setting a component property on a linked prefab hierarchy requires a separate prefab override workflow.');
     }
-
-    setValueByPath(component, options.propertyPath, options.value);
-    return {
-      updated: true,
+    const componentClass = componentName ? resolveComponentClass(componentName) : null;
+    const matchesName = (item) => item && item.constructor && (
+      item.constructor.name === componentName
+      || (js && typeof js.getClassName === 'function' && js.getClassName(item.constructor) === componentName)
+      || (componentClass && item.constructor === componentClass)
+    );
+    const matches = componentName ? node.components.filter(matchesName) : [];
+    if (!hasIndex && matches.length > 1) {
+      throw new Error(`Multiple ${componentName} components are attached; specify index.`);
+    }
+    const component = hasIndex ? node.components[options.index] : matches[0];
+    if (!component) throw new Error('Target component was not found.');
+    if (componentName && !matchesName(component)) {
+      throw new Error(`Component at index ${options.index} does not match ${componentName}.`);
+    }
+    const edit = editableComponentProperty(component, propertyName);
+    const next = await convertEditableComponentValue(edit, options.value);
+    const before = componentRuntimeValue(edit.current);
+    const expected = JSON.stringify(componentRuntimeValue(next));
+    const result = {
       node: getNodePath(node),
+      nodeUuid: node.uuid,
       component: component.constructor ? component.constructor.name : 'UnknownComponent',
-      propertyPath: options.propertyPath,
-      value: plain(getValueByPath(component, options.propertyPath)),
+      componentIndex: node.components.indexOf(component),
+      propertyPath: propertyName,
+      valueType: edit.kind,
+      before,
     };
+    if (JSON.stringify(before) === expected) {
+      return { ...result, updated: false, alreadySet: true, value: before };
+    }
+    try {
+      component[propertyName] = next;
+      const value = componentRuntimeValue(component[propertyName]);
+      if (JSON.stringify(value) !== expected) {
+        throw new Error('Creator did not retain the requested component property value.');
+      }
+      return { ...result, updated: true, alreadySet: false, value };
+    } catch (error) {
+      try {
+        component[propertyName] = edit.current;
+        if (JSON.stringify(componentRuntimeValue(component[propertyName])) !== JSON.stringify(before)) {
+          throw new Error('restored value differs from the original');
+        }
+      } catch (restoreError) {
+        throw new Error(`${error.message} Failed to restore the original property: ${restoreError.message}`);
+      }
+      throw error;
+    }
   },
 
   async resetComponentProperty(options = {}) {

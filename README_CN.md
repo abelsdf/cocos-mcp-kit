@@ -35,6 +35,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `inspect_component` 通过 `componentName` 或从零开始的 `index` 精确选择一个组件；同类多实例须用索引消歧，同时提供两个条件时必须一致。它采用与 `list_components` 相同的字段筛选和有界摘要，默认返回最多 32 项，可用 `maxProperties` 提高到 80 项；项目脚本未声明字段也须显式设置 `includeRuntimeFields: true`。不再返回旧版内部对象的原始 `data` 展开。持久化引用仍须在保存并重开后复查。
 
+`set_component_property` 每次只设置一个顶层字段。工具仅允许 CCClass 声明的项目字段及少量 Cocos UI 白名单属性，并将 JSON 转成 Color、向量、节点/组件引用或资源类型；节点引用用 `{"uuid":"节点 UUID"}`，已导入资源用 `{"assetUuid":"资源 UUID"}`。点路径、未声明的脚本状态、不兼容类型及关联预制体实例会被拒绝。设置 SpriteFrame 可能同时改变 UITransform 尺寸；如需自定义尺寸，应在设置 SpriteFrame 后再设置 `contentSize`。保存并重开场景后核对持久化结果。
+
 在 `full` 工具配置中，`move_node` 可用 `uuid`、`path` 或唯一 `name` 定位普通场景节点，并用 `parentUuid`、`parentPath` 或唯一 `parentName` 指定新父节点。默认保持世界变换；设置 `keepWorldTransform: false` 则保持局部变换。`parentPath: "/"` 指向场景根节点。关联预制体层级需使用单独的编辑器工作流。
 
 `reorder_node` 按可保存的同级节点从零开始的 `index` 调整普通场景节点顺序。用 `uuid`、`path` 或唯一 `name` 定位节点；可选的 `parentUuid`、`parentPath` 或 `parentName` 用于核对预期父节点。越界索引和关联预制体层级会被拒绝。保存场景后顺序才会持久化。

@@ -204,6 +204,26 @@ test('inspect_component requires exact selection and forwards the bounded query'
   assert.deepEqual(calls, [{ method: 'inspectComponent', args }]);
 });
 
+test('set_component_property accepts bounded JSON and forwards a typed value', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { updated: true, value: args.value };
+    } },
+  });
+  const tool = registry.listTools().find((item) => item.name === 'set_component_property');
+  assert.equal(tool.inputSchema.properties.index.type, 'integer');
+  assert.equal(tool.inputSchema.properties.index.minimum, 0);
+  assert.equal(tool.inputSchema.properties.valueJson.maxLength, 4096);
+  const args = { uuid: 'target-node', componentName: 'cc.Sprite', propertyPath: 'color', valueJson: '{"r":64,"g":180,"b":255,"a":255}' };
+  const result = await registry.callToolDetailed('set_component_property', args);
+  assert.equal(result.value.data.updated, true);
+  assert.deepEqual(calls, [{ method: 'setComponentProperty', args: { ...args, value: { r: 64, g: 180, b: 255, a: 255 } } }]);
+  await assert.rejects(() => registry.callToolDetailed('set_component_property', { ...args, valueJson: '{invalid' }), /valid JSON/);
+  await assert.rejects(() => registry.callToolDetailed('set_component_property', { ...args, valueJson: ' '.repeat(4097) }), /at most 4096/);
+});
+
 test('reset_component_property_to_default forwards the exact selector and field', async () => {
   const calls = [];
   const registry = createRegistry('full', undefined, {}, {

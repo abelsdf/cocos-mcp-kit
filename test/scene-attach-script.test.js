@@ -31,13 +31,36 @@ class ProbeComponent extends MockComponent {
 ProbeComponent.__props__ = ['count', 'title', 'offset', 'steps', 'unsupported', 'transient', 'hidden'];
 class MockButton extends MockComponent { constructor() { super(); this.clickEvents = []; } }
 class MockCanvas extends MockComponent {}
-class MockUITransform extends MockComponent {}
-class MockSprite extends MockComponent {}
+class MockVec2 extends MockValueType { constructor(x, y) { super(x, y); delete this.z; } }
+class MockSize extends MockValueType {
+  constructor(width, height) { super(); delete this.x; delete this.y; delete this.z; this.width = width; this.height = height; }
+}
+class MockColor { constructor(r = 255, g = 255, b = 255, a = 255) { Object.assign(this, { r, g, b, a }); } }
+class MockAsset { constructor(uuid, name = uuid) { Object.assign(this, { uuid, name }); } }
+class MockSpriteFrame extends MockAsset {}
+class MockUITransform extends MockComponent {
+  constructor() { super(); this._anchorPoint = new MockVec2(0.5, 0.5); this._contentSize = new MockSize(20, 20); }
+  get anchorPoint() { return this._anchorPoint; }
+  set anchorPoint(value) { this._anchorPoint = value; }
+  get contentSize() { return this._contentSize; }
+  set contentSize(value) { this._contentSize = value; }
+}
+class MockSprite extends MockComponent {
+  constructor() { super(); this._color = new MockColor(); this._spriteFrame = new MockSpriteFrame('frame-a'); }
+  get color() { return this._color; }
+  set color(value) { if (value.r === 13) throw new Error('Creator rejected color'); this._color = value; }
+  get spriteFrame() { return this._spriteFrame; }
+  set spriteFrame(value) { this._spriteFrame = value; }
+}
 class MockBrokenSprite extends MockComponent {}
 MockSprite._requireComponent = MockUITransform;
 class MockCamera extends MockComponent {}
 class ReferenceComponent extends MockComponent { constructor() { super(); this.link = null; } }
 ReferenceComponent.__props__ = ['link'];
+class EditableRefs extends MockComponent {
+  constructor() { super(); this.nodeLink = null; this.assetLink = null; this.componentLink = null; }
+}
+EditableRefs.__props__ = ['nodeLink', 'assetLink', 'componentLink'];
 class NonComponent {}
 class MockNode {
   constructor(name, uuid) {
@@ -66,6 +89,11 @@ class MockNode {
     component.node = null;
   }
 }
+EditableRefs.__testAttrs__ = {
+  nodeLink: { default: null, ctor: MockNode },
+  assetLink: { default: null, ctor: MockAsset },
+  componentLink: { default: null, ctor: MockSprite },
+};
 
 function createSceneMethods(registeredClass = ProbeComponent) {
   const scene = new MockNode('Scene', 'scene-uuid');
@@ -75,6 +103,11 @@ function createSceneMethods(registeredClass = ProbeComponent) {
   const scriptPath = path.resolve(__dirname, '../scene.js');
   const localRequire = createRequire(scriptPath);
   const exports = {};
+  const assets = new Map([
+    ['frame-a', new MockSpriteFrame('frame-a')],
+    ['frame-b', new MockSpriteFrame('frame-b')],
+    ['wrong-asset', new MockAsset('wrong-asset')],
+  ]);
   vm.runInNewContext(fs.readFileSync(scriptPath, 'utf8'), {
     Editor: {
       App: { path: '' },
@@ -88,14 +121,19 @@ function createSceneMethods(registeredClass = ProbeComponent) {
           Component: MockComponent,
           ValueType: MockValueType,
           Vec3: MockValueType,
+          Vec2: MockVec2,
+          Size: MockSize,
           Quat: class MockQuat {},
-          Color: class MockColor {},
+          Color: MockColor,
+          Asset: MockAsset,
+          SpriteFrame: MockSpriteFrame,
+          Sprite: MockSprite,
           Button: MockButton,
           Canvas: MockCanvas,
           UITransform: MockUITransform,
           Camera: MockCamera,
           CCClass: {
-            attr: (Cls, key) => Cls === ProbeComponent ? ({
+            attr: (Cls, key) => Cls.__testAttrs__ ? Cls.__testAttrs__[key] || {} : Cls === ProbeComponent ? ({
               count: { default: 17 },
               title: { default: 'ready' },
               offset: { default: () => new MockValueType(3, 4, 5) },
@@ -107,6 +145,10 @@ function createSceneMethods(registeredClass = ProbeComponent) {
             getDefault: (value) => typeof value === 'function' ? value() : value,
           },
           CCObjectFlags: { DontSave: 8 },
+          assetManager: { loadAny: (uuid, callback) => {
+            const asset = assets.get(uuid);
+            callback(asset ? null : new Error('Asset not found'), asset);
+          } },
           director: { getScene: () => scene },
           js: {
             getClassById: () => registeredClass,
@@ -124,7 +166,7 @@ function createSceneMethods(registeredClass = ProbeComponent) {
     console,
     setTimeout,
   }, { filename: scriptPath });
-  return { scene, target, methods: exports.methods };
+  return { scene, target, methods: exports.methods, assets };
 }
 
 test('detectNodeType uses component identity and reports mixed roles explicitly', async () => {
@@ -290,6 +332,77 @@ test('inspectComponent does not invoke project-defined getters', async () => {
   const inspected = await methods.inspectComponent({ uuid: target.uuid, componentName: 'AccessorComponent' });
   assert.equal(getterReads, 0);
   assert.equal(inspected.component.properties[0].runtimeValue.kind, 'accessor-not-read');
+});
+
+test('setComponentProperty converts declared scalar, Vec, node, component and asset fields', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  const script = target.addComponent(ProbeComponent);
+  const count = await methods.setComponentProperty({ uuid: target.uuid, index: 0, propertyPath: 'count', value: 23 });
+  assert.equal(count.updated, true);
+  assert.equal(count.before, 17);
+  assert.equal(script.count, 23);
+  const again = await methods.setComponentProperty({ uuid: target.uuid, componentName: 'ProbeComponent', propertyPath: 'count', value: 23 });
+  assert.equal(again.updated, false);
+  const vec = await methods.setComponentProperty({ uuid: target.uuid, index: 0, propertyPath: 'offset', value: { x: 7, y: 8, z: 9 } });
+  assert.equal(vec.valueType, 'vec3');
+  assert.deepEqual([script.offset.x, script.offset.y, script.offset.z], [7, 8, 9]);
+
+  const refs = target.addComponent(EditableRefs);
+  const linked = new MockNode('Linked', 'linked-uuid');
+  linked.parent = scene;
+  scene.children.push(linked);
+  linked.addComponent(MockSprite);
+  const node = await methods.setComponentProperty({ uuid: target.uuid, componentName: 'EditableRefs', propertyPath: 'nodeLink', value: { uuid: linked.uuid } });
+  assert.equal(node.value.kind, 'node');
+  assert.equal(refs.nodeLink, linked);
+  const component = await methods.setComponentProperty({ uuid: target.uuid, index: 1, propertyPath: 'componentLink', value: { uuid: linked.uuid } });
+  assert.equal(component.value.kind, 'component');
+  assert.equal(refs.componentLink, linked.components.find((item) => item instanceof MockSprite));
+  const asset = await methods.setComponentProperty({ uuid: target.uuid, index: 1, propertyPath: 'assetLink', value: { assetUuid: 'frame-b' } });
+  assert.equal(asset.value.uuid, 'frame-b');
+  assert.equal(refs.assetLink.uuid, 'frame-b');
+  await assert.rejects(() => methods.setComponentProperty({ uuid: target.uuid, index: 1, propertyPath: 'assetLink', value: { assetUuid: 'missing' } }), /Asset not found/);
+  assert.equal(refs.assetLink.uuid, 'frame-b');
+});
+
+test('setComponentProperty uses Cocos setters for whitelisted UI values and restores failed writes', async () => {
+  const { target, methods } = createSceneMethods();
+  const ui = target.addComponent(MockUITransform);
+  const sprite = target.addComponent(MockSprite);
+  const anchor = await methods.setComponentProperty({ uuid: target.uuid, componentName: 'MockUITransform', propertyPath: 'anchorPoint', value: { x: 0.2, y: 0.8 } });
+  assert.equal(anchor.valueType, 'vec2');
+  assert.deepEqual([ui.anchorPoint.x, ui.anchorPoint.y], [0.2, 0.8]);
+  await methods.setComponentProperty({ uuid: target.uuid, index: 0, propertyPath: 'contentSize', value: { width: 128, height: 64 } });
+  assert.deepEqual([ui.contentSize.width, ui.contentSize.height], [128, 64]);
+  const color = await methods.setComponentProperty({ uuid: target.uuid, componentName: 'MockSprite', propertyPath: 'color', value: '#40B4FFFF' });
+  assert.equal(color.valueType, 'color');
+  assert.deepEqual([sprite.color.r, sprite.color.g, sprite.color.b, sprite.color.a], [64, 180, 255, 255]);
+  await methods.setComponentProperty({ uuid: target.uuid, index: 1, propertyPath: 'spriteFrame', value: { assetUuid: 'frame-b' } });
+  assert.equal(sprite.spriteFrame.uuid, 'frame-b');
+  await assert.rejects(() => methods.setComponentProperty({ uuid: target.uuid, index: 1, propertyPath: 'color', value: '#0D0000' }), /Creator rejected color/);
+  assert.equal(sprite.color.r, 64);
+});
+
+test('setComponentProperty rejects unsafe fields, shapes, selectors and linked prefab nodes', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  const script = target.addComponent(ProbeComponent);
+  const args = { uuid: target.uuid, index: 0, propertyPath: 'count', value: 19 };
+  for (const propertyPath of ['offset.x', '__proto__', '_hidden']) {
+    await assert.rejects(() => methods.setComponentProperty({ ...args, propertyPath }), /top-level/);
+  }
+  for (const propertyPath of ['transient', 'hidden', 'unsupported', 'node']) {
+    await assert.rejects(() => methods.setComponentProperty({ ...args, propertyPath, value: {} }), /hidden|editable|supported/);
+  }
+  await assert.rejects(() => methods.setComponentProperty({ ...args, value: '19' }), /finite number/);
+  await assert.rejects(() => methods.setComponentProperty({ ...args, index: -1 }), /index/);
+  await assert.rejects(() => methods.setComponentProperty({ ...args, componentName: 'MockSprite' }), /does not match/);
+  await assert.rejects(() => methods.setComponentProperty({ uuid: scene.uuid, index: 0, propertyPath: 'count', value: 19 }), /Target scene node/);
+  const duplicate = target.addComponent(ProbeComponent);
+  await assert.rejects(() => methods.setComponentProperty({ uuid: target.uuid, componentName: 'ProbeComponent', propertyPath: 'count', value: 19 }), /Multiple/);
+  assert.equal(duplicate.count, 17);
+  target._prefab = { instance: {} };
+  await assert.rejects(() => methods.setComponentProperty(args), /linked prefab/);
+  assert.equal(script.count, 17);
 });
 
 test('addComponent verifies class and target, and reports engine-added dependencies', async () => {

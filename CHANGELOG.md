@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Restricted `set_component_property` to validated top-level CCClass fields and selected Cocos UI properties. Dot paths and undeclared script state are now rejected; Color, vector, scene reference, and asset values are converted to their Cocos types before assignment.
 - Established the independent Cocos MCP Kit extension, package, CLI, menu, and configuration identity.
 - Replaced planned account UI examples with game UI examples and removed a default upstream update source.
 - Preserved the Funplay MIT notice and attribution while preparing separate open-source release metadata.
