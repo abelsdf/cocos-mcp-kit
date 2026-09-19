@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 110);
+  assert.equal(tools.length, 112);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -127,6 +127,82 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'move_node'), true);
   assert.equal(tools.some((tool) => tool.name === 'reorder_node'), true);
   assert.equal(tools.some((tool) => tool.name === 'duplicate_node'), true);
+  assert.equal(tools.some((tool) => tool.name === 'attach_script_component'), true);
+  assert.equal(tools.some((tool) => tool.name === 'detach_script_component'), true);
+});
+
+test('attach_script_component validates the asset before calling the scene', async (t) => {
+  mockEditorRequests(t, async (channel, method, target) => {
+    assert.equal(channel, 'asset-db');
+    assert.equal(method, 'query-asset-info');
+    return {
+      type: target.includes('NotScript') ? 'cc.ImageAsset' : 'cc.Script',
+      uuid: 'bbee4fb1-c9b5-4fde-9346-8ee1357142c7',
+      url: target,
+      imported: true,
+      invalid: false,
+    };
+  });
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { attached: true, scriptUuid: args.scriptUuid };
+    } },
+  });
+  const result = await registry.callToolDetailed('attach_script_component', {
+    uuid: 'target-node', scriptTarget: 'assets/scripts/Probe.ts', waitForCompileMs: 200,
+  });
+  assert.equal(result.value.data.attached, true);
+  assert.deepEqual(calls, [{
+    method: 'attachScriptComponent',
+    args: {
+      path: undefined,
+      uuid: 'target-node',
+      name: undefined,
+      scriptUuid: 'bbee4fb1-c9b5-4fde-9346-8ee1357142c7',
+      waitForCompileMs: 200,
+    },
+  }]);
+  await assert.rejects(
+    () => registry.callToolDetailed('attach_script_component', { uuid: 'target-node', scriptTarget: 'assets/NotScript.png' }),
+    /not a ready cc.Script/
+  );
+  assert.equal(calls.length, 1);
+});
+
+test('detach_script_component validates the script asset before calling the scene', async (t) => {
+  mockEditorRequests(t, async (channel, method, target) => {
+    assert.equal(channel, 'asset-db');
+    assert.equal(method, 'query-asset-info');
+    return {
+      type: target.includes('NotScript') ? 'cc.ImageAsset' : 'cc.Script',
+      uuid: 'bbee4fb1-c9b5-4fde-9346-8ee1357142c7',
+      url: target,
+      imported: true,
+      invalid: false,
+    };
+  });
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { removed: true, scriptUuid: args.scriptUuid };
+    } },
+  });
+  const result = await registry.callToolDetailed('detach_script_component', {
+    uuid: 'target-node', scriptTarget: 'assets/scripts/Probe.ts',
+  });
+  assert.equal(result.value.data.removed, true);
+  assert.deepEqual(calls, [{ method: 'detachScriptComponent', args: {
+    path: undefined, uuid: 'target-node', name: undefined,
+    scriptUuid: 'bbee4fb1-c9b5-4fde-9346-8ee1357142c7',
+  } }]);
+  await assert.rejects(
+    () => registry.callToolDetailed('detach_script_component', { uuid: 'target-node', scriptTarget: 'assets/NotScript.png' }),
+    /not a ready cc.Script/
+  );
+  assert.equal(calls.length, 1);
 });
 
 test('create_sprite resolves an image target before creating a scene node', async (t) => {

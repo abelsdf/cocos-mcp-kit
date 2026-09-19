@@ -29,6 +29,10 @@ In the `full` tool profile, `move_node` reparents an ordinary scene node using a
 
 `duplicate_node` clones an ordinary scene node and its children beside the source. It gives the copy a unique name (`<source> Copy` by default), creates fresh node identities, and preserves Cocos-cloned component data and references. Linked prefab hierarchies and editor-only descendants are rejected; external references and other component types should be checked in the target project. Save the scene to persist the copy.
 
+`attach_script_component` attaches an imported TypeScript or JavaScript script asset to an ordinary scene node. Supply the node's `uuid`, `path`, or unique `name` and a `scriptTarget` asset path or UUID. The tool checks the asset type and resolves its registered Component class by script UUID, waits briefly for compilation, and leaves an existing instance unchanged. Save the scene to persist the component.
+
+`detach_script_component` removes that script's component from an ordinary scene node using the same `scriptTarget` identity. It refuses to remove a component referenced by another active-scene component property or Button click event; clear those references first. Save the scene to persist removal. Linked prefab instances and references outside the active scene require separate review.
+
 `create_sprite` accepts `spriteFrameTarget` as an imported image path (`assets/icons/arrow.png` or `db://assets/icons/arrow.png`), an ImageAsset UUID, or an exact SpriteFrame UUID. It resolves and checks the SpriteFrame subasset before creating a node. The existing `spriteFrameUuid` argument still accepts an exact SpriteFrame UUID; supply only one of the two arguments.
 
 To replace the image on an existing Sprite, call `set_sprite_frame` with its node `path`, `uuid`, or unique `name` and a `spriteFrameTarget`. The tool reports the previous and new SpriteFrame UUIDs. It rejects an invalid resource before changing the component.

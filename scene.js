@@ -293,6 +293,57 @@ function getEventHandlerComponentName(handler) {
   return '';
 }
 
+function findScriptComponentReferences(scene, targetNode, targetComponent, componentClass, classId) {
+  const references = [];
+  const className = (js && typeof js.getClassName === 'function' && js.getClassName(componentClass))
+    || componentClass.name || '';
+  let inspected = 0;
+  const inspectValue = (value, location, seen, depth) => {
+    if (++inspected > 100000) {
+      throw new Error('Script reference check exceeded 100000 values; no component was removed.');
+    }
+    if (value === targetComponent) {
+      references.push(location);
+      return;
+    }
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+    if (value.target === targetNode && (
+      value._componentId ? value._componentId === classId : value.component === className
+    )) {
+      references.push(location);
+      return;
+    }
+    if (value instanceof Node || value instanceof Component || depth >= 4) return;
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index += 1) {
+        inspectValue(value[index], `${location}[${index}]`, seen, depth + 1);
+      }
+    } else if (Object.getPrototypeOf(value) === null || Object.getPrototypeOf(value).constructor === Object ||
+        Object.getPrototypeOf(value).constructor && Object.getPrototypeOf(value).constructor.name === 'Object') {
+      for (const key of Object.keys(value)) {
+        if (key.startsWith('__')) continue;
+        inspectValue(value[key], `${location}.${key}`, seen, depth + 1);
+      }
+    }
+  };
+  walkNodes((node) => {
+    for (const component of node.components || []) {
+      if (!component || component === targetComponent) continue;
+      const prefix = `${getNodePath(node)}:${component.constructor && component.constructor.name || 'Component'}`;
+      const seen = new Set();
+      for (const key of Object.keys(component)) {
+        if (key === 'node' || key === '_node' || key.startsWith('__')) continue;
+        inspectValue(component[key], `${prefix}.${key}`, seen, 0);
+      }
+      if (Button && component instanceof Button && Array.isArray(component.clickEvents)) {
+        inspectValue(component.clickEvents, `${prefix}.clickEvents`, seen, 0);
+      }
+    }
+  }, scene);
+  return [...new Set(references)];
+}
+
 function serializeEventHandler(handler) {
   if (!handler) {
     return null;
@@ -1178,6 +1229,75 @@ exports.methods = {
     };
   },
 
+  async attachScriptComponent(options = {}) {
+    const scriptUuid = String(options.scriptUuid || '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scriptUuid)) {
+      throw new Error('scriptUuid must be an imported script asset UUID.');
+    }
+    const waitForCompileMs = options.waitForCompileMs == null ? 5000 : options.waitForCompileMs;
+    if (!Number.isInteger(waitForCompileMs) || waitForCompileMs < 0 || waitForCompileMs > 10000) {
+      throw new Error('waitForCompileMs must be an integer between 0 and 10000.');
+    }
+    const uuidUtils = typeof Editor !== 'undefined' && Editor.Utils && Editor.Utils.UUID;
+    if (!uuidUtils || typeof uuidUtils.compressUUID !== 'function' || !js || typeof js.getClassById !== 'function') {
+      throw new Error('Creator script class resolution is unavailable in the scene process.');
+    }
+    const classId = uuidUtils.compressUUID(scriptUuid);
+    const scene = getScene();
+    const deadline = Date.now() + waitForCompileMs;
+    let componentClass = js.getClassById(classId);
+    while (!componentClass && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(100, deadline - Date.now())));
+      componentClass = js.getClassById(classId);
+    }
+    if (!componentClass) {
+      throw new Error(`Script ${scriptUuid} is imported but its component class is not registered. Check compilation diagnostics and retry.`);
+    }
+    if (!Component || !componentClass.prototype || !(componentClass.prototype instanceof Component)) {
+      throw new Error(`Script ${scriptUuid} does not register a Cocos Component class.`);
+    }
+    if (getScene() !== scene) {
+      throw new Error('The active scene changed while waiting for the script to compile.');
+    }
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Attaching a script directly to a linked prefab hierarchy is not supported by attach_script_component.');
+    }
+    const className = (typeof js.getClassName === 'function' && js.getClassName(componentClass))
+      || componentClass.name || '';
+    const existing = node.components.find((component) => component && component.constructor === componentClass);
+    if (existing) {
+      return {
+        attached: false,
+        alreadyPresent: true,
+        nodeUuid: node.uuid,
+        nodePath: getNodePath(node),
+        scriptUuid,
+        classId,
+        className,
+        componentIndex: node.components.indexOf(existing),
+      };
+    }
+    const component = node.addComponent(componentClass);
+    if (!component || component.node !== node || !node.components.includes(component)) {
+      if (component && node.components.includes(component)) node.removeComponent(component);
+      throw new Error('The script component was not attached to the requested node.');
+    }
+    return {
+      attached: true,
+      alreadyPresent: false,
+      nodeUuid: node.uuid,
+      nodePath: getNodePath(node),
+      scriptUuid,
+      classId,
+      className,
+      componentIndex: node.components.indexOf(component),
+    };
+  },
+
   async removeComponent(options = {}) {
     const node = findNode(options);
     if (!node) {
@@ -1196,6 +1316,57 @@ exports.methods = {
       node: getNodePath(node),
       component: componentName,
     };
+  },
+
+  async detachScriptComponent(options = {}) {
+    const scriptUuid = String(options.scriptUuid || '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scriptUuid)) {
+      throw new Error('scriptUuid must be an imported script asset UUID.');
+    }
+    const uuidUtils = typeof Editor !== 'undefined' && Editor.Utils && Editor.Utils.UUID;
+    if (!uuidUtils || typeof uuidUtils.compressUUID !== 'function' || !js || typeof js.getClassById !== 'function') {
+      throw new Error('Creator script class resolution is unavailable in the scene process.');
+    }
+    const classId = uuidUtils.compressUUID(scriptUuid);
+    const componentClass = js.getClassById(classId);
+    if (!componentClass || !Component || !componentClass.prototype || !(componentClass.prototype instanceof Component)) {
+      throw new Error(`Script ${scriptUuid} does not have a registered Cocos Component class. Check compilation diagnostics and retry.`);
+    }
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Removing a script directly from a linked prefab hierarchy is not supported by detach_script_component.');
+    }
+    const className = (typeof js.getClassName === 'function' && js.getClassName(componentClass))
+      || componentClass.name || '';
+    const component = node.components.find((item) => item && item.constructor === componentClass);
+    const result = {
+      nodeUuid: node.uuid,
+      nodePath: getNodePath(node),
+      scriptUuid,
+      classId,
+      className,
+    };
+    if (!component) return { ...result, removed: false, notPresent: true };
+    const references = findScriptComponentReferences(scene, node, component, componentClass, classId);
+    if (references.length) {
+      throw new Error(`Script component is still referenced (${references.length}): ${references.slice(0, 10).join(', ')}. Clear these references before removing it.`);
+    }
+    const componentIndex = node.components.indexOf(component);
+    node.removeComponent(component);
+    for (let attempt = 0; node.components.includes(component) && attempt < 20; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (getScene() !== scene) {
+      throw new Error('The active scene changed while waiting for the script component to be removed.');
+    }
+    if (node.components.includes(component)) {
+      throw new Error('Creator did not finish removing the script component within 1 second. Check the scene before saving or retrying.');
+    }
+    return { ...result, removed: true, notPresent: false, componentIndex, checkedReferences: true };
   },
 
   async inspectComponent(options = {}) {

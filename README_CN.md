@@ -29,6 +29,10 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `duplicate_node` 在原节点旁复制普通场景节点及其子节点。副本默认使用唯一名称 `<原名> Copy`，节点获得新标识，并保留由 Cocos 克隆的组件数据和引用。关联预制体层级、包含编辑器辅助节点的子树会被拒绝；外部引用及其他组件类型应在目标工程中核对。保存场景后副本才会持久化。
 
+`attach_script_component` 可将已导入的 TypeScript 或 JavaScript 脚本资产挂载到普通场景节点。用节点的 `uuid`、`path` 或唯一 `name` 定位，并通过 `scriptTarget` 提供脚本资产路径或 UUID。工具检查资源类型，按脚本 UUID 查找已注册的 Component 类，短暂等待编译完成，并避免重复挂载。保存场景后组件才会持久化。
+
+`detach_script_component` 使用同一 `scriptTarget` 精确移除普通场景节点上的脚本组件。若活动场景内的其他组件属性或 Button 点击事件仍引用它，工具会拒绝移除；应先清除引用。移除后保存场景。关联预制体实例和活动场景之外的引用需另行检查。
+
 `create_sprite` 新增 `spriteFrameTarget`，可传入已导入图片的路径（如 `assets/icons/arrow.png` 或 `db://assets/icons/arrow.png`）、ImageAsset 主 UUID 或 SpriteFrame 子 UUID。工具先解析并检查 SpriteFrame 子资源，再创建节点。原有 `spriteFrameUuid` 仍接受明确的 SpriteFrame 子 UUID；两个参数只能选一个。
 
 修改已有 Sprite 的图片时，调用 `set_sprite_frame`，传入节点 `path`、`uuid` 或唯一 `name`，以及 `spriteFrameTarget`。工具返回修改前后的 SpriteFrame UUID；无效资源会在修改组件前报错。

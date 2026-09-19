@@ -67,6 +67,8 @@ const ZH_TOOL_DESCRIPTIONS = {
   list_components: '列出场景节点上挂载的组件。',
   inspect_component: '检查节点上挂载的组件。',
   add_component: '按组件类名向节点添加组件。',
+  attach_script_component: '通过已导入脚本的资源路径或 UUID 挂载组件；按脚本身份校验已注册类，并避免重复挂载。',
+  detach_script_component: '按已导入脚本的资源路径或 UUID 移除普通场景节点上的组件；存在场景内事件或组件属性引用时拒绝移除。',
   remove_component: '按名称或索引从节点移除组件。',
   set_component_property: '使用 JSON 值按点路径设置组件属性。',
   reset_component_property: '按点路径重置或清除组件属性。',
