@@ -1188,6 +1188,67 @@ exports.methods = {
     };
   },
 
+  async resetNodeTransform(options = {}) {
+    const allowedFields = ['position', 'rotation', 'scale'];
+    const fields = options.fields === undefined ? allowedFields : options.fields;
+    if (!Array.isArray(fields) || fields.length === 0 ||
+        fields.some((field) => !allowedFields.includes(field)) ||
+        new Set(fields).size !== fields.length) {
+      throw new Error('fields must be a non-empty list without duplicates, using position, rotation, or scale.');
+    }
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Resetting a linked prefab hierarchy requires the separate prefab revert workflow.');
+    }
+    const snapshot = () => ({
+      position: vectorToObject(node.position),
+      rotation: quatToObject(node.rotation),
+      scale: vectorToObject(node.scale),
+    });
+    const before = snapshot();
+    const restore = () => {
+      if (fields.includes('position')) node.setPosition(before.position.x, before.position.y, before.position.z);
+      if (fields.includes('rotation')) node.setRotation(before.rotation.x, before.rotation.y, before.rotation.z, before.rotation.w);
+      if (fields.includes('scale')) node.setScale(before.scale.x, before.scale.y, before.scale.z);
+    };
+    try {
+      if (fields.includes('position')) node.setPosition(0, 0, 0);
+      if (fields.includes('rotation')) node.setRotation(0, 0, 0, 1);
+      if (fields.includes('scale')) node.setScale(1, 1, 1);
+      const after = snapshot();
+      const defaults = {
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        scale: { x: 1, y: 1, z: 1 },
+      };
+      if (fields.some((field) => Object.keys(defaults[field]).some((key) =>
+        Math.abs(after[field][key] - defaults[field][key]) > 1e-6))) {
+        throw new Error('Creator did not apply all requested local transform defaults.');
+      }
+      return {
+        reset: true,
+        nodeUuid: node.uuid,
+        nodePath: getNodePath(node),
+        fields,
+        changedFields: fields.filter((field) => Object.keys(before[field]).some((key) =>
+          Math.abs(before[field][key] - after[field][key]) > 1e-6)),
+        before,
+        after,
+      };
+    } catch (error) {
+      try {
+        restore();
+      } catch (restoreError) {
+        throw new Error(`${error.message} Failed to restore the original transform: ${restoreError.message}`);
+      }
+      throw error;
+    }
+  },
+
   async listComponents(options = {}) {
     const node = findNode(options);
     if (!node) {

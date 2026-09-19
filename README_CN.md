@@ -33,6 +33,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `detach_script_component` 使用同一 `scriptTarget` 精确移除普通场景节点上的脚本组件。若活动场景内的其他组件属性或 Button 点击事件仍引用它，工具会拒绝移除；应先清除引用。移除后保存场景。关联预制体实例和活动场景之外的引用需另行检查。
 
+`reset_node_transform` 可将普通场景节点的局部位置重置为 `(0,0,0)`、旋转重置为单位四元数、缩放重置为 `(1,1,1)`；传入 `fields` 可只重置部分字段。节点的激活状态不变，关联预制体层级需使用单独的还原流程。`reset_component_property` 只清除字段，不会恢复 Cocos 类默认值。
+
 `create_sprite` 新增 `spriteFrameTarget`，可传入已导入图片的路径（如 `assets/icons/arrow.png` 或 `db://assets/icons/arrow.png`）、ImageAsset 主 UUID 或 SpriteFrame 子 UUID。工具先解析并检查 SpriteFrame 子资源，再创建节点。原有 `spriteFrameUuid` 仍接受明确的 SpriteFrame 子 UUID；两个参数只能选一个。
 
 修改已有 Sprite 的图片时，调用 `set_sprite_frame`，传入节点 `path`、`uuid` 或唯一 `name`，以及 `spriteFrameTarget`。工具返回修改前后的 SpriteFrame UUID；无效资源会在修改组件前报错。

@@ -33,6 +33,8 @@ In the `full` tool profile, `move_node` reparents an ordinary scene node using a
 
 `detach_script_component` removes that script's component from an ordinary scene node using the same `scriptTarget` identity. It refuses to remove a component referenced by another active-scene component property or Button click event; clear those references first. Save the scene to persist removal. Linked prefab instances and references outside the active scene require separate review.
 
+`reset_node_transform` resets an ordinary scene node's local position, rotation, and scale to `(0,0,0)`, identity rotation, and `(1,1,1)`. Pass `fields` to reset only selected values. It preserves the node's active state and rejects linked prefab hierarchies; use the separate prefab revert workflow for those. `reset_component_property` only clears a field and does not restore its Cocos class default.
+
 `create_sprite` accepts `spriteFrameTarget` as an imported image path (`assets/icons/arrow.png` or `db://assets/icons/arrow.png`), an ImageAsset UUID, or an exact SpriteFrame UUID. It resolves and checks the SpriteFrame subasset before creating a node. The existing `spriteFrameUuid` argument still accepts an exact SpriteFrame UUID; supply only one of the two arguments.
 
 To replace the image on an existing Sprite, call `set_sprite_frame` with its node `path`, `uuid`, or unique `name` and a `spriteFrameTarget`. The tool reports the previous and new SpriteFrame UUIDs. It rejects an invalid resource before changing the component.

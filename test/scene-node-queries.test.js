@@ -63,6 +63,9 @@ class MockNode {
 
   removeFromParent() { this.parent = null; }
   destroy() { this.destroyed = true; }
+  setPosition(x, y, z) { this.position = { x, y, z }; }
+  setRotation(x, y, z, w) { this.rotation = { x, y, z, w }; }
+  setScale(x, y, z) { this.scale = { x, y, z }; }
 }
 
 function instantiateNode(source) {
@@ -193,6 +196,47 @@ test('moveNode preserves world position by default and local position when reque
   const rootMove = await methods.moveNode({ uuid: button.uuid, parentPath: '/' });
   assert.equal(rootMove.parentUuid, scene.uuid);
   assert.equal(button.parent, scene);
+});
+
+test('resetNodeTransform resets selected local fields and reports the before and after values', async () => {
+  const { methods, first } = sceneMethods();
+  first.setPosition(25, -4, 2);
+  first.setRotation(0, 0, 0.5, Math.sqrt(0.75));
+  first.setScale(2, 3, 1);
+  const selected = await methods.resetNodeTransform({ uuid: first.uuid, fields: ['position', 'scale'] });
+  assert.equal(selected.reset, true);
+  assert.equal(selected.nodeUuid, first.uuid);
+  assert.deepEqual(Array.from(selected.changedFields), ['position', 'scale']);
+  assert.deepEqual(first.position, { x: 0, y: 0, z: 0 });
+  assert.deepEqual(first.scale, { x: 1, y: 1, z: 1 });
+  assert.equal(first.rotation.z, 0.5);
+  assert.equal(selected.before.position.x, 25);
+  const remaining = await methods.resetNodeTransform({ uuid: first.uuid });
+  assert.deepEqual(Array.from(remaining.changedFields), ['rotation']);
+  assert.deepEqual(first.rotation, { x: 0, y: 0, z: 0, w: 1 });
+});
+
+test('resetNodeTransform rejects invalid fields, linked prefabs and rolls back failed setters', async () => {
+  const { methods, scene, first } = sceneMethods();
+  first.setPosition(8, 9, 10);
+  first.setScale(2, 2, 2);
+  for (const fields of [[], ['position', 'position'], ['active'], 'position']) {
+    await assert.rejects(() => methods.resetNodeTransform({ uuid: first.uuid, fields }), /fields must be/);
+  }
+  await assert.rejects(() => methods.resetNodeTransform({ uuid: scene.uuid }), /Target scene node/);
+  await assert.rejects(() => methods.resetNodeTransform({ uuid: 'stale' }), /Target scene node/);
+  first._prefab = { instance: {} };
+  await assert.rejects(() => methods.resetNodeTransform({ uuid: first.uuid }), /linked prefab/);
+  first._prefab = null;
+  assert.deepEqual(first.position, { x: 8, y: 9, z: 10 });
+  let failed = false;
+  first.setScale = (x, y, z) => {
+    if (!failed) { failed = true; throw new Error('scale failure'); }
+    MockNode.prototype.setScale.call(first, x, y, z);
+  };
+  await assert.rejects(() => methods.resetNodeTransform({ uuid: first.uuid }), /scale failure/);
+  assert.deepEqual(first.position, { x: 8, y: 9, z: 10 });
+  assert.deepEqual(first.scale, { x: 2, y: 2, z: 2 });
 });
 
 test('moveNode rejects ambiguous targets, cycles, invalid modes, and linked prefab hierarchies', async () => {
