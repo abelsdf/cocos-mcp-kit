@@ -229,7 +229,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | `create_button` | `full` | stateful | Create a UI Button node with child Label. |
 | `create_canvas` | `full` | stateful | Create a Cocos Canvas node with UITransform. |
 | `create_label` | `full` | stateful | Create a UI Label node under a parent. |
-| `create_sprite` | `full` | stateful | Create a UI Sprite node, optionally assigning a SpriteFrame asset uuid. |
+| `create_sprite` | `full` | stateful | Create a UI Sprite node. spriteFrameTarget accepts an imported image path, ImageAsset UUID, or SpriteFrame UUID and resolves it before creating the node. |
 
 ### Updates
 

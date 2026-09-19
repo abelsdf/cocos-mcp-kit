@@ -124,6 +124,63 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'set_selection'), true);
 });
 
+test('create_sprite resolves an image target before creating a scene node', async (t) => {
+  const imageUrl = 'db://assets/icons/arrow.png';
+  const frameUuid = 'image-uuid@frame';
+  mockEditorRequests(t, async (channel, method, target) => {
+    assert.equal(channel, 'asset-db');
+    assert.equal(method, 'query-asset-info');
+    if (target === imageUrl) return {
+      uuid: 'image-uuid', url: imageUrl, type: 'cc.ImageAsset', imported: true,
+      subAssets: { frame: { uuid: frameUuid, type: 'cc.SpriteFrame' } },
+    };
+    if (target === frameUuid) return {
+      uuid: frameUuid, url: `${imageUrl}/spriteFrame`, type: 'cc.SpriteFrame', imported: true,
+    };
+    throw new Error(`Unexpected asset target: ${target}`);
+  });
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, payload) => { calls.push({ method, payload }); return { created: true, uuid: 'new-node' }; } },
+  });
+  const result = await registry.callToolDetailed('create_sprite', {
+    name: 'Arrow', spriteFrameTarget: 'assets/icons/arrow.png', parentPath: 'Canvas',
+  });
+  assert.equal(result.value.data.created, true);
+  assert.equal(result.value.data.spriteFrameResolution.spriteFrame.uuid, frameUuid);
+  assert.deepEqual(calls, [{
+    method: 'createSprite',
+    payload: { name: 'Arrow', parentPath: 'Canvas', spriteFrameUuid: frameUuid },
+  }]);
+  const legacy = await registry.callToolDetailed('create_sprite', {
+    name: 'LegacyArrow', spriteFrameUuid: frameUuid,
+  });
+  assert.equal(legacy.value.data.created, true);
+  assert.deepEqual(calls[1], {
+    method: 'createSprite',
+    payload: { name: 'LegacyArrow', spriteFrameUuid: frameUuid },
+  });
+});
+
+test('create_sprite does not create a node when resource resolution is invalid', async (t) => {
+  mockEditorRequests(t, async () => ({
+    uuid: 'image-uuid', type: 'cc.ImageAsset', imported: true, subAssets: {},
+  }));
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async () => assert.fail('createSprite must not be called for an invalid resource') },
+  });
+  await assert.rejects(
+    () => registry.callToolDetailed('create_sprite', { spriteFrameTarget: 'assets/icons/arrow.png' }),
+    /no SpriteFrame subasset/
+  );
+  await assert.rejects(
+    () => registry.callToolDetailed('create_sprite', {
+      spriteFrameTarget: 'assets/icons/arrow.png', spriteFrameUuid: 'other-frame',
+    }),
+    /either spriteFrameTarget or spriteFrameUuid/
+  );
+});
+
 test('recommended project skill tool records managed template metadata', async (t) => {
   const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'funplay-cocos-managed-skill-'));
   t.after(() => fs.rmSync(projectPath, { recursive: true, force: true }));
