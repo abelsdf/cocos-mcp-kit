@@ -846,6 +846,76 @@ exports.methods = {
     };
   },
 
+  async moveNode(options = {}) {
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node) {
+      throw new Error('Target node was not found. Provide its uuid, path, or unique name.');
+    }
+    const parentSelector = {
+      uuid: options.parentUuid,
+      path: options.parentPath,
+      name: options.parentName,
+    };
+    const parent = findNode(parentSelector);
+    if (!parent) {
+      throw new Error('Parent node was not found. Provide parentUuid, parentPath, or parentName (parentPath "/" selects the scene root).');
+    }
+    if (node === scene) {
+      throw new Error('The scene root cannot be moved.');
+    }
+    if (typeof options.keepWorldTransform !== 'undefined' && typeof options.keepWorldTransform !== 'boolean') {
+      throw new Error('keepWorldTransform must be a boolean.');
+    }
+    for (let current = parent; current; current = current.parent) {
+      if (current === node) {
+        throw new Error('A node cannot be moved into itself or one of its descendants.');
+      }
+    }
+
+    // Direct reparenting of a linked prefab hierarchy may not be recorded as
+    // an instance override. Keep this operation limited to ordinary scene nodes.
+    for (const candidate of [node, parent]) {
+      for (let current = candidate; current && current !== scene; current = current.parent) {
+        const prefab = current._prefab;
+        if (prefab && (prefab.instance || prefab.asset || prefab._asset || prefab.fileId || prefab.root)) {
+          throw new Error('Moving a linked prefab instance or moving into one is not supported by move_node.');
+        }
+      }
+    }
+
+    const previousParent = node.parent;
+    const previousPath = getNodePath(node);
+    const keepWorldTransform = options.keepWorldTransform !== false;
+    if (previousParent === parent) {
+      return {
+        moved: false,
+        uuid: node.uuid,
+        path: previousPath,
+        parentPath: getNodePath(parent),
+        keepWorldTransform,
+      };
+    }
+
+    node.setParent(parent, keepWorldTransform);
+    if (node.parent !== parent) {
+      throw new Error('Node.setParent did not attach the node to the requested parent.');
+    }
+    return {
+      moved: true,
+      uuid: node.uuid,
+      previousPath,
+      path: getNodePath(node),
+      previousParentUuid: previousParent.uuid,
+      parentUuid: parent.uuid,
+      previousParentPath: getNodePath(previousParent),
+      parentPath: getNodePath(parent),
+      keepWorldTransform,
+      position: vectorToObject(node.position),
+      worldPosition: vectorToObject(node.worldPosition),
+    };
+  },
+
   async setNodeTransform(options = {}) {
     const node = findNode(options);
     if (!node) {

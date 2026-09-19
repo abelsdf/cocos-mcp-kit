@@ -162,6 +162,7 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - `duplicate_prefab` 改为读取已导入的 `cc.Prefab`，将预制体资源与根节点名称设为目标文件名，再通过 `asset-db:create-asset` / `save-asset` 保存；不复制 `.meta`，并核对新资源 UUID 与源资源不同。`edit_prefab_json` 在写入前校验目标类型、资源路径、JSON 结构和名称，保存后核对原 UUID 与稳定磁盘内容；不再直接写预制体文件或额外刷新资源数据库。缺失的 JSON 路径中间段会报错，不会默默构造对象。
 - 在运行中的 `arrow-puzzle` Creator 3.8.8 里直接加载当前源码，将含两张 SpriteFrame 引用的 `IconPair.prefab` 复制为临时资源，再编辑根节点 `_active:true → false`。新资源被导入，UUID 与源资源不同；编辑前后 UUID、`.meta` UUID 相同，根节点与两个子节点保留，2 条引用均有效。探针文件和 `.meta` 均经 asset-db 删除并确认不存在。详见[本轮验收记录](./verification/PREFAB_DUPLICATE_EDIT_2026-09-19.md)。
 - 随后按用户要求在同一 Creator 中创建 `McpKitReopenProbe.prefab`，完成复制和 `_active=false` 编辑，打开该探针，切到源预制体后再重新打开。重开后根节点仍为 `active:false`，两个子节点的 Sprite 组件及 SpriteFrame/Texture UUID 均保留；随后切到 `ComplexRefs.scene`，删除探针及 `.meta`。复制与 JSON 编辑的单元故障注入已覆盖保存失败不回退直写、名称不一致、相同源/目标与缺失路径。FR-05 仍待完整 CRUD、脚本事件和其他复杂属性验收。
+- OP-032 新增 `move_node`：在 `full` 配置中按 UUID/路径/唯一名称定位源节点和目标父节点，默认保持世界变换，也可保持局部变换；拒绝循环层级、场景根移动及关联预制体层级的直接移动。Creator 3.8.8 的隔离场景已验证两种模式、循环拒绝及保存、切换、重开后的父子关系和坐标；测试资产已通过 asset-db 删除。详情见 [节点移动验证](verification/NODE_MOVE_2026-09-19.md)。关联预制体的移动和 OP-033 同级重排仍未实现，FR-05 总项保持未勾选。
 
 ## 阶段 2：构建器与 UI 模板
 

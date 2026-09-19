@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 107);
+  assert.equal(tools.length, 108);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -124,6 +124,7 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_selection'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_sprite_frame'), true);
+  assert.equal(tools.some((tool) => tool.name === 'move_node'), true);
 });
 
 test('create_sprite resolves an image target before creating a scene node', async (t) => {

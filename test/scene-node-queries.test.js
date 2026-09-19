@@ -30,6 +30,28 @@ class MockNode {
     if (value) value.children.push(this);
   }
 
+  get worldPosition() {
+    const parentPosition = this.parent ? this.parent.worldPosition : { x: 0, y: 0, z: 0 };
+    return {
+      x: parentPosition.x + this.position.x,
+      y: parentPosition.y + this.position.y,
+      z: parentPosition.z + this.position.z,
+    };
+  }
+
+  setParent(parent, keepWorldTransform = false) {
+    const worldPosition = this.worldPosition;
+    this.parent = parent;
+    if (keepWorldTransform) {
+      const parentPosition = parent.worldPosition;
+      this.position = {
+        x: worldPosition.x - parentPosition.x,
+        y: worldPosition.y - parentPosition.y,
+        z: worldPosition.z - parentPosition.z,
+      };
+    }
+  }
+
   getSiblingIndex() { return this.parent ? this.parent.children.indexOf(this) : 0; }
 }
 
@@ -122,4 +144,53 @@ test('Creator DontSave helper roots are excluded from scene queries and node tar
   assert.equal(found.nodes.some((node) => node.uuid === hiddenChild.uuid), false);
   await assert.rejects(() => methods.inspectNode({ uuid: helper.uuid }), /not found/);
   await assert.rejects(() => methods.createNode({ name: 'Oops', parentUuid: helper.uuid }), /Parent not found/);
+});
+
+test('moveNode preserves world position by default and local position when requested', async () => {
+  const { methods, scene, first, second } = sceneMethods();
+  first.position = { x: 100, y: 0, z: 0 };
+  second.position = { x: 300, y: 0, z: 0 };
+  const button = first.children[0];
+  button.position = { x: 25, y: 0, z: 0 };
+
+  const worldMove = await methods.moveNode({ uuid: button.uuid, parentUuid: second.uuid });
+  assert.equal(worldMove.moved, true);
+  assert.equal(worldMove.previousPath, 'Canvas/Button');
+  assert.equal(worldMove.path, 'Canvas/Button');
+  assert.equal(worldMove.keepWorldTransform, true);
+  assert.equal(button.parent, second);
+  assert.equal(button.worldPosition.x, 125);
+  assert.equal(button.position.x, -175);
+
+  const localMove = await methods.moveNode({ uuid: button.uuid, parentUuid: first.uuid, keepWorldTransform: false });
+  assert.equal(localMove.moved, true);
+  assert.equal(button.position.x, -175);
+  assert.equal(button.worldPosition.x, -75);
+  const noOp = await methods.moveNode({ uuid: button.uuid, parentUuid: first.uuid });
+  assert.equal(noOp.moved, false);
+  const rootMove = await methods.moveNode({ uuid: button.uuid, parentPath: '/' });
+  assert.equal(rootMove.parentUuid, scene.uuid);
+  assert.equal(button.parent, scene);
+});
+
+test('moveNode rejects ambiguous targets, cycles, invalid modes, and linked prefab hierarchies', async () => {
+  const { methods, scene, first, second } = sceneMethods();
+  const button = first.children[0];
+  await assert.rejects(() => methods.moveNode({ name: 'Button', parentUuid: second.uuid }), /Candidates:.*button-a.*button-b/);
+  await assert.rejects(() => methods.moveNode({ uuid: button.uuid, parentName: 'Canvas' }), /Candidates:.*canvas-a.*canvas-b/);
+  await assert.rejects(() => methods.moveNode({ uuid: first.uuid, parentUuid: button.uuid }), /descendants/);
+  await assert.rejects(() => methods.moveNode({ uuid: first.uuid, parentUuid: first.uuid }), /descendants/);
+  await assert.rejects(() => methods.moveNode({ uuid: scene.uuid, parentUuid: first.uuid }), /scene root/);
+  await assert.rejects(() => methods.moveNode({ uuid: button.uuid, parentPath: '/', keepWorldTransform: 'false' }), /boolean/);
+  assert.equal(first.parent, scene);
+  assert.equal(button.parent, first);
+
+  first._prefab = { instance: {} };
+  await assert.rejects(() => methods.moveNode({ uuid: button.uuid, parentUuid: second.uuid }), /linked prefab/);
+  await assert.rejects(() => methods.moveNode({ uuid: second.uuid, parentUuid: first.uuid }), /linked prefab/);
+  assert.equal(button.parent, first);
+  assert.equal(second.parent, scene);
+
+  first._prefab = { fileId: 'linked-file-id' };
+  await assert.rejects(() => methods.moveNode({ uuid: button.uuid, parentUuid: second.uuid }), /linked prefab/);
 });

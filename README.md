@@ -23,6 +23,8 @@ The extension's panel also includes tool exposure and client configuration. For 
 
 Node queries now reject ambiguous names or paths and report candidate UUIDs. When supplying multiple selectors, all of them must identify the same node; a stale UUID will not silently fall back to a name. `get_scene_info` and `get_hierarchy` default to at most 200 returned nodes and report truncation; `find_nodes` reports both the total match count and the returned count.
 
+In the `full` tool profile, `move_node` reparents an ordinary scene node using a `uuid`, `path`, or unique `name` and a destination `parentUuid`, `parentPath`, or unique `parentName`. It preserves world transform by default; set `keepWorldTransform: false` to preserve local transform. Use `parentPath: "/"` for the scene root. Linked prefab hierarchies require a separate editor-aware workflow.
+
 `create_sprite` accepts `spriteFrameTarget` as an imported image path (`assets/icons/arrow.png` or `db://assets/icons/arrow.png`), an ImageAsset UUID, or an exact SpriteFrame UUID. It resolves and checks the SpriteFrame subasset before creating a node. The existing `spriteFrameUuid` argument still accepts an exact SpriteFrame UUID; supply only one of the two arguments.
 
 To replace the image on an existing Sprite, call `set_sprite_frame` with its node `path`, `uuid`, or unique `name` and a `spriteFrameTarget`. The tool reports the previous and new SpriteFrame UUIDs. It rejects an invalid resource before changing the component.
