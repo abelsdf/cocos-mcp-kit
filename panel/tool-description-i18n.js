@@ -32,6 +32,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   reorder_node: '按可保存的同级节点从零开始的索引调整普通场景节点顺序；可指定预期父节点以防止误改。',
   duplicate_node: '在原节点后复制普通场景节点及其子树，生成新节点标识；关联预制体层级暂不支持。',
   set_node_transform: '更新节点的位置、旋转、缩放或激活状态。',
+  batch_modify_nodes: '按顺序修改最多 50 个节点变换或激活状态，逐项报告结果，可选择遇错停止或继续；已成功步骤不会整体回滚。',
   reset_node_transform: '将普通场景节点选定的局部位置、旋转或缩放重置为单位值；关联预制体实例需使用单独的还原流程。',
   get_project_info: '返回当前 Cocos 项目路径、版本和 MCP 服务配置。需要快速结构化项目摘要时优先使用；需要在检查后立即操作时使用 execute_javascript。',
   save_current_scene: '使用可用的编辑器场景消息保存当前打开的 Cocos 场景。',

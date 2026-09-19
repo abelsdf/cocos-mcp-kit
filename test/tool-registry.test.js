@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 115);
+  assert.equal(tools.length, 116);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -132,6 +132,24 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'reset_node_transform'), true);
   assert.equal(tools.some((tool) => tool.name === 'reset_component_property_to_default'), true);
   assert.equal(tools.some((tool) => tool.name === 'detect_node_type'), true);
+  assert.equal(tools.some((tool) => tool.name === 'batch_modify_nodes'), true);
+});
+
+test('batch_modify_nodes forwards ordered changes and policy as one scene call', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { completed: true, succeeded: 1, failed: 0 };
+    } },
+  });
+  const args = { changes: [{ uuid: 'node-uuid', active: false }], onError: 'continue' };
+  const result = await registry.callToolDetailed('batch_modify_nodes', args);
+  assert.equal(result.value.data.succeeded, 1);
+  assert.deepEqual(calls, [{ method: 'batchModifyNodes', args }]);
+  const tool = registry.listTools().find((item) => item.name === 'batch_modify_nodes');
+  assert.equal(tool.annotations.readOnlyHint, false);
+  assert.equal(tool.annotations.destructiveHint, true);
 });
 
 test('detect_node_type forwards strict node selectors to the scene bridge', async () => {

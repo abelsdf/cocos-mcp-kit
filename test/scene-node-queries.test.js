@@ -8,6 +8,17 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 let nextId = 1;
+class MockQuat {
+  constructor(x = 0, y = 0, z = 0, w = 1) { Object.assign(this, { x, y, z, w }); }
+  static fromEuler(out, x, y, z) {
+    assert.equal(x, 0);
+    assert.equal(y, 0);
+    out.x = 0; out.y = 0;
+    out.z = Math.sin(z * Math.PI / 360);
+    out.w = Math.cos(z * Math.PI / 360);
+    return out;
+  }
+}
 class MockNode {
   constructor(name, uuid) {
     this.name = name;
@@ -65,6 +76,7 @@ class MockNode {
   destroy() { this.destroyed = true; }
   setPosition(x, y, z) { this.position = { x, y, z }; }
   setRotation(x, y, z, w) { this.rotation = { x, y, z, w }; }
+  setRotationFromEuler(x, y, z) { this.rotation = MockQuat.fromEuler(new MockQuat(), x, y, z); }
   setScale(x, y, z) { this.scale = { x, y, z }; }
 }
 
@@ -101,7 +113,7 @@ function sceneMethods() {
     module: { paths: [] },
     exports,
     require: (id) => id === 'cc'
-      ? { Node: MockNode, instantiate: instantiateNode, CCObjectFlags: { DontSave: 8 }, director: { getScene: () => scene } }
+      ? { Node: MockNode, Quat: MockQuat, instantiate: instantiateNode, CCObjectFlags: { DontSave: 8 }, director: { getScene: () => scene } }
       : localRequire(id),
     console,
   }, { filename: sceneFile });
@@ -237,6 +249,109 @@ test('resetNodeTransform rejects invalid fields, linked prefabs and rolls back f
   await assert.rejects(() => methods.resetNodeTransform({ uuid: first.uuid }), /scale failure/);
   assert.deepEqual(first.position, { x: 8, y: 9, z: 10 });
   assert.deepEqual(first.scale, { x: 2, y: 2, z: 2 });
+});
+
+test('batchModifyNodes applies ordered complete fields, including zero scale and rotation', async () => {
+  const { methods, first, camera } = sceneMethods();
+  const report = await methods.batchModifyNodes({ changes: [
+    { uuid: first.uuid, position: { x: 4, y: -2, z: 0 }, scale: { x: 0, y: 2, z: 1 }, active: false },
+    { uuid: camera.uuid, eulerAngles: { x: 0, y: 0, z: 90 } },
+  ] });
+  assert.equal(report.completed, true);
+  assert.equal(report.allSucceeded, true);
+  assert.equal(report.attempted, 2);
+  assert.equal(report.succeeded, 2);
+  assert.deepEqual(first.position, { x: 4, y: -2, z: 0 });
+  assert.deepEqual(first.scale, { x: 0, y: 2, z: 1 });
+  assert.equal(first.active, false);
+  assert.ok(Math.abs(camera.rotation.z - Math.SQRT1_2) < 1e-5);
+  assert.equal(report.results[0].before.active, true);
+  assert.equal(report.results[0].after.scale.x, 0);
+});
+
+test('batchModifyNodes stop and continue policies report failed indices without undoing prior successes', async () => {
+  const stopped = sceneMethods();
+  const changes = [
+    { uuid: stopped.first.uuid, position: { x: 8, y: 0, z: 0 } },
+    { uuid: 'stale', active: false },
+    { uuid: stopped.camera.uuid, active: false },
+  ];
+  const stopReport = await stopped.methods.batchModifyNodes({ changes });
+  assert.equal(stopReport.completed, false);
+  assert.equal(stopReport.succeeded, 1);
+  assert.equal(stopReport.failed, 1);
+  assert.equal(stopReport.stoppedAtIndex, 1);
+  assert.equal(stopReport.results[1].status, 'failed');
+  assert.equal(stopped.first.position.x, 8);
+  assert.equal(stopped.camera.active, true);
+
+  const continued = sceneMethods();
+  changes[0].uuid = continued.first.uuid;
+  changes[2].uuid = continued.camera.uuid;
+  const continueReport = await continued.methods.batchModifyNodes({ changes, onError: 'continue' });
+  assert.equal(continueReport.completed, true);
+  assert.equal(continueReport.allSucceeded, false);
+  assert.equal(continueReport.succeeded, 2);
+  assert.equal(continueReport.failed, 1);
+  assert.equal(continued.camera.active, false);
+});
+
+test('batchModifyNodes validates each step and rolls back a setter failure', async () => {
+  const { methods, scene, first, camera } = sceneMethods();
+  for (const options of [
+    { changes: [] }, { changes: [{}], onError: 'skip' },
+    { changes: Array.from({ length: 51 }, () => ({})) },
+  ]) await assert.rejects(() => methods.batchModifyNodes(options));
+
+  first.setPosition(3, 4, 5);
+  first.setScale(2, 2, 2);
+  let failed = false;
+  first.setScale = (x, y, z) => {
+    if (!failed) { failed = true; throw new Error('scale failure'); }
+    MockNode.prototype.setScale.call(first, x, y, z);
+  };
+  const report = await methods.batchModifyNodes({ onError: 'continue', changes: [
+    { uuid: first.uuid, position: { x: 9, y: 9, z: 9 }, scale: { x: 4, y: 4, z: 4 } },
+    { name: 'Button', active: false },
+    { uuid: scene.uuid, active: false },
+    { uuid: camera.uuid, position: { x: 1, y: 2 } },
+    { uuid: camera.uuid, active: false, unsupported: 1 },
+    { uuid: camera.uuid, active: false },
+  ] });
+  assert.equal(report.failed, 5);
+  assert.equal(report.succeeded, 1);
+  assert.equal(report.results[0].rollbackStatus, 'restored');
+  assert.match(report.results[0].error, /scale failure/);
+  assert.match(report.results[1].error, /Candidates:/);
+  assert.equal(report.results[1].rollbackStatus, 'not-needed');
+  assert.deepEqual(first.position, { x: 3, y: 4, z: 5 });
+  assert.deepEqual(first.scale, { x: 2, y: 2, z: 2 });
+  assert.equal(camera.active, false);
+
+  first._prefab = { instance: {} };
+  const linked = await methods.batchModifyNodes({ changes: [{ uuid: first.uuid, active: false }] });
+  assert.match(linked.results[0].error, /linked prefab/);
+  assert.equal(first.active, true);
+});
+
+test('batchModifyNodes reports a failed rollback instead of claiming restoration', async () => {
+  const { methods, first } = sceneMethods();
+  let positionCalls = 0;
+  first.setPosition = (x, y, z) => {
+    positionCalls += 1;
+    if (positionCalls === 2) throw new Error('restore position blocked');
+    MockNode.prototype.setPosition.call(first, x, y, z);
+  };
+  first.setScale = () => { throw new Error('apply scale blocked'); };
+  const report = await methods.batchModifyNodes({ changes: [{
+    uuid: first.uuid,
+    position: { x: 9, y: 0, z: 0 },
+    scale: { x: 2, y: 2, z: 2 },
+  }] });
+  assert.equal(report.failed, 1);
+  assert.equal(report.results[0].rollbackStatus, 'failed');
+  assert.match(report.results[0].error, /Step rollback failed: position: restore position blocked/);
+  assert.equal(first.position.x, 9);
 });
 
 test('moveNode rejects ambiguous targets, cycles, invalid modes, and linked prefab hierarchies', async () => {

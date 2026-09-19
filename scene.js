@@ -170,6 +170,34 @@ function readQueryLimit(value, fallback, maximum, label) {
   return value;
 }
 
+function readBatchVector(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).some((key) => !['x', 'y', 'z'].includes(key)) ||
+      ['x', 'y', 'z'].some((key) => typeof value[key] !== 'number' || !Number.isFinite(value[key]))) {
+    throw new Error(`${label} must contain finite numeric x, y, and z values only.`);
+  }
+  return { x: value.x, y: value.y, z: value.z };
+}
+
+function batchNodeSnapshot(node) {
+  return {
+    position: vectorToObject(node.position),
+    rotation: quatToObject(node.rotation),
+    scale: vectorToObject(node.scale),
+    active: Boolean(node.active),
+  };
+}
+
+function valuesNear(actual, expected, keys, tolerance = 1e-5) {
+  return keys.every((key) => Number.isFinite(actual[key]) && Math.abs(actual[key] - expected[key]) <= tolerance);
+}
+
+function rotationsNear(actual, expected) {
+  const keys = ['x', 'y', 'z', 'w'];
+  return valuesNear(actual, expected, keys, 1e-4) ||
+    keys.every((key) => Number.isFinite(actual[key]) && Math.abs(actual[key] + expected[key]) <= 1e-4);
+}
+
 function vectorToObject(value) {
   if (!value) {
     return null;
@@ -1245,6 +1273,143 @@ exports.methods = {
       position: vectorToObject(node.position),
       rotation: quatToObject(node.rotation),
       scale: vectorToObject(node.scale),
+    };
+  },
+
+  async batchModifyNodes(options = {}) {
+    const changes = options.changes;
+    if (!Array.isArray(changes) || changes.length < 1 || changes.length > 50) {
+      throw new Error('changes must contain between 1 and 50 node modifications.');
+    }
+    const onError = options.onError === undefined ? 'stop' : options.onError;
+    if (!['stop', 'continue'].includes(onError)) {
+      throw new Error('onError must be stop or continue.');
+    }
+
+    const scene = getScene();
+    const results = [];
+    const allowed = new Set(['uuid', 'path', 'name', 'position', 'scale', 'eulerAngles', 'active']);
+    const startedAt = Date.now();
+    for (let index = 0; index < changes.length; index += 1) {
+      const step = changes[index];
+      const stepStartedAt = Date.now();
+      let node;
+      let nodePath;
+      let before;
+      try {
+        if (!step || typeof step !== 'object' || Array.isArray(step) ||
+            Object.keys(step).some((key) => !allowed.has(key))) {
+          throw new Error('Each change must be an object containing only node selectors and supported fields.');
+        }
+        if (!['uuid', 'path', 'name'].some((key) => typeof step[key] === 'string' && step[key].trim()) ||
+            ['uuid', 'path', 'name'].some((key) => step[key] !== undefined &&
+              (typeof step[key] !== 'string' || !step[key].trim()))) {
+          throw new Error('Each change requires a non-empty uuid, path, or name selector.');
+        }
+        const fields = ['position', 'scale', 'eulerAngles', 'active']
+          .filter((key) => Object.prototype.hasOwnProperty.call(step, key));
+        if (!fields.length) {
+          throw new Error('Each change requires at least one transform or active field.');
+        }
+        const position = fields.includes('position') ? readBatchVector(step.position, 'position') : null;
+        const scale = fields.includes('scale') ? readBatchVector(step.scale, 'scale') : null;
+        const eulerAngles = fields.includes('eulerAngles') ? readBatchVector(step.eulerAngles, 'eulerAngles') : null;
+        if (fields.includes('active') && typeof step.active !== 'boolean') {
+          throw new Error('active must be a boolean.');
+        }
+        node = findNode(step);
+        if (!node || node === scene) {
+          throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+        }
+        if (hasLinkedPrefabAncestor(node, scene)) {
+          throw new Error('Batch modification of a linked prefab hierarchy is not supported.');
+        }
+        nodePath = getNodePath(node);
+        before = batchNodeSnapshot(node);
+        try {
+          if (position) node.setPosition(position.x, position.y, position.z);
+          if (scale) node.setScale(scale.x, scale.y, scale.z);
+          if (eulerAngles) node.setRotationFromEuler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
+          if (fields.includes('active')) node.active = step.active;
+          const after = batchNodeSnapshot(node);
+          if ((position && !valuesNear(after.position, position, ['x', 'y', 'z'])) ||
+              (scale && !valuesNear(after.scale, scale, ['x', 'y', 'z'])) ||
+              (eulerAngles && !rotationsNear(after.rotation,
+                quatToObject(Quat.fromEuler(new Quat(), eulerAngles.x, eulerAngles.y, eulerAngles.z)))) ||
+              (fields.includes('active') && after.active !== step.active)) {
+            throw new Error('Creator did not apply every requested node field.');
+          }
+          results.push({
+            index,
+            status: 'applied',
+            nodeUuid: node.uuid,
+            nodePath,
+            fields,
+            before,
+            after,
+            durationMs: Date.now() - stepStartedAt,
+          });
+        } catch (applyError) {
+          const restoreErrors = [];
+          for (const [field, restore] of [
+            ['position', () => {
+              if (!valuesNear(vectorToObject(node.position), before.position, ['x', 'y', 'z'])) {
+                node.setPosition(before.position.x, before.position.y, before.position.z);
+              }
+            }],
+            ['rotation', () => {
+              if (!rotationsNear(quatToObject(node.rotation), before.rotation)) {
+                node.setRotation(before.rotation.x, before.rotation.y, before.rotation.z, before.rotation.w);
+              }
+            }],
+            ['scale', () => {
+              if (!valuesNear(vectorToObject(node.scale), before.scale, ['x', 'y', 'z'])) {
+                node.setScale(before.scale.x, before.scale.y, before.scale.z);
+              }
+            }],
+            ['active', () => { if (Boolean(node.active) !== before.active) node.active = before.active; }],
+          ]) {
+            try { restore(); } catch (error) { restoreErrors.push(`${field}: ${error.message}`); }
+          }
+          const restored = batchNodeSnapshot(node);
+          if (!valuesNear(restored.position, before.position, ['x', 'y', 'z']) ||
+              !rotationsNear(restored.rotation, before.rotation) ||
+              !valuesNear(restored.scale, before.scale, ['x', 'y', 'z']) ||
+              restored.active !== before.active) {
+            restoreErrors.push('state differs from the snapshot');
+          }
+          const error = new Error(restoreErrors.length
+            ? `${applyError.message} Step rollback failed: ${restoreErrors.join('; ')}`
+            : applyError.message);
+          error.rollbackStatus = restoreErrors.length ? 'failed' : 'restored';
+          throw error;
+        }
+      } catch (error) {
+        results.push({
+          index,
+          status: 'failed',
+          nodeUuid: node && node !== scene ? node.uuid : undefined,
+          nodePath,
+          error: error.message,
+          code: error.code || undefined,
+          rollbackStatus: error.rollbackStatus || 'not-needed',
+          durationMs: Date.now() - stepStartedAt,
+        });
+        if (onError === 'stop') break;
+      }
+    }
+    const failedCount = results.filter((result) => result.status === 'failed').length;
+    return {
+      completed: results.length === changes.length,
+      allSucceeded: failedCount === 0 && results.length === changes.length,
+      onError,
+      total: changes.length,
+      attempted: results.length,
+      succeeded: results.length - failedCount,
+      failed: failedCount,
+      stoppedAtIndex: onError === 'stop' && failedCount ? results.findIndex((result) => result.status === 'failed') : null,
+      durationMs: Date.now() - startedAt,
+      results,
     };
   },
 
