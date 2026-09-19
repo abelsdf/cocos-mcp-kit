@@ -138,6 +138,13 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - 在 `arrow-puzzle` Creator 3.8.8 中，独立测试场景 `ReplaceSprite` 初始引用 Hammer 图片，调用当前源码将其切换为 Hint 图片；保存、切到 `Main.scene`、重开后，运行对象与磁盘引用均为 `1b3c2630-2ff7-4455-a872-072e320c0d8c@f9941`。Texture2D 输入在调用场景前被拒绝；测试场景及 `.meta` 已由 asset-db 清理。详见[验收记录](./verification/SPRITE_FRAME_REPLACEMENT_2026-09-19.md)。
 - 本轮仅覆盖普通场景节点的 Sprite 引用；预制体实例覆盖、Prefab 资源本体修改及其他类型资源仍待验证，FR-04/05 与阶段 1 总任务继续保持未完成。
 
+### Button 点击事件解绑与持久化（2026-09-19）
+
+- `list_button_click_events` 为每条事件返回原始列表索引；新增 `unbind_button_click_event`，要求索引和目标 UUID、组件、方法、自定义数据签名同时匹配，签名过期则拒绝删除。Creator 3.8.8 将保存后的事件组件名称清空、改用内部组件 ID；查询和重复绑定检查现在从该 ID 还原已注册类名，避免重开后列表缺失组件名或重复绑定。
+- 在 `arrow-puzzle` 独立场景中创建临时 TypeScript 组件和 Button：绑定后模拟点击，脚本调用次数为 1、自定义数据为 `event-ok`；保存、切到 `Main.scene`、重开后仍为 1 条绑定且点击有效。过期签名解绑失败，正确签名解绑成功；再次保存重开后事件列表与磁盘 `clickEvents` 都为空，模拟点击未调用脚本。测试场景、脚本及对应 `.meta` 已经 asset-db 清理。详见[验收记录](./verification/BUTTON_EVENT_UNBIND_2026-09-19.md)。
+- 后续在同一工程的独立临时场景中，用真实浏览器预览鼠标点击验证基础绑定：画面由 `base=0` 变为 `base=1`。发现直接更改链接预制体实例的 `Button.clickEvents` 虽在内存中可见，保存时却没有实例覆盖，重开将丢失。现于绑定/解绑时记录 Creator 的 `clickEvents` 属性覆盖；当前源码实测保存重开后实例为 2 条事件、源预制体仍为 1 条，鼠标点击显示 `base=1 override=1`。解绑实例新增事件并再次保存重开，实例剩 1 条，点击显示 `base=1 override=0`。临时场景、预制体、脚本和 `.meta` 已清理。详见[真实预览与实例覆盖验收](./verification/BUTTON_PREVIEW_PREFAB_2026-09-19.md)。
+- 真实鼠标点击与普通链接预制体实例事件覆盖已验收；触摸、嵌套预制体实例和其他事件组件尚未验证，FR-05 和阶段 2 总任务继续保持未勾选。
+
 ### 场景与预制体资产保存加固（2026-09-19）
 
 - `create_scene` 与 `create_prefab_from_node` 的资产写入统一走 Creator `asset-db:create-asset` / `save-asset`。编辑器不可用、消息拒绝、写盘内容未更新或资产数据库未完成导入时明确报错；不再把文件直写或文件存在当作成功。Creator 导入场景时将根 `cc.Scene._id` 改为新资产 UUID，这一已实测的正常改写纳入语义校验。保存后等待 400 毫秒复查磁盘和导入状态，防止把短暂写入随后回退算作成功；已有资产内容不一致时最多重试一次。

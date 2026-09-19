@@ -27,6 +27,10 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 修改已有 Sprite 的图片时，调用 `set_sprite_frame`，传入节点 `path`、`uuid` 或唯一 `name`，以及 `spriteFrameTarget`。工具返回修改前后的 SpriteFrame UUID；无效资源会在修改组件前报错。
 
+解绑 Button 点击事件时，先调用 `list_button_click_events`；把目标事件返回的 `index` 作为 `eventIndex`，并将该事件对象作为 `expectedEvent` 传给 `unbind_button_click_event`。如果该位置的事件已变化，工具会拒绝删除。
+
+对关联的预制体实例绑定或解绑 Button 点击事件时，工具会在场景中记录 `clickEvents` 实例覆盖，不修改预制体资源本体。保存并重开场景后，还需核对实例绑定及预览输入。
+
 修改场景、预制体、脚本或资源引用后，须在真实 Creator 中保存并重新打开验证；MCP 返回成功不能单独证明修改已持久化。
 
 ## 致谢与许可

@@ -27,6 +27,10 @@ Node queries now reject ambiguous names or paths and report candidate UUIDs. Whe
 
 To replace the image on an existing Sprite, call `set_sprite_frame` with its node `path`, `uuid`, or unique `name` and a `spriteFrameTarget`. The tool reports the previous and new SpriteFrame UUIDs. It rejects an invalid resource before changing the component.
 
+For a Button click binding, call `list_button_click_events` first. To remove one binding, pass its returned `index` as `eventIndex` and the same event object as `expectedEvent` to `unbind_button_click_event`. The tool refuses to remove a binding if the event at that index has changed.
+
+On a linked prefab instance, binding or unbinding a Button click event records a scene-level `clickEvents` override without changing the prefab asset. Save and reopen the scene, then check the instance bindings and preview input.
+
 Changing scenes, prefabs, scripts, or asset references requires a real Creator save-and-reopen check. A successful MCP response alone does not prove that a change persisted.
 
 ## Attribution and license

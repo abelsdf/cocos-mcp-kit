@@ -101,6 +101,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   simulate_button_click: '通过在目标按钮节点上触发点击事件，模拟 Cocos Button 点击。',
   list_button_click_events: '列出 Cocos Button 组件的点击事件绑定。',
   bind_button_click_event: '将 Cocos Button 点击事件绑定到目标节点的组件方法。',
+  unbind_button_click_event: '按列表索引和事件签名安全移除 Button 点击绑定；事件变化时拒绝误删。',
   invoke_component_method: '调用组件方法，用于运行时验证和测试钩子。',
   get_script_diagnostic_context: '运行 TypeScript 诊断并为每个错误附加源码片段。修复前分析编译错误时优先使用此专用工具。',
   capture_desktop_screenshot: '截取本地桌面，并以 MCP 图片数据返回。',

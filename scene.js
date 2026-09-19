@@ -248,6 +248,23 @@ function getEventHandlerClass() {
   return (Component && Component.EventHandler) || EventHandler || null;
 }
 
+function getEventHandlerComponentName(handler) {
+  const declaredName = handler && handler.component || '';
+  if (declaredName) {
+    return declaredName;
+  }
+  const componentId = handler && handler._componentId;
+  const componentClass = componentId && js && typeof js.getClassById === 'function'
+    ? js.getClassById(componentId)
+    : null;
+  if (componentClass) {
+    return (js && typeof js.getClassName === 'function' && js.getClassName(componentClass))
+      || componentClass.name
+      || '';
+  }
+  return '';
+}
+
 function serializeEventHandler(handler) {
   if (!handler) {
     return null;
@@ -255,7 +272,7 @@ function serializeEventHandler(handler) {
   return {
     target: handler.target && handler.target.name ? getNodePath(handler.target) : '',
     targetUuid: handler.target && handler.target.uuid ? handler.target.uuid : '',
-    component: handler.component || '',
+    component: getEventHandlerComponentName(handler),
     handler: handler.handler || '',
     customEventData: handler.customEventData || '',
   };
@@ -350,6 +367,41 @@ function getPrefabInfo(node) {
     sync: prefab.sync,
     rawKeys: Object.keys(prefab).slice(0, 50),
   };
+}
+
+function recordButtonClickEventPrefabOverride(button) {
+  // Creator serializes linked instances from propertyOverrides, not from a
+  // direct component assignment. Use the component's prefab-local file ID.
+  let root = button.node;
+  while (root && !(root._prefab && root._prefab.instance)) root = root.parent;
+  if (!root) return false;
+
+  const instance = root._prefab.instance;
+  const fileId = button.__prefab && button.__prefab.fileId;
+  const utils = Prefab && Prefab._utils;
+  if (!fileId || !Array.isArray(instance.propertyOverrides) ||
+      !utils || !utils.TargetInfo || !utils.PropertyOverrideInfo) {
+    throw new Error('Cannot persist Button click events on this prefab instance: Creator prefab override metadata is unavailable.');
+  }
+
+  const localID = [fileId];
+  const propertyPath = ['clickEvents'];
+  let override = typeof instance.findPropertyOverride === 'function'
+    ? instance.findPropertyOverride(localID, propertyPath)
+    : instance.propertyOverrides.find((item) =>
+      item && item.targetInfo && Array.isArray(item.targetInfo.localID) &&
+      item.targetInfo.localID.length === 1 && item.targetInfo.localID[0] === fileId &&
+      Array.isArray(item.propertyPath) && item.propertyPath.length === 1 &&
+      item.propertyPath[0] === 'clickEvents');
+  if (!override) {
+    override = new utils.PropertyOverrideInfo();
+    override.targetInfo = new utils.TargetInfo();
+    override.targetInfo.localID = localID;
+    override.propertyPath = propertyPath;
+    instance.propertyOverrides.push(override);
+  }
+  override.value = button.clickEvents.slice();
+  return true;
 }
 
 function collectSceneStats() {
@@ -1539,7 +1591,10 @@ exports.methods = {
       uuid: node.uuid,
       clickEventCount: Array.isArray(button.clickEvents) ? button.clickEvents.length : 0,
       clickEvents: Array.isArray(button.clickEvents)
-        ? button.clickEvents.map(serializeEventHandler).filter(Boolean)
+        ? button.clickEvents.map((event, index) => {
+          const summary = serializeEventHandler(event);
+          return summary ? { index, ...summary } : null;
+        }).filter(Boolean)
         : [],
     };
   },
@@ -1586,7 +1641,7 @@ exports.methods = {
     const duplicate = existing.find((event) => (
       event &&
       event.target === target &&
-      event.component === componentName &&
+      getEventHandlerComponentName(event) === componentName &&
       event.handler === handlerName &&
       String(event.customEventData || '') === String(options.customEventData || '')
     ));
@@ -1609,12 +1664,60 @@ exports.methods = {
     button.clickEvents = options.replace === true
       ? existing.filter((item) => item !== duplicate).concat(event)
       : existing.concat(event);
+    try {
+      recordButtonClickEventPrefabOverride(button);
+    } catch (error) {
+      button.clickEvents = existing;
+      throw error;
+    }
 
     return {
       bound: true,
       node: getNodePath(node),
       uuid: node.uuid,
       event: serializeEventHandler(event),
+      clickEventCount: button.clickEvents.length,
+    };
+  },
+
+  async unbindButtonClickEvent(options = {}) {
+    const node = findNode(options);
+    if (!node) {
+      throw new Error('Button node was not found.');
+    }
+    const button = node.getComponent(Button);
+    if (!button) {
+      throw new Error('Button component was not found on target node.');
+    }
+    const existing = Array.isArray(button.clickEvents) ? button.clickEvents : [];
+    const index = options.eventIndex;
+    if (!Number.isInteger(index) || index < 0 || index >= existing.length) {
+      throw new Error(`eventIndex must identify a current click event (0-${Math.max(0, existing.length - 1)}).`);
+    }
+    const expected = options.expectedEvent;
+    const signatureFields = ['targetUuid', 'component', 'handler', 'customEventData'];
+    if (!expected || typeof expected !== 'object' ||
+        signatureFields.some((field) => typeof expected[field] !== 'string')) {
+      throw new Error('expectedEvent must include targetUuid, component, handler, and customEventData strings from list_button_click_events.');
+    }
+    const current = serializeEventHandler(existing[index]);
+    if (!current || signatureFields.some((field) => current[field] !== expected[field])) {
+      throw new Error('Click event at eventIndex has changed. List events again before unbinding.');
+    }
+
+    button.clickEvents = existing.filter((_, currentIndex) => currentIndex !== index);
+    try {
+      recordButtonClickEventPrefabOverride(button);
+    } catch (error) {
+      button.clickEvents = existing;
+      throw error;
+    }
+    return {
+      unbound: true,
+      node: getNodePath(node),
+      uuid: node.uuid,
+      eventIndex: index,
+      event: current,
       clickEventCount: button.clickEvents.length,
     };
   },

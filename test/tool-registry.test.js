@@ -108,13 +108,14 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 106);
+  assert.equal(tools.length, 107);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_project_skill'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_cocos_mcp_project_skill'), true);
   assert.equal(tools.some((tool) => tool.name === 'bind_button_click_event'), true);
+  assert.equal(tools.some((tool) => tool.name === 'unbind_button_click_event'), true);
   assert.equal(tools.some((tool) => tool.name === 'open_build_panel'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_preview_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_preview_mode'), true);
