@@ -2,69 +2,63 @@
 
 **English** | [简体中文](./README_CN.md)
 
-Cocos MCP Kit is an open-source Cocos Creator editor extension built on [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp). It embeds a local MCP server so compatible development assistants can inspect and work with a Cocos project.
+Cocos MCP Kit is an open-source extension that runs an MCP server inside Cocos Creator. It lets an MCP client inspect a project, work with scenes and assets, and verify results in the editor. It is built on [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp) and has its own package, extension, and configuration identity.
 
-This fork has its own extension and package identity. The Funplay tools remain the starting point; the [requirements](./docs/REQUIREMENTS.md) and [development plan](./docs/PLAN.md) track the implementation status of additional capabilities. Editor behavior and saved assets still need validation in a test project.
+The current target is Cocos Creator 3.8.x; the editor checks linked below were performed on **3.8.8**. Available tools are not a promise that every workflow or Creator version has been validated. See the [tool reference](./docs/TOOLS.md), [development plan](./docs/PLAN.md), and [requirements](./docs/REQUIREMENTS.md) for the exact scope.
 
-## Local installation
+## Quick start
 
-1. Copy this repository into your Cocos Creator project's `extensions/cocos-mcp-kit` directory.
-2. Open or restart the project in Cocos Creator 3.8.x.
-3. Open **Cocos MCP Kit > MCP Server** and use the endpoint shown there to configure your MCP client.
+1. Copy the repository contents to `<Cocos project>/extensions/cocos-mcp-kit` so that `package.json` and `scene.js` are directly inside that folder.
+2. Open the project in Cocos Creator 3.8.x, or restart Creator if the extension was already installed.
+3. Open **Cocos MCP Kit > MCP Server**. Confirm that the server says **Running** and copy the URL shown in the panel. The default listener is local (`127.0.0.1`); its port is derived from the project path, so use the displayed URL rather than a fixed port.
+4. Select your client in the panel and choose **Configure** for its MCP entry. **Configure + Skills** also installs the optional project skills. If your client needs stdio instead of a direct HTTP MCP URL, run the bundled bridge from the Cocos project root:
 
-The extension's panel also includes tool exposure and client configuration. For a local stdio bridge, run `node bin/cocos-mcp-kit.js --url <endpoint-from-panel>`. The project configuration file is `cocos-mcp-kit.config.json` in the Cocos project root. Automatic release updates and registry publishing are not configured for this fork yet; install local copies directly.
+   ```sh
+   node extensions/cocos-mcp-kit/bin/cocos-mcp-kit.js --url http://127.0.0.1:PORT/
+   ```
 
-## Development
+Replace `PORT` with the port shown in the panel. The bridge requires Node.js 18 or newer. Use **Cocos MCP Kit > Tool Exposure** to select `core`, `full`, or a custom tool set. `core` is the default; `full` includes scene editing and component tools such as `list_available_component_types`. Select `full` for the editing workflow below. The [generated tool reference](./docs/TOOLS.md) shows each tool's profile and access type. Project settings are stored in `cocos-mcp-kit.config.json` at the Cocos project root.
 
-- `npm run check` checks JavaScript syntax.
-- `npm test` runs the bundled tests.
-- [Tool reference](./docs/TOOLS.md) describes the current inherited tool surface.
-- [Development plan](./docs/PLAN.md) tracks planned work and validation status.
+## What it can do
 
-Node queries now reject ambiguous names or paths and report candidate UUIDs. When supplying multiple selectors, all of them must identify the same node; a stale UUID will not silently fall back to a name. `get_scene_info` and `get_hierarchy` default to at most 200 returned nodes and report truncation; `find_nodes` reports both the total match count and the returned count.
+| Area | Current capabilities | Examples |
+|---|---|---|
+| Project and assets | Inspect the editor, scenes, asset metadata, dependencies, logs, and script diagnostics. | `get_project_info`, `get_scene_info`, `list_assets`, `validate_asset_dependencies` |
+| Scene graph | Create and inspect nodes; move, reorder, duplicate, transform, or batch-edit ordinary scene nodes. | `find_nodes`, `move_node`, `reorder_node`, `batch_modify_nodes` |
+| Components and scripts | Discover registered types; attach, remove, list, inspect, and edit supported component fields. | `list_available_component_types`, `attach_script_component`, `list_components`, `set_component_property` |
+| UI and events | Create Canvas, Label, Button, and Sprite nodes; resolve SpriteFrames and manage Button click bindings. | `create_sprite`, `set_sprite_frame`, `list_button_click_events`, `bind_button_click_event` |
+| Prefabs | Inspect and create prefab assets, validate references, and work with linked instances through editor messages where supported. | `create_prefab_from_node`, `inspect_prefab_instance`, `apply_prefab_instance` |
+| Preview and evidence | Control supported preview modes, capture editor/preview images, and inspect runtime and build status. | `run_project_preview`, `capture_preview_screenshot`, `validate_scene` |
 
-`detect_node_type` classifies a node from its attached Cocos components as `camera`, `ui`, or `plain`. A node with both Camera and UI components returns `ambiguous` with both candidates and the matching components. Names are never used as type evidence; custom UI components without recognized built-in UI components may appear as `plain`.
+These are examples, not the complete catalog. Some entries come from the Funplay base; newer tools have separate Creator verification records under [docs/verification](./docs/verification). The tool profile controls what an MCP client can see, and read-only, mutating, and stateful tools are marked in the [tool reference](./docs/TOOLS.md).
 
-`batch_modify_nodes` applies 1-50 ordered local position, scale, Euler rotation, or active-state changes to ordinary scene nodes. Each step requires a UUID, path, or unique name and at least one complete field; use `onError: "stop"` (default) or `"continue"`. The report distinguishes attempted steps, failures, and the first stopping point. Failed steps report `rollbackStatus` as `not-needed`, `restored`, or `failed`. A failed step attempts to restore its own previous values, but earlier successful steps remain changed; save the scene to persist them. Linked prefab instances and arbitrary component properties are outside this tool's scope.
+## A safe editing workflow
 
-`add_component` accepts a registered Cocos Component class name on an ordinary scene node. It reports the requested component and any dependencies automatically added by Creator. Invalid classes and linked prefab hierarchies are rejected; Creator enforces duplicate-component rules. Save the scene to persist the result.
+1. Inspect the target with `get_scene_info`, `find_nodes`, or `list_components`. Prefer a node UUID or a unique path; ambiguous names are rejected, and multiple selectors must agree.
+2. For component work, call `list_available_component_types` or `inspect_component` before editing. The type catalog marks missing and non-Component classes; `attachable` means a registered Component subclass was found, not that every node will accept it.
+3. Make one bounded change with a tool such as `set_component_property`, `move_node`, or `set_sprite_frame`. For example, this sets a Label's top-level `string` field (`valueJson` is a JSON-encoded string):
 
-`remove_component` removes one component from an ordinary scene node by class name or zero-based index. When a class appears more than once, provide the index; if both selectors are supplied, they must match. It refuses to remove a required or referenced component, then waits for Creator to confirm removal. Linked prefab hierarchies are excluded. Save the scene to persist the result.
+   ```json
+   {
+     "uuid": "<node-uuid>",
+     "componentName": "cc.Label",
+     "propertyPath": "string",
+     "valueJson": "\"Hello Cocos\""
+   }
+   ```
 
-`list_components` returns bounded snapshots of component properties from the live scene, with CCClass direct-serialization metadata and field origins. Project scripts show only CCClass-declared fields by default; set `includeRuntimeFields: true` to inspect undeclared instance fields, which may include TypeScript private state and have unknown visibility and persistence. A property marked excluded can still persist through a backing field. Use `maxComponents` and `maxProperties` to control output, and compare saved assets after reopening when persistence matters. Project-defined getters are not invoked.
+4. Save the scene, reopen it in Creator, and inspect the node or resource again. For a visual or interactive change, also check the running preview. An MCP success response alone does not prove persistence or visible behavior.
 
-`list_available_component_types` checks the running Creator class registry against exported built-in Components and imported project script assets. It marks registered Component classes as `attachable`, non-Component candidates as `not-component`, unknown names as `not-found`, and scripts without a Component registration as `no-component-registration`. The latter can be an ordinary utility module; it does not by itself indicate a compile error. Use `candidateNames` for up to 32 exact class-name probes and `maxProjectScripts` (default 128, maximum 256) to bound the script inventory. `attachable` does not guarantee a particular node will accept the component.
+`set_component_property` currently accepts one supported top-level field at a time: CCClass-declared project-script fields and selected Cocos UI fields. It converts compatible Color, vector, node/component, and asset references, but rejects dot paths, undeclared script state, incompatible values, and linked prefab instances. SpriteFrame assignment can resize UITransform; set `contentSize` afterward if a custom size is needed. `reset_component_property_to_default` restores a declared CCClass default; `reset_component_property` only clears a field.
 
-`inspect_component` selects exactly one component by `componentName` or zero-based `index`; repeated classes require an index, and both selectors must agree when supplied together. It uses the same field selection and bounded live summaries as `list_components`, with up to 32 properties by default or 80 via `maxProperties`; undeclared project-script fields also require `includeRuntimeFields: true`. The former raw internal `data` dump is no longer returned. Inspect a saved scene again after reopening to confirm persistent references.
+The component catalog is bounded to 256 project scripts and 32 requested class-name probes. A script reported as `no-component-registration` may be a normal utility module, not a compilation failure. `list_components` shows CCClass-declared project-script fields by default; `includeRuntimeFields: true` reveals additional live fields without proving that they are public or persistent.
 
-`set_component_property` now accepts one top-level field at a time. It validates CCClass-declared project fields or a small Cocos UI whitelist, then converts JSON to the required Color, vector, node/component reference, or asset type. Use `{"uuid":"node-uuid"}` for a scene node and `{"assetUuid":"asset-uuid"}` for an imported asset. Dot paths, undeclared script state, incompatible types, and linked prefab instances are rejected. SpriteFrame assignment may also resize the node's UITransform; set `contentSize` afterward if a custom size is required. Save and reopen the scene to verify persistence.
+Linked prefab instance edits have tool-specific rules. Ordinary node move, duplicate, add/remove component, and property assignment reject linked prefab hierarchies; prefab instance apply/revert and Button click overrides use separate editor workflows. Check the relevant [tool description](./docs/TOOLS.md) and [verification record](./docs/verification) before relying on a persistent prefab change.
 
-In the `full` tool profile, `move_node` reparents an ordinary scene node using a `uuid`, `path`, or unique `name` and a destination `parentUuid`, `parentPath`, or unique `parentName`. It preserves world transform by default; set `keepWorldTransform: false` to preserve local transform. Use `parentPath: "/"` for the scene root. Linked prefab hierarchies require a separate editor-aware workflow.
+## Development and documentation
 
-`reorder_node` changes an ordinary node's zero-based index among its serializable siblings. Supply `uuid`, `path`, or a unique `name`, plus `index`; optional `parentUuid`, `parentPath`, or `parentName` checks that the node is still under the expected parent. Out-of-range indices and linked prefab hierarchies are rejected. Save the scene to persist the order.
-
-`duplicate_node` clones an ordinary scene node and its children beside the source. It gives the copy a unique name (`<source> Copy` by default), creates fresh node identities, and preserves Cocos-cloned component data and references. Linked prefab hierarchies and editor-only descendants are rejected; external references and other component types should be checked in the target project. Save the scene to persist the copy.
-
-`attach_script_component` attaches an imported TypeScript or JavaScript script asset to an ordinary scene node. Supply the node's `uuid`, `path`, or unique `name` and a `scriptTarget` asset path or UUID. The tool checks the asset type and resolves its registered Component class by script UUID, waits briefly for compilation, and leaves an existing instance unchanged. Save the scene to persist the component.
-
-`detach_script_component` removes that script's component from an ordinary scene node using the same `scriptTarget` identity. It refuses to remove a component referenced by another active-scene component property or Button click event; clear those references first. Save the scene to persist removal. Linked prefab instances and references outside the active scene require separate review.
-
-`reset_node_transform` resets an ordinary scene node's local position, rotation, and scale to `(0,0,0)`, identity rotation, and `(1,1,1)`. Pass `fields` to reset only selected values. It preserves the node's active state and rejects linked prefab hierarchies; use the separate prefab revert workflow for those. `reset_component_property` only clears a field and does not restore its Cocos class default.
-
-`reset_component_property_to_default` restores one public, writable, serialized component field to its declared CCClass default. Select the node and component by class name or index, then pass the top-level `propertyName`. Primitive values, Cocos ValueTypes, and small arrays are supported; fields without a declared default, accessors, and linked prefab instances are rejected. Save the scene to persist the result. The older `reset_component_property` tool remains a field-clearing operation.
-
-`create_sprite` accepts `spriteFrameTarget` as an imported image path (`assets/icons/arrow.png` or `db://assets/icons/arrow.png`), an ImageAsset UUID, or an exact SpriteFrame UUID. It resolves and checks the SpriteFrame subasset before creating a node. The existing `spriteFrameUuid` argument still accepts an exact SpriteFrame UUID; supply only one of the two arguments.
-
-To replace the image on an existing Sprite, call `set_sprite_frame` with its node `path`, `uuid`, or unique `name` and a `spriteFrameTarget`. The tool reports the previous and new SpriteFrame UUIDs. It rejects an invalid resource before changing the component.
-
-For a Button click binding, call `list_button_click_events` first. To remove one binding, pass its returned `index` as `eventIndex` and the same event object as `expectedEvent` to `unbind_button_click_event`. The tool refuses to remove a binding if the event at that index has changed.
-
-On a linked prefab instance, binding or unbinding a Button click event records a scene-level `clickEvents` override without changing the prefab asset. Save and reopen the scene, then check the instance bindings and preview input.
-
-Changing scenes, prefabs, scripts, or asset references requires a real Creator save-and-reopen check. A successful MCP response alone does not prove that a change persisted.
+Run `npm run check` for JavaScript syntax, `npm test` for the bundled tests, and `npm run docs:check` to verify the generated tool catalog. The [development plan](./docs/PLAN.md) distinguishes implemented tools from broader requirements still in progress; [verification reports](./docs/verification) record what was tested in Creator. This fork currently has no configured release update channel or package registry publication; install it locally.
 
 ## Attribution and license
 
-Thanks to the authors and contributors of [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) for releasing the code used as this project's foundation. Their `Copyright (c) 2026 Funplay` notice, complete MIT terms, and disclaimer are preserved in [LICENSE](./LICENSE). This is an independent fork and is not an official Funplay release. New dependencies and assets must be checked under their own licenses.
-
-Contribution and source-boundary rules are in [CONTRIBUTING.md](./CONTRIBUTING.md).
+Thanks to the authors and contributors of [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) for releasing the MIT-licensed foundation. The `Copyright (c) 2026 Funplay` notice, complete MIT terms, and disclaimer remain in [LICENSE](./LICENSE). Cocos MCP Kit is an independent fork, not an official Funplay release. See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution and source-boundary rules.

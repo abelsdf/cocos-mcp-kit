@@ -2,69 +2,63 @@
 
 [English](./README.md) | **简体中文**
 
-Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp) 开发的开源 Cocos Creator 编辑器扩展。它在编辑器中提供本地 MCP 服务，使兼容的开发助手能够查询并操作 Cocos 工程。
+Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容的客户端查询工程、操作场景与资源，并在编辑器中核对结果。项目基于 [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp)，使用独立的包名、扩展名和配置标识。
 
-本分支已采用独立的扩展与包标识。当前代码以 Funplay 工具为底座；[需求文档](./docs/REQUIREMENTS.md)和[开发计划](./docs/PLAN.md)记录新增能力的实施状态。场景与资源的实际效果还需在独立测试工程中验证。
+当前面向 Cocos Creator 3.8.x；下文引用的实际编辑器验收使用 **3.8.8**。工具已开放不代表所有工作流或 Creator 版本都通过验收。准确范围见[工具清单](./docs/TOOLS.md)、[开发计划](./docs/PLAN.md)和[需求文档](./docs/REQUIREMENTS.md)。
 
-## 本地安装
+## 快速开始
 
-1. 将本仓库复制到 Cocos Creator 工程的 `extensions/cocos-mcp-kit` 目录。
-2. 用 Cocos Creator 3.8.x 打开或重启该工程。
-3. 打开 **Cocos MCP Kit > MCP 服务**，按面板显示的地址配置 MCP 客户端。
+1. 将本仓库内容复制到 `<Cocos 工程>/extensions/cocos-mcp-kit`，确保 `package.json` 和 `scene.js` 直接位于该目录下。
+2. 用 Cocos Creator 3.8.x 打开工程；若已安装过扩展，请重启 Creator。
+3. 打开 **Cocos MCP Kit > MCP 服务**，确认状态为 **运行中**，复制面板显示的地址。服务默认只监听本机 `127.0.0.1`；端口根据工程路径生成，请以面板地址为准。
+4. 在面板中选择客户端并点击 **配置**，写入其 MCP 连接信息。**配置 + Skills** 还会安装可选的工程 Skills。如果客户端需要 stdio 而非直接连接 HTTP MCP 地址，可在 Cocos 工程根目录运行随附桥接程序：
 
-面板还提供工具开放范围和客户端配置。需要本地 stdio 桥接时，运行 `node bin/cocos-mcp-kit.js --url <面板中的地址>`。工程配置文件名为 `cocos-mcp-kit.config.json`。本分支尚未配置自动发布更新和注册表发布渠道，目前请使用本地安装。
+   ```sh
+   node extensions/cocos-mcp-kit/bin/cocos-mcp-kit.js --url http://127.0.0.1:PORT/
+   ```
 
-## 开发与验证
+请将 `PORT` 换成面板显示的端口。桥接程序需要 Node.js 18 或更高版本。通过 **Cocos MCP Kit > 工具开放范围** 选择 `core`、`full` 或自定义工具集。默认是 `core`；`full` 包含场景编辑和 `list_available_component_types` 等组件工具。执行下文的编辑流程前，请切换到 `full`。[工具清单](./docs/TOOLS.md)标明每项工具所属配置和操作类型。工程设置保存在工程根目录的 `cocos-mcp-kit.config.json`。
 
-- `npm run check`：检查 JavaScript 语法。
-- `npm test`：运行现有测试。
-- [工具清单](./docs/TOOLS.md)：当前继承的工具接口。
-- [开发计划](./docs/PLAN.md)：新增能力与验收状态。
+## 当前能力
 
-节点查询遇到重名或重路径时会拒绝任选一个节点，并返回候选 UUID。同时提供多个定位条件时，它们必须指向同一节点；失效的 UUID 不会静默回退到名称。`get_scene_info` 与 `get_hierarchy` 默认最多返回 200 个节点并报告截断情况；`find_nodes` 同时报告匹配总数和实际返回数。
+| 领域 | 已提供的能力 | 示例工具 |
+|---|---|---|
+| 工程与资源 | 查询编辑器、场景、资源元数据、引用、日志和脚本诊断。 | `get_project_info`、`get_scene_info`、`list_assets`、`validate_asset_dependencies` |
+| 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
+| 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
+| UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
+| 预制体 | 查询与创建预制体资源、检查引用，并在支持时通过编辑器消息处理关联实例。 | `create_prefab_from_node`、`inspect_prefab_instance`、`apply_prefab_instance` |
+| 预览与证据 | 控制受支持的预览模式、获取编辑器或预览图像、检查运行和构建状态。 | `run_project_preview`、`capture_preview_screenshot`、`validate_scene` |
 
-`detect_node_type` 根据节点上实际挂载的 Cocos 组件识别 `camera`（相机）、`ui`（具备 UI 组件）或 `plain`（普通节点）。相机与 UI 组件共存时返回 `ambiguous`，列出两个候选及命中的组件。节点名称不作为类型依据；若自定义 UI 组件未搭配可识别的内置 UI 组件，可能被归为 `plain`。
+上表仅列举主要能力，完整接口见[工具清单](./docs/TOOLS.md)。部分工具来自 Funplay 底座；新增功能的 Creator 实测记录位于 [docs/verification](./docs/verification)。工具配置决定客户端可见范围，工具清单也区分只读、修改和有状态操作。
 
-`batch_modify_nodes` 可按顺序修改 1—50 个普通场景节点的局部位置、缩放、欧拉旋转或激活状态。每项须用 UUID、路径或唯一名称定位，并给出至少一个完整字段；`onError` 可选 `"stop"`（默认）或 `"continue"`。返回值列出已尝试步骤、失败项及停止位置；失败项的 `rollbackStatus` 区分无需恢复、已恢复与恢复失败。失败步骤会尝试恢复自身原值，但此前成功的步骤保持修改；保存场景后才会持久化。不直接修改关联预制体实例，也不处理任意组件属性。
+## 推荐操作流程
 
-`add_component` 接受已注册的 Cocos 组件类名，为普通场景节点添加组件，并报告 Creator 自动补齐的依赖组件。无效类型和关联预制体层级会被拒绝；组件是否允许重复由 Creator 判断。保存场景后才会持久化。
+1. 先用 `get_scene_info`、`find_nodes` 或 `list_components` 检查目标。优先使用节点 UUID 或唯一层级路径；重名会报歧义，同时提供多个定位条件时必须指向同一节点。
+2. 修改组件前，用 `list_available_component_types` 或 `inspect_component` 核对类型和字段。类型目录会标记缺失类和非组件类；`attachable` 只表示找到已注册的 Component 子类，不保证任意节点都能挂载。
+3. 使用 `set_component_property`、`move_node` 或 `set_sprite_frame` 等工具做一次有界修改。以下参数将 Label 的顶层 `string` 字段设为文字；`valueJson` 是经过 JSON 编码的字符串：
 
-`remove_component` 按类名或从零开始的索引从普通场景节点精确移除一个组件。同类组件有多个时必须提供索引；同时提供类名和索引时两者须匹配。被其他组件依赖或引用的组件会被拒绝，调用后等待 Creator 确认移除。关联预制体层级暂不支持；保存场景后才会持久化。
+   ```json
+   {
+     "uuid": "<节点 UUID>",
+     "componentName": "cc.Label",
+     "propertyPath": "string",
+     "valueJson": "\"你好，Cocos\""
+   }
+   ```
 
-`list_components` 有界返回当前场景中组件属性的运行值快照，同时标明 CCClass 的直接序列化元数据与字段来源。项目脚本默认只列出 CCClass 声明的字段；`includeRuntimeFields: true` 可额外查看未声明的实例字段，其中可能包含 TypeScript 私有状态，不能据此推断公开性或持久化。标为不直接序列化的属性也可能经底层字段持久化；需要核对持久化效果时，应保存并重开后检查资源。可用 `maxComponents` 和 `maxProperties` 控制输出；不会调用项目自定义的 getter。
+4. 保存并在 Creator 中重新打开场景，再检查节点或资源。涉及画面或交互时，还要检查运行中的预览。仅有 MCP 成功返回不能证明持久化或视觉效果正确。
 
-`list_available_component_types` 对照运行中的 Creator 类注册表，列出内置组件和已导入的项目脚本资源。已注册的组件标为 `attachable`，非组件候选类标为 `not-component`，不存在的类名标为 `not-found`，没有组件注册的脚本标为 `no-component-registration`。最后一种也可能是正常的工具模块，不能仅凭此判断编译失败。`candidateNames` 最多探测 32 个精确类名；`maxProjectScripts` 默认 128、最多 256。`attachable` 只表示类本身可供挂载，具体节点仍可能因依赖、重复或预制体限制而拒绝。
+`set_component_property` 目前每次只接受一个受支持的顶层字段：CCClass 声明的项目脚本字段及少量 Cocos UI 字段。工具会转换兼容的 Color、向量、节点/组件和资源引用，但拒绝点路径、未声明的脚本状态、不兼容值与关联预制体实例。设置 SpriteFrame 可能使 UITransform 自动改变尺寸；如需自定义尺寸，可随后设置 `contentSize`。`reset_component_property_to_default` 恢复 CCClass 声明默认值；`reset_component_property` 只清除字段。
 
-`inspect_component` 通过 `componentName` 或从零开始的 `index` 精确选择一个组件；同类多实例须用索引消歧，同时提供两个条件时必须一致。它采用与 `list_components` 相同的字段筛选和有界摘要，默认返回最多 32 项，可用 `maxProperties` 提高到 80 项；项目脚本未声明字段也须显式设置 `includeRuntimeFields: true`。不再返回旧版内部对象的原始 `data` 展开。持久化引用仍须在保存并重开后复查。
+组件类型目录单次最多检查 256 个项目脚本和 32 个指定类名。脚本显示 `no-component-registration` 时，也可能只是正常的工具模块，不能直接认定为编译失败。`list_components` 默认只展示项目脚本的 CCClass 声明字段；设置 `includeRuntimeFields: true` 可额外查看运行字段，但不能据此断定它们公开或持久化。
 
-`set_component_property` 每次只设置一个顶层字段。工具仅允许 CCClass 声明的项目字段及少量 Cocos UI 白名单属性，并将 JSON 转成 Color、向量、节点/组件引用或资源类型；节点引用用 `{"uuid":"节点 UUID"}`，已导入资源用 `{"assetUuid":"资源 UUID"}`。点路径、未声明的脚本状态、不兼容类型及关联预制体实例会被拒绝。设置 SpriteFrame 可能同时改变 UITransform 尺寸；如需自定义尺寸，应在设置 SpriteFrame 后再设置 `contentSize`。保存并重开场景后核对持久化结果。
+关联预制体实例的修改规则因工具而异。普通节点移动、复制、组件增删及属性赋值会拒绝关联预制体层级；预制体实例应用/还原和 Button 点击事件覆盖使用单独的编辑器流程。依赖持久化结果前，请核对相应[工具说明](./docs/TOOLS.md)和[验收记录](./docs/verification)。
 
-在 `full` 工具配置中，`move_node` 可用 `uuid`、`path` 或唯一 `name` 定位普通场景节点，并用 `parentUuid`、`parentPath` 或唯一 `parentName` 指定新父节点。默认保持世界变换；设置 `keepWorldTransform: false` 则保持局部变换。`parentPath: "/"` 指向场景根节点。关联预制体层级需使用单独的编辑器工作流。
+## 开发与文档
 
-`reorder_node` 按可保存的同级节点从零开始的 `index` 调整普通场景节点顺序。用 `uuid`、`path` 或唯一 `name` 定位节点；可选的 `parentUuid`、`parentPath` 或 `parentName` 用于核对预期父节点。越界索引和关联预制体层级会被拒绝。保存场景后顺序才会持久化。
-
-`duplicate_node` 在原节点旁复制普通场景节点及其子节点。副本默认使用唯一名称 `<原名> Copy`，节点获得新标识，并保留由 Cocos 克隆的组件数据和引用。关联预制体层级、包含编辑器辅助节点的子树会被拒绝；外部引用及其他组件类型应在目标工程中核对。保存场景后副本才会持久化。
-
-`attach_script_component` 可将已导入的 TypeScript 或 JavaScript 脚本资产挂载到普通场景节点。用节点的 `uuid`、`path` 或唯一 `name` 定位，并通过 `scriptTarget` 提供脚本资产路径或 UUID。工具检查资源类型，按脚本 UUID 查找已注册的 Component 类，短暂等待编译完成，并避免重复挂载。保存场景后组件才会持久化。
-
-`detach_script_component` 使用同一 `scriptTarget` 精确移除普通场景节点上的脚本组件。若活动场景内的其他组件属性或 Button 点击事件仍引用它，工具会拒绝移除；应先清除引用。移除后保存场景。关联预制体实例和活动场景之外的引用需另行检查。
-
-`reset_node_transform` 可将普通场景节点的局部位置重置为 `(0,0,0)`、旋转重置为单位四元数、缩放重置为 `(1,1,1)`；传入 `fields` 可只重置部分字段。节点的激活状态不变，关联预制体层级需使用单独的还原流程。`reset_component_property` 只清除字段，不会恢复 Cocos 类默认值。
-
-`reset_component_property_to_default` 将单个公开、可写、可序列化的组件字段恢复为 CCClass 声明的默认值。用节点定位参数及组件类名或索引选择目标，再传入顶层字段名 `propertyName`。支持基本值、Cocos ValueType 和小型数组；未声明默认值、访问器及关联预制体实例会被拒绝。保存场景后生效持久化。旧的 `reset_component_property` 仍只执行字段清除。
-
-`create_sprite` 新增 `spriteFrameTarget`，可传入已导入图片的路径（如 `assets/icons/arrow.png` 或 `db://assets/icons/arrow.png`）、ImageAsset 主 UUID 或 SpriteFrame 子 UUID。工具先解析并检查 SpriteFrame 子资源，再创建节点。原有 `spriteFrameUuid` 仍接受明确的 SpriteFrame 子 UUID；两个参数只能选一个。
-
-修改已有 Sprite 的图片时，调用 `set_sprite_frame`，传入节点 `path`、`uuid` 或唯一 `name`，以及 `spriteFrameTarget`。工具返回修改前后的 SpriteFrame UUID；无效资源会在修改组件前报错。
-
-解绑 Button 点击事件时，先调用 `list_button_click_events`；把目标事件返回的 `index` 作为 `eventIndex`，并将该事件对象作为 `expectedEvent` 传给 `unbind_button_click_event`。如果该位置的事件已变化，工具会拒绝删除。
-
-对关联的预制体实例绑定或解绑 Button 点击事件时，工具会在场景中记录 `clickEvents` 实例覆盖，不修改预制体资源本体。保存并重开场景后，还需核对实例绑定及预览输入。
-
-修改场景、预制体、脚本或资源引用后，须在真实 Creator 中保存并重新打开验证；MCP 返回成功不能单独证明修改已持久化。
+运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。
 
 ## 致谢与许可
 
-感谢 [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) 的作者与贡献者以 MIT 许可证开放底座代码。本项目在 [LICENSE](./LICENSE) 中保留 `Copyright (c) 2026 Funplay`、完整 MIT 条款及免责声明。本项目是独立分支，不代表 Funplay 官方版本；新增依赖和资源须分别核查许可。
-
-开发约束与代码来源规则见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+感谢 [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) 的作者和贡献者以 MIT 许可证开放底座代码。[LICENSE](./LICENSE) 保留了 `Copyright (c) 2026 Funplay`、完整 MIT 条款及免责声明。Cocos MCP Kit 是独立分支，并非 Funplay 官方版本。贡献及代码来源约束见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
