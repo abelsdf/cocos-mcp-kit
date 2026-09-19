@@ -67,6 +67,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   inspect_asset_dependencies: '检查 Cocos 序列化资源中引用的 UUID 类型依赖。',
   validate_asset_dependencies: '验证单个资源或项目资源查询结果中的 UUID 类型依赖。',
   get_editor_selection: '返回 Cocos 编辑器当前选择的节点和资源。优先使用 get_selection 作为主要结构化选择读取工具。',
+  list_available_component_types: '列出当前 Creator 已注册的内置组件和项目脚本组件状态；可按类名探测缺失或非组件类型，结果有数量上限。',
   list_components: '有界列出组件运行值；项目脚本未声明字段须显式启用 includeRuntimeFields，其可见性和持久化状态未知。',
   inspect_component: '精确检查一个组件的有界运行值；项目脚本未声明字段须显式启用 includeRuntimeFields，同类多实例需指定索引。',
   add_component: '按已注册 Cocos 组件类名向普通场景节点添加组件，报告自动补齐的依赖组件；保存场景后持久化。',

@@ -177,6 +177,8 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - OP-046 增强 `inspect_component`：要求类名或非负整数索引精确选择一个组件，同类多实例需索引消歧；输出复用 OP-045 的有界属性运行值摘要与序列化标记，不再展开旧版内部原始 `data`。Creator 3.8.8 正式入口已核对 Sprite 颜色、SpriteFrame UUID、截断与错误选择；复杂工程的 `GameController`、`ArrowView`、UITransform、Sprite、Canvas、Widget、Camera 及关联预制体实例已逐类现场检查。重开后的新版正式入口确认 `GameController` 默认 4 个声明字段、显式启用后报告 37 个额外实例字段；`ArrowView` 默认 0 个声明字段、显式启用后返回 12 个实例字段。临时节点已删除，场景序列化与磁盘一致；`NestedPair` 为历史扁平化样本，不证明嵌套链接。详见 [组件详情验证](verification/COMPONENT_INSPECT_2026-09-19.md)与[复杂工程组件逐类验收](verification/COMPONENT_COMPLEX_CLASS_ACCEPTANCE_2026-09-19.md)。FR-05 总项保持未勾选。
 - OP-047 收紧 `set_component_property`：只允许单个顶层 CCClass 声明脚本字段或白名单内置 UI 属性，严格选择组件并转换 Color、Size/Vec、节点/组件及资源引用；拒绝关联预制体、未声明字段、点路径与不兼容类型。Creator 3.8.8 中已通过新版动态场景方法验证 UITransform、Sprite、Label 和 `GameController`，并对 UITransform/Sprite/脚本数值及引用完成保存、切换、重开验证。同步扩展、重开后，正式 `set_component_property` MCP 入口再次验证 6 类有效赋值和 5 类拒绝场景；临时节点清理后场景哈希及序列化内容恢复。设置 SpriteFrame 会被 Creator 连带调整 UITransform 尺寸，需后设 `contentSize`。关联预制体覆盖写入及更多类型仍未覆盖，详见 [组件属性赋值验证](verification/COMPONENT_PROPERTY_SET_2026-09-19.md)。FR-05 总项保持未勾选。
 
+- OP-048 新增只读 `list_available_component_types`：以运行中 Creator 的类注册表识别内置 Component，以 asset-db 脚本资源及压缩 UUID 对应的类注册识别项目组件；区分可挂载、无组件注册、未导入、无效资源、非组件及找不到的候选类。单次最多检查 256 个脚本和 32 个候选类，结果标明截断；无组件注册也可能是正常工具模块。Creator 3.8.8 `arrow-puzzle` 重开后的正式 MCP 入口已核对 103 个内置类型、9 个脚本资源中的 `ArrowView` 与 `GameController` 两个组件，以及非组件/不存在的候选类；1 条脚本上限正确截断，非法参数被拒绝。详见 [组件类型目录验证](verification/COMPONENT_TYPE_CATALOG_2026-09-19.md)。
+
 ## 阶段 2：构建器与 UI 模板
 
 关联：FR-05—FR-08、FR-17。依赖阶段 1。

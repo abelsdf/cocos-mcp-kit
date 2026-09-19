@@ -450,6 +450,31 @@ function resolveComponentClass(componentName) {
   return null;
 }
 
+function isAttachableComponentClass(type) {
+  return typeof type === 'function' && Boolean(Component) &&
+    type !== Component && Boolean(type.prototype) && type.prototype instanceof Component;
+}
+
+function componentTypeEntry(type, source, extra = {}) {
+  const registeredName = js && typeof js.getClassName === 'function' ? js.getClassName(type) || '' : '';
+  return {
+    name: registeredName || type.name || '',
+    registeredName,
+    source,
+    status: isAttachableComponentClass(type) ? 'attachable' : 'not-component',
+    ...extra,
+  };
+}
+
+function readComponentTypeCandidates(value) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > 32 || value.some((name) =>
+    typeof name !== 'string' || name.length > 128 || !/^[A-Za-z_$][\w.$-]*$/.test(name))) {
+    throw new Error('candidateNames must be an array of at most 32 non-empty class names (each at most 128 characters).');
+  }
+  return [...new Set(value)];
+}
+
 function findComponent(node, options = {}) {
   if (!node) {
     return null;
@@ -1754,6 +1779,66 @@ exports.methods = {
         if (!component) return { index, name: 'UnknownComponent', keys: [], properties: [] };
         return describeComponent(component, index, maxProperties, includeRuntimeFields);
       }),
+    };
+  },
+
+  async listAvailableComponentTypes(options = {}) {
+    const candidateNames = readComponentTypeCandidates(options.candidateNames);
+    const scriptAssets = options.scriptAssets == null ? [] : options.scriptAssets;
+    if (!Array.isArray(scriptAssets) || scriptAssets.length > 256) {
+      throw new Error('scriptAssets must contain at most 256 project script records.');
+    }
+    const builtinTypes = [];
+    const seenBuiltinNames = new Set();
+    for (const exportName of Object.keys(cc).sort()) {
+      let type;
+      try { type = cc[exportName]; } catch (_) { continue; }
+      if (!isAttachableComponentClass(type)) continue;
+      const entry = componentTypeEntry(type, 'builtin');
+      const name = entry.registeredName || `cc.${exportName}`;
+      if (!name.startsWith('cc.') || seenBuiltinNames.has(name)) continue;
+      seenBuiltinNames.add(name);
+      entry.name = name;
+      entry.status = js && typeof js.getClassByName === 'function' && js.getClassByName(name) === type
+        ? 'attachable' : 'unregistered';
+      builtinTypes.push(entry);
+    }
+    const uuidUtils = typeof Editor !== 'undefined' && Editor.Utils && Editor.Utils.UUID;
+    const seenScriptUuids = new Set();
+    const projectScripts = scriptAssets.map((asset) => {
+      const uuid = asset && asset.uuid;
+      if (typeof uuid !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)) {
+        throw new Error('Each script asset must have a full UUID.');
+      }
+      if (seenScriptUuids.has(uuid)) throw new Error(`Duplicate project script UUID: ${uuid}`);
+      seenScriptUuids.add(uuid);
+      const extra = { scriptUuid: uuid, assetUrl: typeof asset.url === 'string' ? asset.url.slice(0, 512) : '' };
+      if (asset.invalid === true) return { name: '', registeredName: '', source: 'project-script', status: 'invalid-asset', ...extra };
+      if (asset.imported === false) return { name: '', registeredName: '', source: 'project-script', status: 'not-imported', ...extra };
+      const classId = uuidUtils && typeof uuidUtils.compressUUID === 'function' ? uuidUtils.compressUUID(uuid) : null;
+      const type = classId && js && typeof js.getClassById === 'function' ? js.getClassById(classId) : null;
+      return type
+        ? componentTypeEntry(type, 'project-script', extra)
+        : { name: '', registeredName: '', source: 'project-script', status: 'no-component-registration', ...extra };
+    });
+    const candidates = candidateNames.map((name) => {
+      const type = resolveComponentClass(name);
+      return type
+        ? { query: name, ...componentTypeEntry(type, 'candidate') }
+        : { query: name, name: '', registeredName: '', source: 'candidate', status: 'not-found' };
+    });
+    const maxBuiltinTypes = 256;
+    return {
+      valueSource: 'live-class-registry-and-asset-db',
+      builtinTypes: builtinTypes.slice(0, maxBuiltinTypes),
+      builtinTypeCount: builtinTypes.length,
+      builtinTypesTruncated: builtinTypes.length > maxBuiltinTypes,
+      projectScripts,
+      projectScriptCount: Number.isInteger(options.projectScriptCount) ? options.projectScriptCount : projectScripts.length,
+      projectScriptsTruncated: options.projectScriptsTruncated === true,
+      candidates,
+      attachabilityNote: 'Attachable means a registered Component subclass was found; a specific node may still reject it because of dependencies, duplicates, or prefab restrictions.',
+      coverageNote: 'A script without component registration may be a valid non-component module or have a compilation problem. Project scripts are bounded asset-db results; runtime-only classes absent from assets appear only when explicitly probed in candidateNames.',
     };
   },
 

@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added bounded `list_available_component_types` discovery from the live Creator registry and project script assets, with explicit missing/non-Component states and exact class-name probes.
 - Restricted `set_component_property` to validated top-level CCClass fields and selected Cocos UI properties. Dot paths and undeclared script state are now rejected; Color, vector, scene reference, and asset values are converted to their Cocos types before assignment.
 - Established the independent Cocos MCP Kit extension, package, CLI, menu, and configuration identity.
 - Replaced planned account UI examples with game UI examples and removed a default upstream update source.

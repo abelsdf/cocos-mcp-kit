@@ -208,6 +208,45 @@ test('detectNodeType reuses strict node resolution and rejects scene root', asyn
   await assert.rejects(() => methods.detectNodeType({ name: target.name }), /Candidates:/);
 });
 
+test('available component types distinguish registered scripts and candidate failures', async () => {
+  const { methods } = createSceneMethods();
+  const result = await methods.listAvailableComponentTypes({
+    scriptAssets: [
+      { uuid: SCRIPT_UUID, url: 'db://assets/GameController.ts', imported: true },
+      { uuid: 'bbee4fb1-c9b5-4fde-9346-8ee1357142c8', url: 'db://assets/Invalid.ts', invalid: true },
+      { uuid: 'bbee4fb1-c9b5-4fde-9346-8ee1357142c9', url: 'db://assets/Pending.ts', imported: false },
+    ],
+    projectScriptCount: 4,
+    projectScriptsTruncated: true,
+    candidateNames: ['cc.Sprite', 'cc.NonComponent', 'cc.Missing', 'cc.Sprite'],
+  });
+  assert.equal(result.valueSource, 'live-class-registry-and-asset-db');
+  assert.equal(result.projectScriptCount, 4);
+  assert.equal(result.projectScriptsTruncated, true);
+  assert.deepEqual(Array.from(result.projectScripts, (entry) => entry.status),
+    ['attachable', 'invalid-asset', 'not-imported']);
+  assert.equal(result.projectScripts[0].name, 'ProbeComponent');
+  assert.deepEqual(Array.from(result.candidates, (entry) => entry.status),
+    ['attachable', 'not-component', 'not-found']);
+  assert.equal(result.candidates[0].query, 'cc.Sprite');
+  assert.match(result.attachabilityNote, /specific node/);
+  await assert.rejects(() => methods.listAvailableComponentTypes({ candidateNames: ['bad name'] }), /candidateNames/);
+  await assert.rejects(() => methods.listAvailableComponentTypes({ scriptAssets: [
+    { uuid: SCRIPT_UUID }, { uuid: SCRIPT_UUID },
+  ] }), /Duplicate project script UUID/);
+});
+
+test('available component types does not label a script without a Component class as attachable', async () => {
+  const missing = createSceneMethods(null).methods;
+  const absent = await missing.listAvailableComponentTypes({ scriptAssets: [{ uuid: SCRIPT_UUID }] });
+  assert.equal(absent.projectScripts[0].status, 'no-component-registration');
+  assert.match(absent.coverageNote, /valid non-component module/);
+
+  const nonComponent = createSceneMethods(NonComponent).methods;
+  const result = await nonComponent.listAvailableComponentTypes({ scriptAssets: [{ uuid: SCRIPT_UUID }] });
+  assert.equal(result.projectScripts[0].status, 'not-component');
+});
+
 test('listComponents bounds live values and distinguishes direct serialization metadata', async () => {
   const { scene, target, methods } = createSceneMethods();
   const probe = target.addComponent(ProbeComponent);

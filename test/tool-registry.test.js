@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 116);
+  assert.equal(tools.length, 117);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -182,6 +182,47 @@ test('list_components exposes bounded parameters and forwards the live query', a
   const result = await registry.callToolDetailed('list_components', args);
   assert.equal(result.value.data.valueSource, 'live-scene');
   assert.deepEqual(calls, [{ method: 'listComponents', args }]);
+});
+
+test('available component types exposes bounded read-only script and class queries', () => {
+  const registry = createRegistry('full');
+  const tool = registry.listTools().find((item) => item.name === 'list_available_component_types');
+  assert.ok(tool);
+  assert.equal(tool.annotations.readOnlyHint, true);
+  assert.equal(tool.inputSchema.properties.maxProjectScripts.maximum, 256);
+  assert.equal(tool.inputSchema.properties.candidateNames.maxItems, 32);
+  assert.equal(tool.inputSchema.properties.candidateNames.items.maxLength, 128);
+});
+
+test('available component types bounds asset-db records before forwarding to the scene', async (t) => {
+  const scripts = [
+    { uuid: '00000000-0000-0000-0000-000000000002', url: 'db://assets/Z.ts', imported: true },
+    { uuid: '00000000-0000-0000-0000-000000000001', url: 'db://assets/A.ts', invalid: true },
+  ];
+  mockEditorRequests(t, async (channel, method, payload) => {
+    assert.equal(channel, 'asset-db');
+    assert.equal(method, 'query-assets');
+    assert.deepEqual(payload, { pattern: 'db://assets/**', ccType: 'cc.Script' });
+    return scripts;
+  });
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => { calls.push({ method, args }); return { projectScriptCount: 2 }; } },
+  });
+  const result = await registry.callToolDetailed('list_available_component_types', {
+    maxProjectScripts: 1, candidateNames: ['cc.Sprite'],
+  });
+  assert.equal(result.value.data.projectScriptCount, 2);
+  assert.equal(calls[0].method, 'listAvailableComponentTypes');
+  assert.deepEqual(calls[0].args, {
+    candidateNames: ['cc.Sprite'],
+    scriptAssets: [{ uuid: scripts[1].uuid, url: scripts[1].url, imported: undefined, invalid: true }],
+    projectScriptCount: 2,
+    projectScriptsTruncated: true,
+  });
+  await assert.rejects(() => registry.callToolDetailed('list_available_component_types', { maxProjectScripts: 257 }),
+    /maxProjectScripts must be/);
+  assert.equal(calls.length, 1);
 });
 
 test('inspect_component requires exact selection and forwards the bounded query', async () => {

@@ -33,6 +33,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `list_components` 有界返回当前场景中组件属性的运行值快照，同时标明 CCClass 的直接序列化元数据与字段来源。项目脚本默认只列出 CCClass 声明的字段；`includeRuntimeFields: true` 可额外查看未声明的实例字段，其中可能包含 TypeScript 私有状态，不能据此推断公开性或持久化。标为不直接序列化的属性也可能经底层字段持久化；需要核对持久化效果时，应保存并重开后检查资源。可用 `maxComponents` 和 `maxProperties` 控制输出；不会调用项目自定义的 getter。
 
+`list_available_component_types` 对照运行中的 Creator 类注册表，列出内置组件和已导入的项目脚本资源。已注册的组件标为 `attachable`，非组件候选类标为 `not-component`，不存在的类名标为 `not-found`，没有组件注册的脚本标为 `no-component-registration`。最后一种也可能是正常的工具模块，不能仅凭此判断编译失败。`candidateNames` 最多探测 32 个精确类名；`maxProjectScripts` 默认 128、最多 256。`attachable` 只表示类本身可供挂载，具体节点仍可能因依赖、重复或预制体限制而拒绝。
+
 `inspect_component` 通过 `componentName` 或从零开始的 `index` 精确选择一个组件；同类多实例须用索引消歧，同时提供两个条件时必须一致。它采用与 `list_components` 相同的字段筛选和有界摘要，默认返回最多 32 项，可用 `maxProperties` 提高到 80 项；项目脚本未声明字段也须显式设置 `includeRuntimeFields: true`。不再返回旧版内部对象的原始 `data` 展开。持久化引用仍须在保存并重开后复查。
 
 `set_component_property` 每次只设置一个顶层字段。工具仅允许 CCClass 声明的项目字段及少量 Cocos UI 白名单属性，并将 JSON 转成 Color、向量、节点/组件引用或资源类型；节点引用用 `{"uuid":"节点 UUID"}`，已导入资源用 `{"assetUuid":"资源 UUID"}`。点路径、未声明的脚本状态、不兼容类型及关联预制体实例会被拒绝。设置 SpriteFrame 可能同时改变 UITransform 尺寸；如需自定义尺寸，应在设置 SpriteFrame 后再设置 `contentSize`。保存并重开场景后核对持久化结果。
