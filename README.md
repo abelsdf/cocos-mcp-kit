@@ -29,6 +29,8 @@ Node queries now reject ambiguous names or paths and report candidate UUIDs. Whe
 
 `add_component` accepts a registered Cocos Component class name on an ordinary scene node. It reports the requested component and any dependencies automatically added by Creator. Invalid classes and linked prefab hierarchies are rejected; Creator enforces duplicate-component rules. Save the scene to persist the result.
 
+`remove_component` removes one component from an ordinary scene node by class name or zero-based index. When a class appears more than once, provide the index; if both selectors are supplied, they must match. It refuses to remove a required or referenced component, then waits for Creator to confirm removal. Linked prefab hierarchies are excluded. Save the scene to persist the result.
+
 In the `full` tool profile, `move_node` reparents an ordinary scene node using a `uuid`, `path`, or unique `name` and a destination `parentUuid`, `parentPath`, or unique `parentName`. It preserves world transform by default; set `keepWorldTransform: false` to preserve local transform. Use `parentPath: "/"` for the scene root. Linked prefab hierarchies require a separate editor-aware workflow.
 
 `reorder_node` changes an ordinary node's zero-based index among its serializable siblings. Supply `uuid`, `path`, or a unique `name`, plus `index`; optional `parentUuid`, `parentPath`, or `parentName` checks that the node is still under the expected parent. Out-of-range indices and linked prefab hierarchies are rejected. Save the scene to persist the order.

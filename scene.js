@@ -355,14 +355,14 @@ function getEventHandlerComponentName(handler) {
   return '';
 }
 
-function findScriptComponentReferences(scene, targetNode, targetComponent, componentClass, classId) {
+function findComponentReferences(scene, targetNode, targetComponent, componentClass, classId) {
   const references = [];
   const className = (js && typeof js.getClassName === 'function' && js.getClassName(componentClass))
     || componentClass.name || '';
   let inspected = 0;
   const inspectValue = (value, location, seen, depth) => {
     if (++inspected > 100000) {
-      throw new Error('Script reference check exceeded 100000 values; no component was removed.');
+      throw new Error('Component reference check exceeded 100000 values; no component was removed.');
     }
     if (value === targetComponent) {
       references.push(location);
@@ -1637,22 +1637,81 @@ exports.methods = {
   },
 
   async removeComponent(options = {}) {
-    const node = findNode(options);
-    if (!node) {
-      throw new Error('Target node was not found.');
+    const hasIndex = Object.prototype.hasOwnProperty.call(options, 'index');
+    const componentName = typeof options.componentName === 'string' ? options.componentName.trim() : '';
+    if (hasIndex && (!Number.isInteger(options.index) || options.index < 0)) {
+      throw new Error('index must be a non-negative integer.');
     }
-
-    const component = findComponent(node, options);
+    if (options.componentName != null && !componentName) {
+      throw new Error('componentName must be a non-empty string.');
+    }
+    if (!hasIndex && !componentName) {
+      throw new Error('Provide componentName or index to identify the component to remove.');
+    }
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Removing a component directly from a linked prefab hierarchy is not supported by remove_component.');
+    }
+    const componentClass = componentName ? resolveComponentClass(componentName) : null;
+    const matchesName = (item) => item && item.constructor && (
+      item.constructor.name === componentName
+      || (js && typeof js.getClassName === 'function' && js.getClassName(item.constructor) === componentName)
+      || (componentClass && item.constructor === componentClass)
+    );
+    const matches = componentName ? node.components.filter(matchesName) : [];
+    if (!hasIndex && matches.length > 1) {
+      throw new Error(`Multiple ${componentName} components are attached; specify index to remove exactly one.`);
+    }
+    const component = hasIndex ? node.components[options.index] : matches[0];
     if (!component) {
       throw new Error('Target component was not found.');
     }
-
-    const componentName = component.constructor ? component.constructor.name : 'UnknownComponent';
+    if (componentName && !matchesName(component)) {
+      throw new Error(`Component at index ${options.index} does not match ${componentName}.`);
+    }
+    const componentIndex = node.components.indexOf(component);
+    const className = (js && typeof js.getClassName === 'function' && js.getClassName(component.constructor))
+      || component.constructor.name || 'UnknownComponent';
+    // Creator stores @requireComponent here; the post-removal check also catches an engine no-op if this changes.
+    const requiredBy = node.components.filter((other) => {
+      if (!other || other === component || !other.constructor) return false;
+      const declared = other.constructor._requireComponent;
+      const requiredClasses = Array.isArray(declared) ? declared : [declared];
+      return requiredClasses.some((requiredClass) => typeof requiredClass === 'function'
+        && component instanceof requiredClass
+        && !node.components.some((remaining) => remaining && remaining !== component && remaining instanceof requiredClass));
+    }).map((other) => (js && typeof js.getClassName === 'function' && js.getClassName(other.constructor))
+      || other.constructor.name || 'UnknownComponent');
+    if (requiredBy.length) {
+      throw new Error(`${className} is required by ${requiredBy.join(', ')} on this node; remove those components first.`);
+    }
+    const classId = js && typeof js.getClassId === 'function' ? js.getClassId(component.constructor) : '';
+    const references = findComponentReferences(scene, node, component, component.constructor, classId);
+    if (references.length) {
+      throw new Error(`${className} is still referenced (${references.length}): ${references.slice(0, 10).join(', ')}. Clear these references before removing it.`);
+    }
     node.removeComponent(component);
+    for (let attempt = 0; node.components.includes(component) && attempt < 20; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (getScene() !== scene) {
+      throw new Error('The active scene changed while waiting for the component to be removed.');
+    }
+    if (node.components.includes(component)) {
+      throw new Error('Creator did not finish removing the component within 1 second. It may still be required; inspect the node before saving or retrying.');
+    }
     return {
       removed: true,
       node: getNodePath(node),
-      component: componentName,
+      nodeUuid: node.uuid,
+      component: className,
+      index: componentIndex,
+      checkedReferences: true,
+      checkedDependencies: true,
     };
   },
 
@@ -1689,7 +1748,7 @@ exports.methods = {
       className,
     };
     if (!component) return { ...result, removed: false, notPresent: true };
-    const references = findScriptComponentReferences(scene, node, component, componentClass, classId);
+    const references = findComponentReferences(scene, node, component, componentClass, classId);
     if (references.length) {
       throw new Error(`Script component is still referenced (${references.length}): ${references.slice(0, 10).join(', ')}. Clear these references before removing it.`);
     }

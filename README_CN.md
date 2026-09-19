@@ -29,6 +29,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `add_component` 接受已注册的 Cocos 组件类名，为普通场景节点添加组件，并报告 Creator 自动补齐的依赖组件。无效类型和关联预制体层级会被拒绝；组件是否允许重复由 Creator 判断。保存场景后才会持久化。
 
+`remove_component` 按类名或从零开始的索引从普通场景节点精确移除一个组件。同类组件有多个时必须提供索引；同时提供类名和索引时两者须匹配。被其他组件依赖或引用的组件会被拒绝，调用后等待 Creator 确认移除。关联预制体层级暂不支持；保存场景后才会持久化。
+
 在 `full` 工具配置中，`move_node` 可用 `uuid`、`path` 或唯一 `name` 定位普通场景节点，并用 `parentUuid`、`parentPath` 或唯一 `parentName` 指定新父节点。默认保持世界变换；设置 `keepWorldTransform: false` 则保持局部变换。`parentPath: "/"` 指向场景根节点。关联预制体层级需使用单独的编辑器工作流。
 
 `reorder_node` 按可保存的同级节点从零开始的 `index` 调整普通场景节点顺序。用 `uuid`、`path` 或唯一 `name` 定位节点；可选的 `parentUuid`、`parentPath` 或 `parentName` 用于核对预期父节点。越界索引和关联预制体层级会被拒绝。保存场景后顺序才会持久化。

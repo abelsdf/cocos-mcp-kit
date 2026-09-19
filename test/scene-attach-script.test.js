@@ -32,6 +32,7 @@ class MockCanvas extends MockComponent {}
 class MockUITransform extends MockComponent {}
 class MockSprite extends MockComponent {}
 class MockBrokenSprite extends MockComponent {}
+MockSprite._requireComponent = MockUITransform;
 class MockCamera extends MockComponent {}
 class ReferenceComponent extends MockComponent { constructor() { super(); this.link = null; } }
 class NonComponent {}
@@ -107,6 +108,7 @@ function createSceneMethods(registeredClass = ProbeComponent) {
           js: {
             getClassById: () => registeredClass,
             getClassName: (Cls) => Cls.name,
+            getClassId: (Cls) => Cls.name,
             getClassByName: (name) => ({
               'cc.UITransform': MockUITransform,
               'cc.Sprite': MockSprite,
@@ -190,6 +192,65 @@ test('addComponent removes only dependencies introduced by a failed attachment',
   await assert.rejects(() => methods.addComponent({ uuid: target.uuid, componentName: 'cc.BrokenSprite' }), /construction failed/);
   assert.deepEqual(target.components, [existing]);
   assert.equal(existing.node, target);
+});
+
+test('removeComponent rejects required or referenced components and confirms removal', async () => {
+  const { target, methods } = createSceneMethods();
+  const sprite = target.addComponent(MockSprite);
+  const reference = target.addComponent(ReferenceComponent);
+  await assert.rejects(
+    () => methods.removeComponent({ uuid: target.uuid, componentName: 'cc.UITransform' }),
+    /required by MockSprite/
+  );
+  reference.link = sprite;
+  await assert.rejects(
+    () => methods.removeComponent({ uuid: target.uuid, componentName: 'cc.Sprite' }),
+    /still referenced/
+  );
+  reference.link = null;
+  const removedSprite = await methods.removeComponent({ uuid: target.uuid, componentName: 'cc.Sprite', index: 1 });
+  assert.equal(removedSprite.removed, true);
+  assert.equal(removedSprite.index, 1);
+  assert.equal(removedSprite.nodeUuid, target.uuid);
+  assert.equal(removedSprite.checkedDependencies, true);
+  assert.equal(target.components.includes(sprite), false);
+  const removedTransform = await methods.removeComponent({ uuid: target.uuid, componentName: 'cc.UITransform' });
+  assert.equal(removedTransform.index, 0);
+  assert.deepEqual(target.components, [reference]);
+});
+
+test('removeComponent requires an unambiguous matching selector and ordinary node', async () => {
+  const { scene, target, methods } = createSceneMethods();
+  target.addComponent(ProbeComponent);
+  target.addComponent(ProbeComponent);
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid }), /componentName or index/);
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid, index: -1 }), /non-negative integer/);
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid, index: 0.5 }), /non-negative integer/);
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid, componentName: 'ProbeComponent' }), /Multiple/);
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid, componentName: 'cc.Sprite', index: 0 }), /does not match/);
+  await assert.rejects(() => methods.removeComponent({ uuid: scene.uuid, index: 0 }), /Target scene node/);
+  await assert.rejects(() => methods.removeComponent({ uuid: 'stale', index: 0 }), /Target scene node/);
+  target._prefab = { instance: {} };
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid, index: 0 }), /linked prefab/);
+  assert.equal(target.components.length, 2);
+});
+
+test('removeComponent waits for deferred Creator removal before reporting success', async () => {
+  const { target, methods } = createSceneMethods();
+  const originalRemove = target.removeComponent.bind(target);
+  target.addComponent(ProbeComponent);
+  target.removeComponent = (component) => setTimeout(() => originalRemove(component), 20);
+  const result = await methods.removeComponent({ uuid: target.uuid, index: 0 });
+  assert.equal(result.removed, true);
+  assert.equal(target.components.length, 0);
+});
+
+test('removeComponent never reports success when Creator leaves the component attached', async () => {
+  const { target, methods } = createSceneMethods();
+  const component = target.addComponent(ProbeComponent);
+  target.removeComponent = () => {};
+  await assert.rejects(() => methods.removeComponent({ uuid: target.uuid, index: 0 }), /did not finish removing/);
+  assert.equal(target.components[0], component);
 });
 
 test('attachScriptComponent matches script identity and avoids duplicate components', async () => {

@@ -72,7 +72,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   add_component: '按已注册 Cocos 组件类名向普通场景节点添加组件，报告自动补齐的依赖组件；保存场景后持久化。',
   attach_script_component: '通过已导入脚本的资源路径或 UUID 挂载组件；按脚本身份校验已注册类，并避免重复挂载。',
   detach_script_component: '按已导入脚本的资源路径或 UUID 移除普通场景节点上的组件；存在场景内事件或组件属性引用时拒绝移除。',
-  remove_component: '按名称或索引从节点移除组件。',
+  remove_component: '按类名或索引从普通场景节点精确移除一个组件；检查依赖与引用，并等待 Creator 确认移除。',
   set_component_property: '使用 JSON 值按点路径设置组件属性。',
   reset_component_property: '按点路径清除组件属性；此操作不会还原 Cocos 类默认值，保存前应检查实际结果。',
   reset_component_property_to_default: '将公开、可写且可序列化的组件字段恢复为 CCClass 声明的默认值；拒绝关联预制体实例和不支持的默认对象。',
