@@ -5,7 +5,36 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { normalizePrefabTarget, savePrefabContent } = require('../lib/prefabs');
+const { duplicatePrefab, editPrefabJson, normalizePrefabTarget, savePrefabContent } = require('../lib/prefabs');
+
+function fixture(t) {
+  const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-prefab-edit-'));
+  t.after(() => fs.rmSync(projectPath, { recursive: true, force: true }));
+  const sourcePath = path.join(projectPath, 'assets', 'Prefabs', 'Source.prefab');
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.writeFileSync(sourcePath, JSON.stringify([
+    { __type__: 'cc.Prefab', _name: 'Source', data: { __id__: 1 } },
+    { __type__: 'cc.Node', _name: 'Source', _active: true, _children: [{ __id__: 2 }] },
+    { __type__: 'cc.Node', _name: 'Child', _active: true },
+  ], null, 2));
+  const sourceUrl = 'db://assets/Prefabs/Source.prefab';
+  const sourceInfo = { uuid: 'source-uuid', url: sourceUrl, type: 'cc.Prefab', imported: true };
+  const targetUrl = 'db://assets/Prefabs/Copy.prefab';
+  const targetInfo = { uuid: 'copy-uuid', url: targetUrl, type: 'cc.Prefab', imported: true };
+  const calls = [];
+  const request = async (method, dbUrl, value) => {
+    calls.push({ method, dbUrl });
+    const targetPath = path.join(projectPath, dbUrl.slice('db://'.length));
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, value);
+  };
+  const queryInfo = async (target) => {
+    if (target === sourceUrl) return sourceInfo;
+    if (target === targetUrl) return targetInfo;
+    throw new Error(`Unknown test asset: ${target}`);
+  };
+  return { projectPath, sourcePath, sourceUrl, sourceInfo, targetUrl, targetInfo, request, queryInfo, calls };
+}
 
 test('normalizePrefabTarget maps simple names into assets prefab paths', () => {
   const projectPath = path.resolve('/tmp/funplay-cocos-project');
@@ -69,4 +98,95 @@ test('savePrefabContent rejects names that Creator would normalize to the target
     /prefab asset name must match the target filename "ActualName"/
   );
   assert.equal(fs.existsSync(path.join(projectPath, 'assets', 'Generated', 'ActualName.prefab')), false);
+});
+
+test('duplicatePrefab creates an imported asset with a new UUID and preserved child hierarchy', async (t) => {
+  const f = fixture(t);
+  const result = await duplicatePrefab(f.projectPath, {
+    source: f.sourceUrl,
+    target: 'Prefabs/Copy',
+    request: f.request,
+    queryInfo: f.queryInfo,
+    settleDelayMs: 0,
+  });
+  assert.equal(result.method, 'asset-db:create-asset');
+  assert.equal(result.info.uuid, 'copy-uuid');
+  assert.deepEqual(f.calls, [{ method: 'create-asset', dbUrl: f.targetUrl }]);
+  const copied = JSON.parse(fs.readFileSync(path.join(f.projectPath, 'assets', 'Prefabs', 'Copy.prefab')));
+  assert.equal(copied[0]._name, 'Copy');
+  assert.equal(copied[1]._name, 'Copy');
+  assert.deepEqual(copied[1]._children, [{ __id__: 2 }]);
+  assert.equal(copied[2]._name, 'Child');
+  assert.equal(fs.existsSync(path.join(f.projectPath, 'assets', 'Prefabs', 'Copy.prefab.meta')), false);
+  assert.equal(JSON.parse(fs.readFileSync(f.sourcePath))[1]._name, 'Source');
+});
+
+test('duplicatePrefab rejects same target and asset-db failure without direct file fallback', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    () => duplicatePrefab(f.projectPath, { source: f.sourceUrl, target: 'Prefabs/Source', overwrite: true, queryInfo: f.queryInfo }),
+    /different assets/
+  );
+  await assert.rejects(
+    () => duplicatePrefab(f.projectPath, {
+      source: f.sourceUrl,
+      target: 'Prefabs/Copy',
+      queryInfo: f.queryInfo,
+      request: async () => { throw new Error('import rejected'); },
+    }),
+    /import rejected/
+  );
+  assert.equal(fs.existsSync(path.join(f.projectPath, 'assets', 'Prefabs', 'Copy.prefab')), false);
+});
+
+test('editPrefabJson saves through asset-db, keeps UUID, backs up original, and validates references', async (t) => {
+  const f = fixture(t);
+  const original = fs.readFileSync(f.sourcePath, 'utf8');
+  const validationCalls = [];
+  const result = await editPrefabJson(f.projectPath, {
+    target: f.sourceUrl,
+    jsonPath: '/1/_active',
+    valueJson: 'false',
+    createBackup: true,
+    request: f.request,
+    queryInfo: f.queryInfo,
+    validateReferences: async (projectPath, options) => {
+      validationCalls.push({ projectPath, options });
+      return { ok: true, missingCount: 0 };
+    },
+    settleDelayMs: 0,
+  });
+  assert.equal(result.method, 'asset-db:save-asset');
+  assert.equal(result.info.uuid, 'source-uuid');
+  assert.equal(result.oldValue, true);
+  assert.equal(result.validation.ok, true);
+  assert.deepEqual(f.calls, [{ method: 'save-asset', dbUrl: f.sourceUrl }]);
+  assert.deepEqual(validationCalls, [{ projectPath: f.projectPath, options: { target: f.sourceUrl } }]);
+  assert.equal(JSON.parse(fs.readFileSync(f.sourcePath, 'utf8'))[1]._active, false);
+  assert.equal(fs.readFileSync(`${f.sourcePath}.bak`, 'utf8'), original);
+});
+
+test('editPrefabJson rejects malformed changes before writing and retains original on save failure', async (t) => {
+  const f = fixture(t);
+  const original = fs.readFileSync(f.sourcePath, 'utf8');
+  await assert.rejects(
+    () => editPrefabJson(f.projectPath, { target: f.sourceUrl, jsonPath: '/1/missing/child', valueJson: '1', queryInfo: f.queryInfo }),
+    /jsonPath does not exist/
+  );
+  await assert.rejects(
+    () => editPrefabJson(f.projectPath, { target: f.sourceUrl, jsonPath: '/0/_name', valueJson: '"Wrong"', queryInfo: f.queryInfo }),
+    /must match the target filename/
+  );
+  await assert.rejects(
+    () => editPrefabJson(f.projectPath, {
+      target: f.sourceUrl,
+      jsonPath: '/1/_active',
+      valueJson: 'false',
+      queryInfo: f.queryInfo,
+      request: async () => { throw new Error('save rejected'); },
+    }),
+    /save rejected/
+  );
+  assert.equal(fs.readFileSync(f.sourcePath, 'utf8'), original);
+  assert.equal(fs.existsSync(`${f.sourcePath}.bak`), false);
 });

@@ -15,3 +15,7 @@
 平台依据：[Node.js 文件系统文档](https://nodejs.org/api/fs.html)说明 Windows 文件模式仅能操作写权限，且 junction 只指向目录；[Microsoft CreateSymbolicLinkW 文档](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw)说明非提升进程创建符号链接的标志依赖开发者模式。本轮没有更改 Windows 系统设置。
 
 相关测试 68 项中 66 通过、2 跳过；`npm run check`、工具文档检查和 `git diff --check` 通过。本轮只调整测试和测试 ZIP 样本工具，没有修改产品代码或系统权限。
+
+## 外部 PowerShell 补充验证（2026-09-19）
+
+用户在项目目录执行 `node --test test/client-config.test.js test/project-prompts.test.js`，提供的完整测试摘要为 **23 项通过、0 失败、0 跳过**。原先跳过的“OpenCode config writes retain a symlink and the real file permissions”及“prompt discovery rejects symbolic-link files”均实际执行并通过。这证明该外部 PowerShell 环境可创建测试所需的文件符号链接；不能据此反推当时 Codex 进程的权限或开发者模式设置。随后提交前在当前 Codex 会话执行全量 `node --test`，**273 项通过、0 失败、0 跳过**；原两项也在全量运行中通过。未调查环境权限变化的具体原因。
