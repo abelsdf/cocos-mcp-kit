@@ -73,6 +73,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   remove_component: '按名称或索引从节点移除组件。',
   set_component_property: '使用 JSON 值按点路径设置组件属性。',
   reset_component_property: '按点路径清除组件属性；此操作不会还原 Cocos 类默认值，保存前应检查实际结果。',
+  reset_component_property_to_default: '将公开、可写且可序列化的组件字段恢复为 CCClass 声明的默认值；拒绝关联预制体实例和不支持的默认对象。',
   create_canvas: '创建带有 UITransform 的 Cocos Canvas 节点。',
   create_label: '在父节点下创建 UI Label 节点。',
   create_button: '创建带有子 Label 的 UI Button 节点。',

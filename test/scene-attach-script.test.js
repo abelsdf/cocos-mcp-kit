@@ -12,7 +12,21 @@ const SCRIPT_UUID = 'bbee4fb1-c9b5-4fde-9346-8ee1357142c7';
 class MockComponent {
   constructor() { this.node = null; }
 }
-class ProbeComponent extends MockComponent {}
+class MockValueType {
+  constructor(x, y, z) { this.x = x; this.y = y; this.z = z; }
+  clone() { return new MockValueType(this.x, this.y, this.z); }
+}
+class ProbeComponent extends MockComponent {
+  constructor() {
+    super();
+    this.count = 17;
+    this.title = 'ready';
+    this.offset = new MockValueType(3, 4, 5);
+    this.steps = [1, 2];
+    this.unsupported = { nested: 1 };
+    this.transient = 4;
+  }
+}
 class MockButton extends MockComponent { constructor() { super(); this.clickEvents = []; } }
 class ReferenceComponent extends MockComponent { constructor() { super(); this.link = null; } }
 class NonComponent {}
@@ -56,7 +70,23 @@ function createSceneMethods(registeredClass = ProbeComponent) {
       ? {
           Node: MockNode,
           Component: MockComponent,
+          ValueType: MockValueType,
+          Vec3: MockValueType,
+          Quat: class MockQuat {},
+          Color: class MockColor {},
           Button: MockButton,
+          CCClass: {
+            attr: (Cls, key) => Cls === ProbeComponent ? ({
+              count: { default: 17 },
+              title: { default: 'ready' },
+              offset: { default: () => new MockValueType(3, 4, 5) },
+              steps: { default: () => [1, 2] },
+              unsupported: { default: { nested: 1 } },
+              transient: { default: 4, serializable: false },
+              hidden: { default: 4, visible: false },
+            }[key] || {}) : {},
+            getDefault: (value) => typeof value === 'function' ? value() : value,
+          },
           CCObjectFlags: { DontSave: 8 },
           director: { getScene: () => scene },
           js: {
@@ -176,4 +206,44 @@ test('detachScriptComponent rejects invalid targets and linked prefab nodes befo
   target._prefab = { instance: {} };
   await assert.rejects(() => methods.detachScriptComponent({ uuid: target.uuid, scriptUuid: SCRIPT_UUID }), /linked prefab/);
   assert.equal(target.components.length, 1);
+});
+
+test('resetComponentPropertyToDefault restores declared scalar, ValueType and array defaults', async () => {
+  const { methods, target } = createSceneMethods();
+  const script = target.addComponent(ProbeComponent);
+  script.count = 42;
+  script.offset = new MockValueType(9, 8, 7);
+  script.steps = [7, 8];
+  const count = await methods.resetComponentPropertyToDefault({ uuid: target.uuid, componentName: 'ProbeComponent', propertyName: 'count' });
+  assert.equal(count.reset, true);
+  assert.equal(count.before, 42);
+  assert.equal(count.value, 17);
+  assert.equal(script.count, 17);
+  const offset = await methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'offset' });
+  assert.equal(offset.reset, true);
+  assert.deepEqual([script.offset.x, script.offset.y, script.offset.z], [3, 4, 5]);
+  const steps = await methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'steps' });
+  assert.equal(steps.reset, true);
+  assert.deepEqual(Array.from(script.steps), [1, 2]);
+  const again = await methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'count' });
+  assert.equal(again.reset, false);
+  assert.equal(again.alreadyDefault, true);
+});
+
+test('resetComponentPropertyToDefault rejects missing metadata, unsafe fields, mismatched selectors and linked prefabs', async () => {
+  const { methods, target } = createSceneMethods();
+  const script = target.addComponent(ProbeComponent);
+  script.count = 42;
+  for (const propertyName of ['offset.x', '_private', '__proto__']) {
+    await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName }), /public top-level/);
+  }
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, propertyName: 'count' }), /componentName or index/);
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, componentName: 'Other', propertyName: 'count' }), /does not match/);
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'enabled' }), /No editable serialized/);
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'hidden' }), /No editable serialized/);
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'transient' }), /No editable serialized/);
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'unsupported' }), /not a supported/);
+  target._prefab = { instance: {} };
+  await assert.rejects(() => methods.resetComponentPropertyToDefault({ uuid: target.uuid, index: 0, propertyName: 'count' }), /linked prefab/);
+  assert.equal(script.count, 42);
 });

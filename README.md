@@ -35,6 +35,8 @@ In the `full` tool profile, `move_node` reparents an ordinary scene node using a
 
 `reset_node_transform` resets an ordinary scene node's local position, rotation, and scale to `(0,0,0)`, identity rotation, and `(1,1,1)`. Pass `fields` to reset only selected values. It preserves the node's active state and rejects linked prefab hierarchies; use the separate prefab revert workflow for those. `reset_component_property` only clears a field and does not restore its Cocos class default.
 
+`reset_component_property_to_default` restores one public, writable, serialized component field to its declared CCClass default. Select the node and component by class name or index, then pass the top-level `propertyName`. Primitive values, Cocos ValueTypes, and small arrays are supported; fields without a declared default, accessors, and linked prefab instances are rejected. Save the scene to persist the result. The older `reset_component_property` tool remains a field-clearing operation.
+
 `create_sprite` accepts `spriteFrameTarget` as an imported image path (`assets/icons/arrow.png` or `db://assets/icons/arrow.png`), an ImageAsset UUID, or an exact SpriteFrame UUID. It resolves and checks the SpriteFrame subasset before creating a node. The existing `spriteFrameUuid` argument still accepts an exact SpriteFrame UUID; supply only one of the two arguments.
 
 To replace the image on an existing Sprite, call `set_sprite_frame` with its node `path`, `uuid`, or unique `name` and a `spriteFrameTarget`. The tool reports the previous and new SpriteFrame UUIDs. It rejects an invalid resource before changing the component.

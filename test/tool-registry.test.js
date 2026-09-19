@@ -108,7 +108,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 113);
+  assert.equal(tools.length, 114);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
@@ -130,6 +130,24 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'attach_script_component'), true);
   assert.equal(tools.some((tool) => tool.name === 'detach_script_component'), true);
   assert.equal(tools.some((tool) => tool.name === 'reset_node_transform'), true);
+  assert.equal(tools.some((tool) => tool.name === 'reset_component_property_to_default'), true);
+});
+
+test('reset_component_property_to_default forwards the exact selector and field', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { reset: true, value: 17 };
+    } },
+  });
+  const result = await registry.callToolDetailed('reset_component_property_to_default', {
+    uuid: 'target-node', componentName: 'ProbeComponent', propertyName: 'count',
+  });
+  assert.equal(result.value.data.value, 17);
+  assert.deepEqual(calls, [{ method: 'resetComponentPropertyToDefault', args: {
+    uuid: 'target-node', componentName: 'ProbeComponent', propertyName: 'count',
+  } }]);
 });
 
 test('reset_node_transform forwards the selected fields to the scene bridge', async () => {

@@ -13,9 +13,9 @@
 | C：原生适配待核验 | 66 | 手册只描述交互或Funplay有候选消息；尚缺确切原生契约/持久化证据，不能承诺行为一致。 |
 | D：可提供替代实现 | 15 | 自有面板/剪贴板等功能可实现；替代交互不代表与原生视图或格式兼容。 |
 
-A+B共151项有基础API或组合路线，C类66项需继续验证，D类15项采用明确替代路线。**全部232项的运行验证状态均为“未测试”**。这些类别不是工期估算、实现进度、成功率或完整Pro替代承诺。
+A+B共151项有基础API或组合路线，C类66项需继续验证，D类15项采用明确替代路线。**原始逐项 JSON 的232项运行验证状态均为“未测试”基线**；后续部分实测进展记录在本表对应行及 `docs/verification`。这些类别不是工期估算、实现进度、成功率或完整Pro替代承诺。
 
-官方依据与本地证据见[分析报告的来源表](../COCOS_DOCS_ANALYSIS.md#来源与证据)。机器可读记录见[逐项JSON](./pro-api-feasibility.json)，包含单项限制、优先级、候选入口、缺口及运行验证状态。当前没有任何运行通过证据。
+官方依据与本地证据见[分析报告的来源表](../COCOS_DOCS_ANALYSIS.md#来源与证据)。机器可读记录见[逐项JSON](./pro-api-feasibility.json)，其中验证状态仍保留最初的未测试基线；本表部分行及 `docs/verification` 已补充后续 Creator 实测证据，不应把基线状态当作当前全部功能的运行结论。
 
 ## 工具分组统计
 
@@ -94,7 +94,7 @@ A+B共151项有基础API或组合路线，C类66项需继续验证，D类15项�
 | OP-037 | `cut` | D | FR-05 / P1 | `execute_scene_script`、`execute_editor_script` | 实现自有节点剪贴板格式和复制/粘贴重映射；剪切在粘贴成功后删除。不能承诺与原生节点剪贴板互通。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node)、[S09](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/clipboard.html) |
 | OP-038 | `mount_script` | B | FR-04 / P0 | `attach_script_component` | 普通场景节点已实现：校验导入的 cc.Script 资产，按 UUID 查找已注册 Component 类、等待编译并避免重复挂载。Creator 3.8.8 已验证保存重开与序列化脚本类 ID；关联预制体层级仍不支持直接挂载。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node) |
 | OP-039 | `remove_script` | A | FR-05 / P0 | `detach_script_component` | 普通场景节点已实现：按已导入脚本 UUID 精确定位，检查活动场景内 Button 点击事件和组件属性引用，有引用则拒绝；等待 Creator 完成移除。3.8.8 已验证保存、切换、重开与磁盘序列化。跨场景/预制体资源引用及关联预制体层级未覆盖。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node) |
-| OP-040 | `reset` | B | FR-05 / P0 | `reset_node_transform`（部分） | 普通节点的局部位置、旋转、缩放已支持整组或按字段重置，3.8.8 已验证保存重开；关联预制体层级被拒绝。`reset_component_property` 仅清除字段，并非类默认值重置；后者及预制体实例还原需分别完成。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node) |
+| OP-040 | `reset` | B | FR-05 / P0 | `reset_node_transform`、`reset_component_property_to_default`（部分） | 普通节点局部变换和具有 CCClass 默认元数据的公开、可写、可序列化组件字段已支持分别重置；3.8.8 已验证保存重开。旧 `reset_component_property` 仅清除字段。关联预制体层级被拒绝，实例还原及更多内置组件类别需单独验收。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node)、[CCClass API](https://docs.cocos.com/creator/3.8/api/zh/namespace/CCClass) |
 | OP-041 | `detect_type` | B | FR-04 / P0 | `inspect_node` | 按组件组合识别 UI/Camera/普通节点，输出规则与歧义。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node) |
 | OP-042 | `batch_modify` | B | FR-20 / P1 | `set_node_transform` | 串行执行解析后的属性修改，记录逐项结果与遇错策略。 | [S04](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/scene-script.html)、[S05](https://docs.cocos.com/creator/3.8/api/zh/class/Node) |
 

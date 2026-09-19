@@ -35,6 +35,8 @@ Cocos MCP Kit 是基于 [Funplay MCP for Cocos 0.6.3](https://github.com/Funplay
 
 `reset_node_transform` 可将普通场景节点的局部位置重置为 `(0,0,0)`、旋转重置为单位四元数、缩放重置为 `(1,1,1)`；传入 `fields` 可只重置部分字段。节点的激活状态不变，关联预制体层级需使用单独的还原流程。`reset_component_property` 只清除字段，不会恢复 Cocos 类默认值。
 
+`reset_component_property_to_default` 将单个公开、可写、可序列化的组件字段恢复为 CCClass 声明的默认值。用节点定位参数及组件类名或索引选择目标，再传入顶层字段名 `propertyName`。支持基本值、Cocos ValueType 和小型数组；未声明默认值、访问器及关联预制体实例会被拒绝。保存场景后生效持久化。旧的 `reset_component_property` 仍只执行字段清除。
+
 `create_sprite` 新增 `spriteFrameTarget`，可传入已导入图片的路径（如 `assets/icons/arrow.png` 或 `db://assets/icons/arrow.png`）、ImageAsset 主 UUID 或 SpriteFrame 子 UUID。工具先解析并检查 SpriteFrame 子资源，再创建节点。原有 `spriteFrameUuid` 仍接受明确的 SpriteFrame 子 UUID；两个参数只能选一个。
 
 修改已有 Sprite 的图片时，调用 `set_sprite_frame`，传入节点 `path`、`uuid` 或唯一 `name`，以及 `spriteFrameTarget`。工具返回修改前后的 SpriteFrame UUID；无效资源会在修改组件前报错。

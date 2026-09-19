@@ -635,6 +635,18 @@ function resetValueByPath(target, propertyPath) {
   }
 }
 
+function copyComponentDefault(value, depth = 0) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (cc.ValueType && value instanceof cc.ValueType && typeof value.clone === 'function') {
+    return value.clone();
+  }
+  if (Array.isArray(value) && depth < 4 && value.length <= 100) {
+    return value.map((item) => copyComponentDefault(item, depth + 1));
+  }
+  throw new Error('This component default is not a supported primitive, Cocos ValueType, or bounded array.');
+}
+
 function loadAssetByUuid(uuid) {
   return new Promise((resolve, reject) => {
     assetManager.loadAny(uuid, (error, asset) => {
@@ -1495,6 +1507,76 @@ exports.methods = {
       propertyPath: options.propertyPath,
       value: plain(getValueByPath(component, options.propertyPath)),
     };
+  },
+
+  async resetComponentPropertyToDefault(options = {}) {
+    const propertyName = String(options.propertyName || '').trim();
+    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(propertyName) ||
+        ['constructor', 'prototype', '__proto__'].includes(propertyName)) {
+      throw new Error('propertyName must be a public top-level component field name.');
+    }
+    if (!Number.isInteger(options.index) && !String(options.componentName || '').trim()) {
+      throw new Error('componentName or index is required to select the component.');
+    }
+    const scene = getScene();
+    const node = findNode(options);
+    if (!node || node === scene) {
+      throw new Error('Target scene node was not found. Provide its uuid, path, or unique name.');
+    }
+    if (hasLinkedPrefabAncestor(node, scene)) {
+      throw new Error('Resetting a component on a linked prefab hierarchy requires the separate prefab revert workflow.');
+    }
+    const component = findComponent(node, options);
+    if (!component) throw new Error('Target component was not found.');
+    const componentName = component.constructor && component.constructor.name || 'UnknownComponent';
+    if (Number.isInteger(options.index) && options.componentName &&
+        findComponent(node, { componentName: options.componentName }) !== component) {
+      throw new Error(`Component at index does not match componentName: ${options.componentName}.`);
+    }
+    const classMetadata = cc.CCClass;
+    if (!classMetadata || typeof classMetadata.attr !== 'function' || typeof classMetadata.getDefault !== 'function') {
+      throw new Error('Cocos CCClass default metadata is unavailable in the scene process.');
+    }
+    const attrs = classMetadata.attr(component.constructor, propertyName);
+    if (!attrs || !Object.prototype.hasOwnProperty.call(attrs, 'default') ||
+        attrs.serializable === false || attrs.readonly === true || attrs.visible === false) {
+      throw new Error(`No editable serialized class default is declared for ${componentName}.${propertyName}.`);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(component, propertyName);
+    if (!descriptor || descriptor.writable !== true || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new Error(`${componentName}.${propertyName} is not a writable own data field.`);
+    }
+    const defaultValue = copyComponentDefault(classMetadata.getDefault(attrs.default));
+    const expected = JSON.stringify(plain(defaultValue));
+    const previous = component[propertyName];
+    const before = plain(previous);
+    const result = {
+      nodeUuid: node.uuid,
+      nodePath: getNodePath(node),
+      component: componentName,
+      componentIndex: node.components.indexOf(component),
+      propertyName,
+      before,
+      defaultValue: plain(defaultValue),
+    };
+    if (JSON.stringify(before) === expected) {
+      return { ...result, reset: false, alreadyDefault: true, value: before };
+    }
+    try {
+      component[propertyName] = defaultValue;
+      const value = plain(component[propertyName]);
+      if (JSON.stringify(value) !== expected) {
+        throw new Error('Creator did not apply the declared class default.');
+      }
+      return { ...result, reset: true, alreadyDefault: false, value };
+    } catch (error) {
+      try {
+        component[propertyName] = previous;
+      } catch (restoreError) {
+        throw new Error(`${error.message} Failed to restore the original property: ${restoreError.message}`);
+      }
+      throw error;
+    }
   },
 
   async instantiatePrefab(options = {}) {
