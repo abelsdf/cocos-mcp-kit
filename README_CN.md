@@ -55,6 +55,10 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 关联预制体实例的修改规则因工具而异。普通节点移动、复制、组件增删及属性赋值会拒绝关联预制体层级；预制体实例应用/还原和 Button 点击事件覆盖使用单独的编辑器流程。依赖持久化结果前，请核对相应[工具说明](./docs/TOOLS.md)和[验收记录](./docs/verification)。
 
+使用 `bind_button_click_event` 时，目标节点必须恰好有一个匹配组件，处理方法须由该组件提供，不能是引擎生命周期方法。`customEventData` 是最长 1024 字符的原样字符串。绑定或解绑前先列出已有事件；重复绑定会报告重复，不会再增加一条。`batch_bind_button_click_events` 一次按顺序处理最多 50 条绑定，可选择遇错停止或继续并逐项返回结果；后续失败不会整体撤销先前成功项。
+
+`list_prefabs` 按稳定顺序分页列出预制体资源（默认每页 50 项，最多 100 项）。设置 `includeMetadata` 可查询精简的 `.meta` 状态，设置 `includeSceneInstances` 可关联当前场景中的实例根节点；若场景扫描被截断，实例数量只是部分结果。
+
 ## 开发与文档
 
 运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。

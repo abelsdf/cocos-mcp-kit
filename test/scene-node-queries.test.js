@@ -120,6 +120,36 @@ function sceneMethods() {
   return { scene, first, second, camera, methods: exports.methods };
 }
 
+test('prefab instance link catalog counts only asset-linked roots and reports scan limits', async () => {
+  const { first, second, methods } = sceneMethods();
+  first._prefab = { asset: { uuid: 'prefab-a', name: 'A' }, root: first, instance: {} };
+  first.children[0]._prefab = { asset: { uuid: 'prefab-a', name: 'A' }, root: first, fileId: 'prefab-child-only' };
+  const nested = new MockNode('Nested', 'nested-root');
+  nested.parent = first.children[0];
+  nested._prefab = { asset: { uuid: 'prefab-nested', name: 'Nested' }, root: nested, instance: {} };
+  second._prefab = { asset: { uuid: 'prefab-b', name: 'B' }, root: second, instance: {} };
+  const hidden = new MockNode('Hidden', 'hidden');
+  hidden._objFlags = 8;
+  hidden._prefab = { asset: { uuid: 'not-saved' }, root: hidden, instance: {} };
+  hidden.parent = second;
+
+  const full = await methods.listPrefabInstanceLinks();
+  assert.equal(full.linkedCount, 3);
+  assert.deepEqual(Array.from(full.instances, (item) => item.assetUuid),
+    ['prefab-a', 'prefab-nested', 'prefab-b']);
+  assert.equal(full.instances[1].nodePath, 'Canvas/Button/Nested');
+  assert.equal(full.truncated, false);
+
+  const bounded = await methods.listPrefabInstanceLinks({ maxInstances: 1 });
+  assert.equal(bounded.linkedCount, 3);
+  assert.equal(bounded.instances.length, 1);
+  assert.equal(bounded.truncatedByInstances, true);
+  const shallow = await methods.listPrefabInstanceLinks({ maxNodes: 1 });
+  assert.equal(shallow.scannedNodes, 1);
+  assert.equal(shallow.truncatedByNodes, true);
+  await assert.rejects(() => methods.listPrefabInstanceLinks({ maxNodes: 0 }), /maxNodes/);
+});
+
 test('scene hierarchy reports count and depth truncation', async () => {
   const { methods } = sceneMethods();
   const limited = await methods.getHierarchy({ maxDepth: 4, maxNodes: 2 });

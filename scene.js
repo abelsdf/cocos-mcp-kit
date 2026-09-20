@@ -520,6 +520,22 @@ function getEventHandlerComponentName(handler) {
   return '';
 }
 
+const RESERVED_EVENT_METHODS = new Set([
+  'constructor', 'onLoad', 'onEnable', 'start', 'update', 'lateUpdate',
+  'onDisable', 'onDestroy', '__preload', 'resetInEditor', 'onFocusInEditor',
+  'onLostFocusInEditor', 'onRestore',
+]);
+
+function resolveButtonEventMethod(component, handlerName) {
+  if (RESERVED_EVENT_METHODS.has(handlerName)) return null;
+  for (let current = component; current && current !== Object.prototype &&
+      (!Component || current !== Component.prototype); current = Object.getPrototypeOf(current)) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, handlerName);
+    if (descriptor) return typeof descriptor.value === 'function' ? descriptor.value : null;
+  }
+  return null;
+}
+
 function findComponentReferences(scene, targetNode, targetComponent, componentClass, classId) {
   const references = [];
   const className = (js && typeof js.getClassName === 'function' && js.getClassName(componentClass))
@@ -2830,6 +2846,45 @@ exports.methods = {
     };
   },
 
+  async listPrefabInstanceLinks(options = {}) {
+    const maxNodes = readQueryLimit(options.maxNodes, 5000, 10000, 'maxNodes');
+    const maxInstances = readQueryLimit(options.maxInstances, 200, 500, 'maxInstances');
+    const scene = getScene();
+    const pending = sceneContentChildren(scene).slice().reverse();
+    const instances = [];
+    let scannedNodes = 0;
+    let linkedCount = 0;
+    while (pending.length && scannedNodes < maxNodes) {
+      const node = pending.pop();
+      scannedNodes += 1;
+      const prefab = node._prefab;
+      const asset = prefab && (prefab.asset || prefab._asset);
+      const assetUuid = asset && (asset.uuid || asset._uuid);
+      if (typeof assetUuid === 'string' && assetUuid && prefab.instance && prefab.root === node) {
+        linkedCount += 1;
+        if (instances.length < maxInstances) {
+          instances.push({
+            nodePath: getNodePath(node),
+            nodeUuid: node.uuid,
+            assetUuid,
+            assetName: asset.name || '',
+          });
+        }
+      }
+      const children = sceneContentChildren(node);
+      for (let index = children.length - 1; index >= 0; index -= 1) pending.push(children[index]);
+    }
+    return {
+      sceneName: scene.name,
+      scannedNodes,
+      linkedCount,
+      instances,
+      truncatedByNodes: pending.length > 0,
+      truncatedByInstances: linkedCount > instances.length,
+      truncated: pending.length > 0 || linkedCount > instances.length,
+    };
+  },
+
   async pauseRuntime() {
     return await callPreviewRuntimeTool('pause_runtime');
   },
@@ -2932,18 +2987,37 @@ exports.methods = {
       throw new Error('Event target node was not found.');
     }
 
-    const componentName = String(options.componentName || '').trim();
-    const handlerName = String(options.handler || options.handlerName || '').trim();
-    if (!componentName || !handlerName) {
-      throw new Error('componentName and handler are required.');
+    const componentName = options.componentName;
+    const handlerName = options.handler || options.handlerName;
+    if (typeof componentName !== 'string' || !/^[A-Za-z_$][\w.$-]{0,127}$/.test(componentName) ||
+        typeof handlerName !== 'string' || !/^[A-Za-z_$][\w$]{0,127}$/.test(handlerName)) {
+      throw new Error('componentName and handler must be non-empty registered class and method names (at most 128 characters).');
     }
+    const hasCustomEventData = Object.prototype.hasOwnProperty.call(options, 'customEventData');
+    if (hasCustomEventData &&
+        (typeof options.customEventData !== 'string' || options.customEventData.length > 1024)) {
+      throw new Error('customEventData must be a string of at most 1024 characters.');
+    }
+    if (Object.prototype.hasOwnProperty.call(options, 'replace') && typeof options.replace !== 'boolean') {
+      throw new Error('replace must be a boolean.');
+    }
+    const customEventData = hasCustomEventData ? options.customEventData : '';
 
     const component = findComponent(target, { componentName });
     if (!component) {
       throw new Error(`Target component was not found: ${componentName}`);
     }
-    if (typeof component[handlerName] !== 'function') {
-      throw new Error(`Target component method was not found: ${componentName}.${handlerName}`);
+    const registeredName = (js && typeof js.getClassName === 'function' &&
+      js.getClassName(component.constructor)) || componentName;
+    const matchingComponents = (target.components || []).filter((item) => item &&
+      (item.constructor === component.constructor ||
+        (item.constructor && js && typeof js.getClassName === 'function' &&
+          js.getClassName(item.constructor)) === registeredName));
+    if (matchingComponents.length !== 1) {
+      throw new Error(`Target has ${matchingComponents.length} components registered as ${registeredName}; Button events cannot select an individual instance.`);
+    }
+    if (!resolveButtonEventMethod(component, handlerName)) {
+      throw new Error(`Target component method is missing, inherited from the engine, or reserved: ${registeredName}.${handlerName}`);
     }
 
     const HandlerClass = getEventHandlerClass();
@@ -2955,15 +3029,16 @@ exports.methods = {
     const duplicate = existing.find((event) => (
       event &&
       event.target === target &&
-      getEventHandlerComponentName(event) === componentName &&
+      getEventHandlerComponentName(event) === registeredName &&
       event.handler === handlerName &&
-      String(event.customEventData || '') === String(options.customEventData || '')
+      String(event.customEventData || '') === customEventData
     ));
     if (duplicate && options.replace !== true) {
       return {
         bound: false,
         duplicate: true,
         node: getNodePath(node),
+        uuid: node.uuid,
         event: serializeEventHandler(duplicate),
         clickEventCount: existing.length,
       };
@@ -2971,9 +3046,9 @@ exports.methods = {
 
     const event = new HandlerClass();
     event.target = target;
-    event.component = componentName;
+    event.component = registeredName;
     event.handler = handlerName;
-    event.customEventData = String(options.customEventData || '');
+    event.customEventData = customEventData;
 
     button.clickEvents = options.replace === true
       ? existing.filter((item) => item !== duplicate).concat(event)
@@ -2991,6 +3066,78 @@ exports.methods = {
       uuid: node.uuid,
       event: serializeEventHandler(event),
       clickEventCount: button.clickEvents.length,
+    };
+  },
+
+  async batchBindButtonClickEvents(options = {}) {
+    const bindings = options.bindings;
+    if (!Array.isArray(bindings) || bindings.length < 1 || bindings.length > 50) {
+      throw new Error('bindings must contain between 1 and 50 Button click event bindings.');
+    }
+    const onError = options.onError === undefined ? 'stop' : options.onError;
+    if (onError !== 'stop' && onError !== 'continue') {
+      throw new Error('onError must be stop or continue.');
+    }
+
+    const allowed = new Set([
+      'uuid', 'path', 'name', 'targetUuid', 'targetPath', 'targetName',
+      'componentName', 'handler', 'customEventData', 'replace',
+    ]);
+    const startedAt = Date.now();
+    const results = [];
+    for (let index = 0; index < bindings.length; index += 1) {
+      const step = bindings[index];
+      const stepStartedAt = Date.now();
+      try {
+        if (!step || typeof step !== 'object' || Array.isArray(step) ||
+            Object.keys(step).some((key) => !allowed.has(key))) {
+          throw new Error('Each binding must contain only supported Button, target, and event fields.');
+        }
+        for (const [selectors, label] of [
+          [['uuid', 'path', 'name'], 'Button'],
+          [['targetUuid', 'targetPath', 'targetName'], 'target'],
+        ]) {
+          const provided = selectors.filter((key) => Object.prototype.hasOwnProperty.call(step, key));
+          if (provided.length !== 1 || typeof step[provided[0]] !== 'string' ||
+              !step[provided[0]].trim()) {
+            throw new Error(`Each binding requires exactly one non-empty ${label} selector.`);
+          }
+        }
+        const bound = await exports.methods.bindButtonClickEvent(step);
+        results.push({
+          index,
+          status: bound.duplicate ? 'duplicate' : 'bound',
+          buttonPath: bound.node,
+          buttonUuid: bound.uuid || undefined,
+          event: bound.event,
+          clickEventCount: bound.clickEventCount,
+          durationMs: Date.now() - stepStartedAt,
+        });
+      } catch (error) {
+        results.push({
+          index,
+          status: 'failed',
+          error: error && error.message ? error.message : String(error),
+          durationMs: Date.now() - stepStartedAt,
+        });
+        if (onError === 'stop') break;
+      }
+    }
+    const failed = results.filter((result) => result.status === 'failed').length;
+    const duplicates = results.filter((result) => result.status === 'duplicate').length;
+    return {
+      completed: results.length === bindings.length,
+      allSucceeded: failed === 0 && results.length === bindings.length,
+      onError,
+      total: bindings.length,
+      attempted: results.length,
+      bound: results.length - failed - duplicates,
+      duplicates,
+      failed,
+      stoppedAtIndex: onError === 'stop' && failed
+        ? results.findIndex((result) => result.status === 'failed') : null,
+      durationMs: Date.now() - startedAt,
+      results,
     };
   },
 

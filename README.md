@@ -55,6 +55,10 @@ The component catalog is bounded to 256 project scripts and 32 requested class-n
 
 Linked prefab instance edits have tool-specific rules. Ordinary node move, duplicate, add/remove component, and property assignment reject linked prefab hierarchies; prefab instance apply/revert and Button click overrides use separate editor workflows. Check the relevant [tool description](./docs/TOOLS.md) and [verification record](./docs/verification) before relying on a persistent prefab change.
 
+For `bind_button_click_event`, the target node must have exactly one matching component and the handler must be a component-owned method, not an engine lifecycle method. `customEventData` is a literal string of at most 1024 characters. List existing events before binding or unbinding; duplicate bindings are reported without adding another event. `batch_bind_button_click_events` applies up to 50 ordered bindings with stop or continue on error and reports each result; successful entries remain changed if a later entry fails.
+
+`list_prefabs` returns a sorted, paged asset catalog (50 per page by default, up to 100). Set `includeMetadata` for a compact `.meta` status and `includeSceneInstances` to join links from the active scene. Instance counts are partial if the bounded scene scan reports truncation.
+
 ## Development and documentation
 
 Run `npm run check` for JavaScript syntax, `npm test` for the bundled tests, and `npm run docs:check` to verify the generated tool catalog. The [development plan](./docs/PLAN.md) distinguishes implemented tools from broader requirements still in progress; [verification reports](./docs/verification) record what was tested in Creator. This fork currently has no configured release update channel or package registry publication; install it locally.

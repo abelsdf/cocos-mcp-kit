@@ -108,13 +108,14 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 117);
+  assert.equal(tools.length, 118);
   assert.equal(tools.some((tool) => tool.name === 'write_file'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_prefab_from_node'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_project_skill'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_cocos_mcp_project_skill'), true);
   assert.equal(tools.some((tool) => tool.name === 'bind_button_click_event'), true);
+  assert.equal(tools.some((tool) => tool.name === 'batch_bind_button_click_events'), true);
   assert.equal(tools.some((tool) => tool.name === 'unbind_button_click_event'), true);
   assert.equal(tools.some((tool) => tool.name === 'open_build_panel'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_preview_mode'), true);
@@ -133,6 +134,68 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'reset_component_property_to_default'), true);
   assert.equal(tools.some((tool) => tool.name === 'detect_node_type'), true);
   assert.equal(tools.some((tool) => tool.name === 'batch_modify_nodes'), true);
+});
+
+test('prefab catalog pages asset-db results and joins optional metadata and scene links', async (t) => {
+  const assetCalls = [];
+  mockEditorRequests(t, async (channel, method, payload) => {
+    assert.equal(channel, 'asset-db');
+    assetCalls.push({ method, payload });
+    if (method === 'query-assets') return [
+      { name: 'Z', uuid: 'z', url: 'db://assets/Z.prefab', type: 'cc.Prefab', imported: true },
+      { name: 'A', uuid: 'a', url: 'db://assets/A.prefab', type: 'cc.Prefab', imported: true },
+      { name: 'Noise', uuid: 'other', url: 'db://assets/Noise.ts', type: 'cc.Script' },
+      { name: 'B', uuid: 'b', url: 'db://assets/B.prefab', type: 'cc.Prefab' },
+    ];
+    if (method === 'query-asset-meta') {
+      if (payload === 'b') throw new Error('meta unavailable');
+      return { uuid: payload, importer: 'prefab' };
+    }
+    throw new Error(`Unexpected asset-db method: ${method}`);
+  });
+  const sceneCalls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      sceneCalls.push({ method, args });
+      return { sceneName: 'Sample', scannedNodes: 12, linkedCount: 2, truncated: false,
+        instances: [
+          { assetUuid: 'a', nodePath: 'AInstance', nodeUuid: 'node-a' },
+          { assetUuid: 'z', nodePath: 'ZInstance', nodeUuid: 'node-z' },
+        ] };
+    } },
+  });
+  const tool = registry.listTools().find((item) => item.name === 'list_prefabs');
+  assert.equal(tool.inputSchema.properties.limit.maximum, 100);
+  const result = await registry.callToolDetailed('list_prefabs', {
+    limit: 2, includeMetadata: true, includeSceneInstances: true,
+  });
+  const data = result.value.data;
+  assert.equal(data.count, 3);
+  assert.equal(data.returned, 2);
+  assert.equal(data.truncated, true);
+  assert.deepEqual(data.prefabs.map((item) => item.uuid), ['a', 'b']);
+  assert.equal(data.prefabs[0].sceneInstanceCount, 1);
+  assert.equal(data.prefabs[0].sceneInstances[0].nodePath, 'AInstance');
+  assert.equal(data.prefabs[0].metadata.status, 'available');
+  assert.equal(data.prefabs[1].metadata.status, 'error');
+  assert.equal(data.prefabs[1].imported, null);
+  assert.equal(data.sceneInstanceScan.linkedCount, 2);
+  assert.deepEqual(sceneCalls, [{ method: 'listPrefabInstanceLinks', args: { maxNodes: 5000, maxInstances: 200 } }]);
+  assert.deepEqual(assetCalls[0], { method: 'query-assets', payload: { pattern: 'db://assets/**', ccType: 'cc.Prefab' } });
+
+  const next = await registry.callToolDetailed('list_prefabs', { offset: 2, limit: 1 });
+  assert.deepEqual(next.value.data.prefabs.map((item) => item.uuid), ['z']);
+  assert.equal(next.value.data.truncated, false);
+});
+
+test('prefab catalog rejects invalid bounds and option types before querying asset-db', async () => {
+  const registry = createRegistry('full');
+  for (const args of [
+    { limit: 0 }, { limit: 101 }, { offset: -1 }, { offset: 1.5 },
+    { pattern: 'db://internal/**' }, { includeSceneInstances: 'yes' },
+  ]) {
+    await assert.rejects(() => registry.callToolDetailed('list_prefabs', args), /Expected an assets pattern/);
+  }
 });
 
 test('batch_modify_nodes forwards ordered changes and policy as one scene call', async () => {
@@ -192,6 +255,32 @@ test('available component types exposes bounded read-only script and class queri
   assert.equal(tool.inputSchema.properties.maxProjectScripts.maximum, 256);
   assert.equal(tool.inputSchema.properties.candidateNames.maxItems, 32);
   assert.equal(tool.inputSchema.properties.candidateNames.items.maxLength, 128);
+});
+
+test('Button click binding advertises exact method and bounded literal data', () => {
+  const tool = createRegistry('full').listTools().find((item) => item.name === 'bind_button_click_event');
+  assert.ok(tool);
+  assert.equal(tool.inputSchema.properties.componentName.maxLength, 128);
+  assert.equal(tool.inputSchema.properties.handler.maxLength, 128);
+  assert.equal(tool.inputSchema.properties.customEventData.maxLength, 1024);
+});
+
+test('batch Button click binding exposes bounded entries and forwards the policy once', async () => {
+  const calls = [];
+  const registry = createRegistry('full', undefined, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { completed: true, bound: 1, duplicates: 0, failed: 0 };
+    } },
+  });
+  const tool = registry.listTools().find((item) => item.name === 'batch_bind_button_click_events');
+  assert.ok(tool);
+  assert.equal(tool.inputSchema.properties.bindings.maxItems, 50);
+  assert.equal(tool.inputSchema.properties.bindings.items.properties.customEventData.maxLength, 1024);
+  const args = { bindings: [{ path: 'Button', targetPath: 'Receiver', componentName: 'Receiver', handler: 'onClick' }], onError: 'continue' };
+  const result = await registry.callToolDetailed('batch_bind_button_click_events', args);
+  assert.equal(result.value.data.bound, 1);
+  assert.deepEqual(calls, [{ method: 'batchBindButtonClickEvents', args }]);
 });
 
 test('available component types bounds asset-db records before forwarding to the scene', async (t) => {

@@ -30,21 +30,29 @@ function createScene() {
       }
     }
   }
+  class Component { destroy() {} }
+  Component.EventHandler = EventHandler;
   class Button {
     static EventType = { CLICK: 'click' };
     constructor() { this.clickEvents = []; }
   }
-  class TestReceiver {
-    constructor() { this.calls = []; }
+  class TestReceiver extends Component {
+    constructor() { super(); this.calls = []; }
     onClick(_button, data) { this.calls.push(data); }
+    onDestroy() {}
+    get unsafe() { throw new Error('Getter must not run while validating a Button event'); }
   }
   const scene = new Node('Scene', 'scene');
   const buttonNode = new Node('Button', 'button', scene);
+  const secondButtonNode = new Node('Button2', 'button2', scene);
   const targetNode = new Node('Receiver', 'receiver', scene);
   const button = new Button();
   button.node = buttonNode;
+  const secondButton = new Button();
+  secondButton.node = secondButtonNode;
   const receiver = new TestReceiver();
   buttonNode.components.push(button);
+  secondButtonNode.components.push(secondButton);
   targetNode.components.push(receiver);
   const sceneFile = path.resolve(__dirname, '../scene.js');
   const localRequire = createRequire(sceneFile);
@@ -52,7 +60,7 @@ function createScene() {
   vm.runInNewContext(fs.readFileSync(sceneFile, 'utf8'), {
     Editor: { App: { path: '' } }, module: { paths: [] }, exports,
     require: (id) => id === 'cc' ? {
-      Button, Component: { EventHandler }, EventHandler,
+      Button, Component, EventHandler,
       Prefab: { _utils: {
         TargetInfo: class TargetInfo {},
         PropertyOverrideInfo: class PropertyOverrideInfo {},
@@ -63,7 +71,7 @@ function createScene() {
     } : localRequire(id),
     console,
   }, { filename: sceneFile });
-  return { methods: exports.methods, button, buttonNode, receiver };
+  return { methods: exports.methods, button, buttonNode, secondButton, receiver, targetNode };
 }
 
 test('button binding can be listed, invoked, and unbound by its exact signature', async () => {
@@ -93,6 +101,103 @@ test('button binding can be listed, invoked, and unbound by its exact signature'
   assert.equal(button.clickEvents.length, 0);
   await methods.simulateButtonClick({ path: 'Button' });
   assert.equal(receiver.calls.length, 1);
+});
+
+test('button binding rejects inherited, lifecycle, accessor and ambiguous handlers', async () => {
+  const { methods, button, targetNode, receiver } = createScene();
+  const base = { path: 'Button', targetPath: 'Receiver', componentName: 'TestReceiver' };
+  for (const handler of ['destroy', 'toString', 'onDestroy', 'unsafe']) {
+    await assert.rejects(() => methods.bindButtonClickEvent({ ...base, handler }),
+      /missing, inherited from the engine, or reserved/);
+  }
+  assert.equal(button.clickEvents.length, 0);
+  targetNode.components.push(new receiver.constructor());
+  await assert.rejects(() => methods.bindButtonClickEvent({ ...base, handler: 'onClick' }),
+    /cannot select an individual instance/);
+  assert.equal(button.clickEvents.length, 0);
+});
+
+test('button binding validates event names and literal custom data before changing the Button', async () => {
+  const { methods, button } = createScene();
+  const base = { path: 'Button', targetPath: 'Receiver', componentName: 'TestReceiver', handler: 'onClick' };
+  for (const change of [
+    { handler: 'onClick.extra' },
+    { handler: {} },
+    { componentName: 'TestReceiver extra' },
+    { customEventData: { value: 1 } },
+    { customEventData: null },
+    { customEventData: 'x'.repeat(1025) },
+    { replace: 'true' },
+    { replace: null },
+  ]) {
+    await assert.rejects(() => methods.bindButtonClickEvent({ ...base, ...change }));
+  }
+  assert.equal(button.clickEvents.length, 0);
+  const bound = await methods.bindButtonClickEvent({ ...base, customEventData: '' });
+  assert.equal(bound.event.customEventData, '');
+});
+
+test('batch button binding continues after an invalid step and reports ordered partial results', async () => {
+  const { methods, button, secondButton } = createScene();
+  const base = { path: 'Button', targetPath: 'Receiver', componentName: 'TestReceiver', handler: 'onClick' };
+  const report = await methods.batchBindButtonClickEvents({ onError: 'continue', bindings: [
+    { ...base, customEventData: 'first' },
+    { ...base, customEventData: 'first' },
+    { ...base, handler: 'onDestroy' },
+    { ...base, path: 'Button2', customEventData: 'second' },
+  ] });
+  assert.deepEqual(Array.from(report.results, (item) => item.status), ['bound', 'duplicate', 'failed', 'bound']);
+  assert.deepEqual(Array.from(report.results, (item) => item.index), [0, 1, 2, 3]);
+  assert.equal(report.completed, true);
+  assert.equal(report.allSucceeded, false);
+  assert.equal(report.bound, 2);
+  assert.equal(report.duplicates, 1);
+  assert.equal(report.failed, 1);
+  assert.equal(report.stoppedAtIndex, null);
+  assert.equal(report.results[0].event.customEventData, 'first');
+  assert.equal(report.results[1].buttonUuid, 'button');
+  assert.equal(report.results[2].error.includes('reserved'), true);
+  assert.equal(typeof report.results[3].durationMs, 'number');
+  assert.equal(button.clickEvents.length, 1);
+  assert.equal(secondButton.clickEvents.length, 1);
+  assert.equal(secondButton.clickEvents[0].customEventData, 'second');
+});
+
+test('batch button binding stops at the first failure while retaining previous bindings', async () => {
+  const { methods, button, secondButton } = createScene();
+  const base = { path: 'Button', targetPath: 'Receiver', componentName: 'TestReceiver', handler: 'onClick' };
+  const report = await methods.batchBindButtonClickEvents({ bindings: [
+    { ...base, customEventData: 'kept' },
+    { ...base, targetPath: 'Missing' },
+    { ...base, path: 'Button2' },
+  ] });
+  assert.deepEqual(Array.from(report.results, (item) => item.status), ['bound', 'failed']);
+  assert.equal(report.completed, false);
+  assert.equal(report.attempted, 2);
+  assert.equal(report.stoppedAtIndex, 1);
+  assert.equal(button.clickEvents.length, 1);
+  assert.equal(secondButton.clickEvents.length, 0);
+});
+
+test('batch button binding validates size, policy and each step selector before mutation', async () => {
+  const { methods, button } = createScene();
+  const base = { path: 'Button', targetPath: 'Receiver', componentName: 'TestReceiver', handler: 'onClick' };
+  for (const options of [
+    { bindings: [] },
+    { bindings: Array.from({ length: 51 }, () => base) },
+    { bindings: [base], onError: 'ignore' },
+  ]) await assert.rejects(() => methods.batchBindButtonClickEvents(options));
+  const report = await methods.batchBindButtonClickEvents({ onError: 'continue', bindings: [
+    { ...base, uuid: 'button' },
+    { ...base, targetPath: '' },
+    { ...base, extra: true },
+    { ...base, customEventData: { invalid: true } },
+    { ...base, customEventData: 'valid' },
+  ] });
+  assert.deepEqual(Array.from(report.results, (item) => item.status),
+    ['failed', 'failed', 'failed', 'failed', 'bound']);
+  assert.equal(button.clickEvents.length, 1);
+  assert.equal(button.clickEvents[0].customEventData, 'valid');
 });
 
 test('stale or incomplete event signatures do not remove a binding', async () => {
