@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { duplicatePrefab, editPrefabJson, normalizePrefabTarget, savePrefabContent } = require('../lib/prefabs');
+const { duplicatePrefab, editPrefabJson, inspectPrefab, normalizePrefabTarget, savePrefabContent } = require('../lib/prefabs');
 
 function fixture(t) {
   const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-prefab-edit-'));
@@ -47,6 +47,53 @@ test('normalizePrefabTarget maps simple names into assets prefab paths', () => {
 test('normalizePrefabTarget rejects paths outside assets', () => {
   const projectPath = path.resolve('/tmp/funplay-cocos-project');
   assert.throws(() => normalizePrefabTarget(projectPath, '../Outside'), /inside the Cocos assets directory/);
+});
+
+test('inspectPrefab reports compact structure, metadata consistency and bounded references', async (t) => {
+  const f = fixture(t);
+  const serialized = [
+    { __type__: 'cc.Prefab', _name: 'Source', data: { __id__: 1 } },
+    { __type__: 'cc.Node', _name: 'Source', _children: [{ __id__: 2 }], _components: [{ __id__: 3 }] },
+    { __type__: 'cc.Node', _name: 'Child', _children: [] },
+    { __type__: 'cc.Sprite', node: { __id__: 1 }, _spriteFrame: { __uuid__: 'sprite-frame' } },
+    { __type__: 'cc.PrefabInfo', asset: { __uuid__: 'nested-prefab' } },
+  ];
+  fs.writeFileSync(f.sourcePath, JSON.stringify(serialized));
+  const options = {
+    queryInfo: f.queryInfo,
+    queryMeta: async () => ({ uuid: 'source-uuid', importer: 'prefab' }),
+    queryData: async () => assert.fail('Disk serialization should take precedence over asset-db data'),
+  };
+  const details = await inspectPrefab(f.projectPath, f.sourceUrl, options);
+  assert.equal(details.serializedSource, 'disk');
+  assert.equal(details.metadata.uuidMatchesAsset, true);
+  assert.equal(details.structure.status, 'available');
+  assert.equal(details.structure.rootName, 'Source');
+  assert.equal(details.structure.nodeCount, 2);
+  assert.equal(details.structure.componentCount, 1);
+  assert.deepEqual(details.structure.componentTypes, [{ type: 'cc.Sprite', count: 1 }]);
+  assert.deepEqual(details.structure.referencedPrefabUuids, ['nested-prefab']);
+  assert.equal(details.referenceCount, 2);
+  assert.equal(details.totalReferenceCount, 2);
+  assert.equal(details.referencesTruncated, false);
+
+  serialized[1]._custom = Array.from({ length: 501 }, (_, index) => ({ __uuid__: `ref-${index}` }));
+  fs.writeFileSync(f.sourcePath, JSON.stringify(serialized));
+  const bounded = await inspectPrefab(f.projectPath, f.sourceUrl, {
+    queryInfo: f.queryInfo,
+    queryMeta: async () => { throw new Error('metadata unavailable'); },
+  });
+  assert.equal(bounded.metadata.status, 'error');
+  assert.equal(bounded.referenceCount, 500);
+  assert.equal(bounded.totalReferenceCount, 503);
+  assert.equal(bounded.referencesTruncated, true);
+});
+
+test('inspectPrefab rejects a non-prefab asset before reading serialized content', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(() => inspectPrefab(f.projectPath, f.sourceUrl, {
+    queryInfo: async () => ({ ...f.sourceInfo, type: 'cc.SceneAsset' }),
+  }), /target must be a cc.Prefab/);
 });
 
 test('savePrefabContent requires asset-db and verifies the imported prefab', async (t) => {

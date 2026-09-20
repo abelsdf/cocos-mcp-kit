@@ -48,7 +48,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   list_scenes: '列出项目中的场景资源。打开场景前需要精确查找时优先使用；更广泛的工作流使用 execute_javascript。',
   open_scene: '按 uuid、db url 或路径在 Cocos Creator 中打开场景资源。明确需要切换场景时使用；其他情况继续以 execute_javascript 作为主要规划工具。',
   list_prefabs: '稳定分页列出预制体资源；可按需读取精简元信息，并汇总当前场景中关联的实例根节点，扫描截断时明确标记。',
-  inspect_prefab: '检查 Prefab 资源、元数据、序列化文件路径和类似 UUID 的资源引用。',
+  inspect_prefab: '检查预制体资源、精简元信息、序列化根节点与组件概况，以及有界的资源引用；可选列出当前场景中的匹配实例根并标记截断。',
   validate_prefab_references: '通过 asset-db 检查序列化 UUID 引用，验证 Prefab 资源引用。',
   duplicate_prefab: '复制现有 Prefab 文件创建新 Prefab 资源，但不复制其 .meta UUID。',
   edit_prefab_json: '通过 JSON 路径赋值或文本查找替换编辑 Prefab JSON 文件，然后验证引用。',

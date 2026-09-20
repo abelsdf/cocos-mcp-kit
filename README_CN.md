@@ -59,6 +59,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 `list_prefabs` 按稳定顺序分页列出预制体资源（默认每页 50 项，最多 100 项）。设置 `includeMetadata` 可查询精简的 `.meta` 状态，设置 `includeSceneInstances` 可关联当前场景中的实例根节点；若场景扫描被截断，实例数量只是部分结果。
 
+`inspect_prefab` 会报告资源与元信息身份、序列化根节点/节点/组件概况，以及带明确截断标记的 UUID 类引用。设置 `includeSceneInstances` 可查询当前场景中的匹配实例根；序列化文件里出现预制体引用，不等于嵌套实例仍保持链接。
+
 ## 开发与文档
 
 运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。

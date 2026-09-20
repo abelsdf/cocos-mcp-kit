@@ -198,6 +198,54 @@ test('prefab catalog rejects invalid bounds and option types before querying ass
   }
 });
 
+test('inspect_prefab joins only matching live instance roots and bounds returned links', async (t) => {
+  const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-prefab-info-'));
+  t.after(() => fs.rmSync(projectPath, { recursive: true, force: true }));
+  const file = path.join(projectPath, 'assets', 'Demo.prefab');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify([
+    { __type__: 'cc.Prefab', _name: 'Demo', data: { __id__: 1 } },
+    { __type__: 'cc.Node', _name: 'Demo', _children: [] },
+  ]));
+  mockEditorRequests(t, async (channel, method) => {
+    assert.equal(channel, 'asset-db');
+    if (method === 'query-asset-info') return {
+      name: 'Demo.prefab', uuid: 'demo-uuid', type: 'cc.Prefab',
+      url: 'db://assets/Demo.prefab', file, imported: true,
+    };
+    if (method === 'query-asset-meta') return { uuid: 'demo-uuid', importer: 'prefab' };
+    throw new Error(`Unexpected asset-db method: ${method}`);
+  });
+  const calls = [];
+  const registry = createRegistry('core', projectPath, {}, {
+    sceneBridge: { call: async (method, args) => {
+      calls.push({ method, args });
+      return { sceneName: 'Game', scannedNodes: 8, linkedCount: 3, truncated: false,
+        instances: [
+          { assetUuid: 'demo-uuid', nodePath: 'DemoA' },
+          { assetUuid: 'other-uuid', nodePath: 'Other' },
+          { assetUuid: 'demo-uuid', nodePath: 'DemoB' },
+        ] };
+    } },
+  });
+  const tool = registry.listTools().find((item) => item.name === 'inspect_prefab');
+  assert.equal(tool.inputSchema.properties.maxSceneInstances.maximum, 50);
+  const details = await registry.callToolDetailed('inspect_prefab', {
+    target: 'db://assets/Demo.prefab', includeSceneInstances: true, maxSceneInstances: 1,
+  });
+  assert.equal(details.value.data.structure.rootName, 'Demo');
+  assert.equal(details.value.data.sceneInstanceCount, 2);
+  assert.deepEqual(details.value.data.sceneInstances.map((item) => item.nodePath), ['DemoA']);
+  assert.equal(details.value.data.sceneInstancesTruncated, true);
+  assert.deepEqual(calls, [{ method: 'listPrefabInstanceLinks', args: { maxNodes: 5000, maxInstances: 200 } }]);
+
+  await registry.callToolDetailed('inspect_prefab', { target: 'db://assets/Demo.prefab' });
+  assert.equal(calls.length, 1);
+  await assert.rejects(() => registry.callToolDetailed('inspect_prefab', {
+    target: 'db://assets/Demo.prefab', maxSceneInstances: 0,
+  }), /maxSceneInstances must be an integer/);
+});
+
 test('batch_modify_nodes forwards ordered changes and policy as one scene call', async () => {
   const calls = [];
   const registry = createRegistry('full', undefined, {}, {

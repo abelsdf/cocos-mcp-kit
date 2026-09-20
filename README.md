@@ -59,6 +59,8 @@ For `bind_button_click_event`, the target node must have exactly one matching co
 
 `list_prefabs` returns a sorted, paged asset catalog (50 per page by default, up to 100). Set `includeMetadata` for a compact `.meta` status and `includeSceneInstances` to join links from the active scene. Instance counts are partial if the bounded scene scan reports truncation.
 
+`inspect_prefab` reports the asset and metadata identity, serialized root/node/component summary, and UUID-like references with an explicit truncation flag. Set `includeSceneInstances` to find matching roots in the active scene; a serialized prefab reference alone does not prove that a nested instance remains linked.
+
 ## Development and documentation
 
 Run `npm run check` for JavaScript syntax, `npm test` for the bundled tests, and `npm run docs:check` to verify the generated tool catalog. The [development plan](./docs/PLAN.md) distinguishes implemented tools from broader requirements still in progress; [verification reports](./docs/verification) record what was tested in Creator. This fork currently has no configured release update channel or package registry publication; install it locally.

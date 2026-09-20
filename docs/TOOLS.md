@@ -167,7 +167,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | `create_prefab_instance` | `full` | stateful | [core] Create and verify a linked prefab instance in the editor hierarchy using Cocos scene create-node when available. |
 | `duplicate_prefab` | `full` | stateful | [core] Duplicate a prefab through asset-db, preserving references while assigning the new asset its own UUID. |
 | `edit_prefab_json` | `full` | stateful | [core] Edit serialized prefab JSON through asset-db, verify stable persistence, then validate references. |
-| `inspect_prefab` | `core`, `full` | read-only | [specialist] Inspect a prefab asset, its metadata, serialized file path, and UUID-like asset references. |
+| `inspect_prefab` | `core`, `full` | read-only | [specialist] Inspect a prefab asset, compact metadata, serialized root and component structure, and bounded UUID-like references. Optionally list matching instance roots in the active scene; truncated scans are marked. |
 | `inspect_prefab_instance` | `core`, `full` | read-only | [specialist] Inspect whether a scene node is linked to a prefab instance and return prefab metadata when available. |
 | `instantiate_prefab` | `full` | stateful | Instantiate a prefab into the active scene by prefab uuid. |
 | `list_prefabs` | `full` | read-only | [core] List prefab assets and import status with stable pagination. Optionally include bounded asset metadata and links from the active scene; scene instance counts are partial when the scan is truncated. |
