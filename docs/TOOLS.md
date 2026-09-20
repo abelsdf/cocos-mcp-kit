@@ -89,7 +89,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | `get_script_diagnostic_context` | `core`, `full` | read-only | [specialist] Run TypeScript diagnostics and attach source snippets for each error. This is a preferred specialist tool for compile-error triage before repair. |
 | `run_script_diagnostics` | `core`, `full` | stateful | [specialist] Run a TypeScript no-emit check for the current Cocos project and return parsed diagnostics. This is a preferred specialist tool for script errors when diagnostics are needed. |
 | `validate_asset_dependencies` | `core`, `full` | read-only | [specialist] Validate UUID-style dependencies for one asset or a project asset query. |
-| `validate_prefab_references` | `core`, `full` | read-only | [specialist] Validate prefab asset references by checking serialized UUID references against asset-db. |
+| `validate_prefab_references` | `core`, `full` | read-only | [specialist] Validate bounded explicit prefab asset UUID references, serialized component links, and declared nested prefab assets. Incomplete scans are marked; runtime dynamic loads and component class registration are not verified. |
 | `validate_scene` | `core`, `full` | read-only | [specialist] Run a compact validation pass over the active scene, runtime state, TypeScript diagnostics, and recent project log errors. |
 
 ### Events

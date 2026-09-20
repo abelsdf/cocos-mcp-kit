@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Expanded `validate_prefab_references` to check beyond the former 500-reference display limit, report incomplete scans and lookup errors, and inspect serialized component links and declared nested prefab assets.
 - Expanded `inspect_prefab` with compact serialized structure, metadata UUID consistency, explicit reference truncation, and optional bounded active-scene instance roots.
 - Expanded `list_prefabs` with bounded stable pagination, optional compact metadata, and optional active-scene prefab instance links with explicit truncation.
 - Added bounded ordered Button click event batching with stop/continue failure policy and per-step bound, duplicate, and error results; successful earlier bindings remain intact.

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { duplicatePrefab, editPrefabJson, inspectPrefab, normalizePrefabTarget, savePrefabContent } = require('../lib/prefabs');
+const { duplicatePrefab, editPrefabJson, inspectPrefab, normalizePrefabTarget, savePrefabContent, validatePrefabReferences } = require('../lib/prefabs');
 
 function fixture(t) {
   const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-prefab-edit-'));
@@ -94,6 +94,114 @@ test('inspectPrefab rejects a non-prefab asset before reading serialized content
   await assert.rejects(() => inspectPrefab(f.projectPath, f.sourceUrl, {
     queryInfo: async () => ({ ...f.sourceInfo, type: 'cc.SceneAsset' }),
   }), /target must be a cc.Prefab/);
+});
+
+test('validatePrefabReferences checks a missing reference beyond the old 500-entry display bound', async (t) => {
+  const f = fixture(t);
+  const serialized = JSON.parse(fs.readFileSync(f.sourcePath, 'utf8'));
+  serialized[1]._assetRefs = Array.from({ length: 501 }, (_, index) => ({ __uuid__: `asset-${index}` }));
+  fs.writeFileSync(f.sourcePath, JSON.stringify(serialized));
+  const checked = [];
+  const result = await validatePrefabReferences(f.projectPath, {
+    target: f.sourceUrl,
+    queryInfo: async (uuid) => {
+      if (uuid === f.sourceUrl) return f.sourceInfo;
+      checked.push(uuid);
+      if (uuid === 'asset-500') throw new Error(`Asset not found: ${uuid}`);
+      return { uuid, url: `db://assets/${uuid}`, type: 'cc.SpriteFrame' };
+    },
+    queryMeta: async () => ({ uuid: f.sourceInfo.uuid }),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.complete, true);
+  assert.equal(result.missingCount, 1);
+  assert.equal(result.prefabs[0].totalReferenceCount, 501);
+  assert.equal(result.prefabs[0].checkedCount, 501);
+  assert.equal(result.prefabs[0].missing[0].uuid, 'asset-500');
+  assert.equal(checked.length, 501);
+});
+
+test('validatePrefabReferences marks bounded scans and transient lookup failures incomplete', async (t) => {
+  const f = fixture(t);
+  const serialized = JSON.parse(fs.readFileSync(f.sourcePath, 'utf8'));
+  serialized[1]._assetRefs = ['first', 'second', 'third'].map((uuid) => ({ __uuid__: uuid }));
+  fs.writeFileSync(f.sourcePath, JSON.stringify(serialized));
+  const queryInfo = async (uuid) => {
+    if (uuid === f.sourceUrl) return f.sourceInfo;
+    if (uuid === 'second') throw new Error('asset-db temporarily unavailable');
+    return { uuid, url: `db://assets/${uuid}`, type: 'cc.SpriteFrame' };
+  };
+  const bounded = await validatePrefabReferences(f.projectPath, {
+    target: f.sourceUrl, queryInfo, maxReferences: 1,
+  });
+  assert.equal(bounded.ok, false);
+  assert.equal(bounded.complete, false);
+  assert.equal(bounded.prefabs[0].referencesTruncated, true);
+  assert.equal(bounded.prefabs[0].checkedCount, 1);
+  const lookupFailure = await validatePrefabReferences(f.projectPath, { target: f.sourceUrl, queryInfo });
+  assert.equal(lookupFailure.missingCount, 0);
+  assert.equal(lookupFailure.complete, false);
+  assert.equal(lookupFailure.prefabs[0].lookupErrorCount, 1);
+  await assert.rejects(() => validatePrefabReferences(f.projectPath, {
+    target: f.sourceUrl, maxReferences: 0,
+  }), /maxReferences 1–5000/);
+});
+
+test('validatePrefabReferences distinguishes declared nested assets from broken component links', async (t) => {
+  const f = fixture(t);
+  fs.writeFileSync(f.sourcePath, JSON.stringify([
+    { __type__: 'cc.Prefab', _name: 'Source', data: { __id__: 1 } },
+    { __type__: 'cc.Node', _name: 'Source', _components: [{ __id__: 2 }, { __id__: 99 }] },
+    { __type__: 'cc.Sprite', node: { __id__: 1 } },
+    { __type__: 'cc.PrefabInfo', asset: { __uuid__: 'nested-prefab' } },
+  ]));
+  const result = await validatePrefabReferences(f.projectPath, {
+    target: f.sourceUrl,
+    queryInfo: async (uuid) => uuid === f.sourceUrl ? f.sourceInfo :
+      { uuid, url: `db://assets/${uuid}.prefab`, type: 'cc.Prefab' },
+  });
+  assert.equal(result.complete, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.prefabs[0].componentIssueCount, 1);
+  assert.equal(result.prefabs[0].componentIssues[0].code, 'missing_component_entry');
+  assert.deepEqual(result.prefabs[0].nestedPrefabReferences, [
+    { uuid: 'nested-prefab', status: 'found', type: 'cc.Prefab', code: undefined },
+  ]);
+  assert.equal(result.prefabs[0].componentTypeRegistrationChecked, false);
+});
+
+test('validatePrefabReferences rejects a declared nested asset of the wrong type', async (t) => {
+  const f = fixture(t);
+  fs.writeFileSync(f.sourcePath, JSON.stringify([
+    { __type__: 'cc.Prefab', _name: 'Source', data: { __id__: 1 } },
+    { __type__: 'cc.Node', _name: 'Source', _components: [{ __id__: 2 }] },
+    { __type__: 'cc.Sprite', node: { __id__: 9 } },
+    { __type__: 'cc.PrefabInfo', asset: { __uuid__: 'image-asset' } },
+  ]));
+  const result = await validatePrefabReferences(f.projectPath, {
+    target: f.sourceUrl,
+    queryInfo: async (uuid) => uuid === f.sourceUrl ? f.sourceInfo :
+      { uuid, url: `db://assets/${uuid}.png`, type: 'cc.ImageAsset' },
+  });
+  assert.equal(result.complete, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.prefabs[0].missingCount, 0);
+  assert.equal(result.prefabs[0].componentIssues[0].code, 'component_owner_mismatch');
+  assert.equal(result.prefabs[0].nestedIssueCount, 1);
+  assert.equal(result.prefabs[0].nestedPrefabReferences[0].code, 'nested_asset_not_prefab');
+});
+
+test('validatePrefabReferences reports truncated prefab asset enumeration', async (t) => {
+  const f = fixture(t);
+  const result = await validatePrefabReferences(f.projectPath, {
+    limit: 1,
+    listAssets: async () => [f.sourceInfo, { uuid: 'another', url: 'db://assets/another.prefab' }],
+    queryInfo: f.queryInfo,
+  });
+  assert.equal(result.prefabCount, 1);
+  assert.equal(result.assetListTruncated, true);
+  assert.equal(result.complete, false);
+  assert.equal(result.ok, false);
 });
 
 test('savePrefabContent requires asset-db and verifies the imported prefab', async (t) => {

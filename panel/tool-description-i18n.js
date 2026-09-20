@@ -49,7 +49,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   open_scene: '按 uuid、db url 或路径在 Cocos Creator 中打开场景资源。明确需要切换场景时使用；其他情况继续以 execute_javascript 作为主要规划工具。',
   list_prefabs: '稳定分页列出预制体资源；可按需读取精简元信息，并汇总当前场景中关联的实例根节点，扫描截断时明确标记。',
   inspect_prefab: '检查预制体资源、精简元信息、序列化根节点与组件概况，以及有界的资源引用；可选列出当前场景中的匹配实例根并标记截断。',
-  validate_prefab_references: '通过 asset-db 检查序列化 UUID 引用，验证 Prefab 资源引用。',
+    validate_prefab_references: '有界检查预制体资源引用、组件内部链接与显式嵌套资源；未完整扫描和无法判断的运行时引用会单独标记。',
   duplicate_prefab: '复制现有 Prefab 文件创建新 Prefab 资源，但不复制其 .meta UUID。',
   edit_prefab_json: '通过 JSON 路径赋值或文本查找替换编辑 Prefab JSON 文件，然后验证引用。',
   create_prefab_from_node: '通过场景进程序列化和 asset-db 持久化，从现有场景节点创建 Prefab 资源。克隆的节点树会统一设为 UI_2D，源场景节点保持不变。在 Cocos Creator 3.8.x 中使用此工具替代原始 scene:create-prefab。',
