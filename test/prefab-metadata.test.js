@@ -140,7 +140,29 @@ test('assertSerializedPrefabMetadata accepts complete node and component metadat
     nodeCount: 2,
     componentCount: 1,
     fileIdCount: 3,
+    objectReferenceCount: 12,
   });
+});
+
+test('assertSerializedPrefabMetadata rejects orphan nodes and mismatched component owners', () => {
+  const orphaned = validSerializedPrefab();
+  orphaned.push({ __type__: 'cc.Node', _name: 'ExternalSceneNode', _children: [], _components: [], _prefab: { __id__: 8 } });
+  orphaned.push({ __type__: 'cc.PrefabInfo', root: { __id__: 1 }, asset: { __id__: 0 }, fileId: 'orphan' });
+  assert.throws(() => assertSerializedPrefabMetadata(orphaned), /outside the prefab root hierarchy: 7/);
+
+  const wrongOwner = validSerializedPrefab();
+  wrongOwner[2].node = { __id__: 5 };
+  assert.throws(() => assertSerializedPrefabMetadata(wrongOwner), /does not reference its owning node 1/);
+});
+
+test('assertSerializedPrefabMetadata rejects broken object references and duplicate child ownership', () => {
+  const broken = validSerializedPrefab();
+  broken[2]._asset = { __id__: 99 };
+  assert.throws(() => assertSerializedPrefabMetadata(broken), /points to missing object 99/);
+
+  const duplicate = validSerializedPrefab();
+  duplicate[1]._children.push({ __id__: 5 });
+  assert.throws(() => assertSerializedPrefabMetadata(duplicate), /referenced by more than one parent/);
 });
 
 test('assertSerializedPrefabMetadata rejects nodes outside the expected UI_2D layer', () => {

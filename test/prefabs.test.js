@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { duplicatePrefab, editPrefabJson, inspectPrefab, normalizePrefabTarget, savePrefabContent, validatePrefabReferences } = require('../lib/prefabs');
+const { duplicatePrefab, editPrefabJson, inspectPrefab, normalizePrefabTarget, savePrefabContent, validatePrefabReferences, validateSerializedPrefabAssetReferences } = require('../lib/prefabs');
 
 function fixture(t) {
   const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-prefab-edit-'));
@@ -94,6 +94,43 @@ test('inspectPrefab rejects a non-prefab asset before reading serialized content
   await assert.rejects(() => inspectPrefab(f.projectPath, f.sourceUrl, {
     queryInfo: async () => ({ ...f.sourceInfo, type: 'cc.SceneAsset' }),
   }), /target must be a cc.Prefab/);
+});
+
+test('serialized prefab reference preflight rejects missing, lookup-error and wrong nested assets', async () => {
+  const serialized = [
+    { __type__: 'cc.Prefab', data: { __id__: 1 } },
+    { __type__: 'cc.Node', _texture: { __uuid__: 'valid-image' }, _missing: { __uuid__: 'missing-image' } },
+    { __type__: 'cc.PrefabInfo', asset: { __uuid__: 'wrong-nested-type' } },
+    { __type__: 'cc.Sprite', _spriteFrame: { __uuid__: 'lookup-error' } },
+  ];
+  const result = await validateSerializedPrefabAssetReferences(serialized, {
+    queryInfo: async (uuid) => {
+      if (uuid === 'missing-image') throw new Error(`Asset not found: ${uuid}`);
+      if (uuid === 'lookup-error') throw new Error('asset-db unavailable');
+      return { uuid, type: uuid === 'wrong-nested-type' ? 'cc.ImageAsset' : 'cc.ImageAsset' };
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.complete, true);
+  assert.equal(result.totalReferenceCount, 4);
+  assert.equal(result.missingCount, 1);
+  assert.equal(result.lookupErrorCount, 1);
+  assert.deepEqual(result.nestedIssues, [{ uuid: 'wrong-nested-type', code: 'nested_asset_not_prefab', type: 'cc.ImageAsset' }]);
+});
+
+test('serialized prefab reference preflight refuses an incomplete bounded scan', async () => {
+  const serialized = [{ __type__: 'cc.Prefab' }, {
+    first: { __uuid__: 'one' }, second: { __uuid__: 'two' },
+  }];
+  const result = await validateSerializedPrefabAssetReferences(serialized, {
+    maxReferences: 1,
+    queryInfo: async (uuid) => ({ uuid, type: 'cc.SpriteFrame' }),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.complete, false);
+  assert.equal(result.referenceCount, 1);
+  assert.equal(result.totalReferenceCount, 2);
+  assert.equal(result.referencesTruncated, true);
 });
 
 test('validatePrefabReferences checks a missing reference beyond the old 500-entry display bound', async (t) => {

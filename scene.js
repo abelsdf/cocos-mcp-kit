@@ -426,6 +426,45 @@ function getCceSerializer() {
   return serializer.bind(cceGlobal.Utils);
 }
 
+function prefabSourceFingerprint(root) {
+  const records = [];
+  const visited = new Set();
+  function visit(node) {
+    if (!node || visited.has(node)) return;
+    visited.add(node);
+    records.push({
+      uuid: node.uuid || '',
+      name: node.name || '',
+      layer: node.layer,
+      parentUuid: node.parent && node.parent.uuid || '',
+      childUuids: (node.children || []).map((child) => child && child.uuid || ''),
+      prefabFileId: node._prefab && node._prefab.fileId || '',
+      components: (node.components || []).map((component) => ({
+        uuid: component && component.uuid || '',
+        className: component && component.constructor &&
+          ((js && typeof js.getClassName === 'function' && js.getClassName(component.constructor)) || component.constructor.name) || '',
+        prefabFileId: component && component.__prefab && component.__prefab.fileId || '',
+      })),
+    });
+    for (const child of node.children || []) visit(child);
+  }
+  visit(root);
+  return JSON.stringify(records);
+}
+
+function assertSerializablePrefabSource(root) {
+  const visited = new Set();
+  function visit(node, nodePath) {
+    if (!node || visited.has(node)) return;
+    visited.add(node);
+    if (node._objFlags & DONT_SAVE_FLAG) {
+      throw new Error(`Cannot create a prefab from '${nodePath}': the hierarchy contains an editor-only DontSave node.`);
+    }
+    for (const child of node.children || []) visit(child, `${nodePath}/${child.name || 'Node'}`);
+  }
+  visit(root, root && root.name || 'Node');
+}
+
 function resolveComponentClass(componentName) {
   if (!componentName) {
     return null;
@@ -2380,10 +2419,12 @@ exports.methods = {
 
   async serializePrefabFromNode(options = {}) {
     const node = findNode(options);
-    if (!node) {
+    if (!node || node === getScene()) {
       throw new Error('Target node was not found.');
     }
+    assertSerializablePrefabSource(node);
     assertNoLinkedPrefabInstances(node);
+    const sourceFingerprint = prefabSourceFingerprint(node);
 
     const serialize = getCceSerializer();
     const prefab = new Prefab();
@@ -2392,6 +2433,7 @@ exports.methods = {
     }
 
     const root = instantiate(node);
+    let output;
     try {
       root.parent = null;
       if (options.rootName) {
@@ -2409,7 +2451,7 @@ exports.methods = {
         : JSON.stringify(serialized, null, 2);
 
       JSON.parse(content);
-      return {
+      output = {
         serialized: true,
         source: {
           name: node.name,
@@ -2427,6 +2469,11 @@ exports.methods = {
         root.destroy();
       }
     }
+    if (sourceFingerprint !== prefabSourceFingerprint(node)) {
+      throw new Error('Source scene hierarchy changed during prefab serialization; no asset should be written. Inspect the source node before retrying.');
+    }
+    output.sourceUnchanged = true;
+    return output;
   },
 
   async serializeScene(options = {}) {

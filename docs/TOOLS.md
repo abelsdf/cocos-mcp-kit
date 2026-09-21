@@ -163,7 +163,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | Tool | Profiles | Access | Description |
 |---|---|---|---|
 | `apply_prefab_instance` | `full` | stateful | [core] Apply a scene prefab instance back to its associated prefab asset using the Cocos editor scene apply-prefab message. |
-| `create_prefab_from_node` | `full` | stateful | [core] Create a prefab asset from an existing scene node using scene-process serialization and asset-db persistence. The cloned hierarchy is normalized to UI_2D without modifying the source nodes. Use this instead of raw scene:create-prefab on Cocos Creator 3.8.x. |
+| `create_prefab_from_node` | `full` | stateful | [core] Create a prefab from an ordinary scene node after validating the cloned hierarchy, component ownership, PrefabInfo metadata, and explicit asset references. Persists only through asset-db and verifies the imported asset; linked nested instances are rejected. |
 | `create_prefab_instance` | `full` | stateful | [core] Create and verify a linked prefab instance in the editor hierarchy using Cocos scene create-node when available. |
 | `duplicate_prefab` | `full` | stateful | [core] Duplicate a prefab through asset-db, preserving references while assigning the new asset its own UUID. |
 | `edit_prefab_json` | `full` | stateful | [core] Edit serialized prefab JSON through asset-db, verify stable persistence, then validate references. |

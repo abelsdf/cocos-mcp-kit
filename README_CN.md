@@ -63,6 +63,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 `validate_prefab_references` 会检查超出详情展示上限的显式序列化资源引用、组件条目链接和声明的嵌套预制体资源，并分别报告扫描未完成及资源库查询错误；它不能证明运行时动态加载的资源或自定义组件类已注册。
 
+`create_prefab_from_node` 会克隆普通场景层级，拒绝关联的嵌套实例和编辑器专用节点；写入 asset-db 前检查单一连通节点树、组件归属、PrefabInfo 元信息和显式资源引用，随后回查导入 UUID、元信息、根名称及节点/组件数量。源场景层级不会被修改。
+
 ## 开发与文档
 
 运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。

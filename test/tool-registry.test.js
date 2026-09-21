@@ -72,18 +72,22 @@ function mockEditorRequests(t, handler) {
 }
 
 function mockAssetDbPersistence(t, projectPath) {
+  const urlsByUuid = new Map();
   mockEditorRequests(t, async (channel, method, dbUrl, content) => {
     assert.equal(channel, 'asset-db');
     if (method === 'create-asset' || method === 'save-asset') {
       const filePath = path.join(projectPath, dbUrl.slice('db://'.length));
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(filePath, content);
+      urlsByUuid.set('generated-asset-uuid', dbUrl);
       return { imported: true };
     }
-    if (method === 'query-asset-info') return {
-      uuid: 'generated-asset-uuid', url: dbUrl,
-      type: dbUrl.endsWith('.scene') ? 'cc.SceneAsset' : 'cc.Prefab', imported: true,
-    };
+    if (method === 'query-asset-info') {
+      const url = urlsByUuid.get(dbUrl) || dbUrl;
+      return { uuid: 'generated-asset-uuid', url,
+        type: url.endsWith('.scene') ? 'cc.SceneAsset' : 'cc.Prefab', imported: true };
+    }
+    if (method === 'query-asset-meta') return { uuid: 'generated-asset-uuid', importer: 'prefab' };
     if (method === 'refresh-asset') return true;
     throw new Error(`Unexpected asset-db method: ${method}`);
   });
@@ -752,6 +756,7 @@ test('create_prefab_from_node serializes through scene bridge and writes asset f
         calls.push({ method, payload });
         return {
           source: { name: 'SourceNode', path: 'Canvas/SourceNode', uuid: 'source-uuid' },
+          sourceUnchanged: true,
           root: { name: payload.rootName || 'SourceNode' },
           content: JSON.stringify([
             { __type__: 'cc.Prefab', _name: payload.prefabName, data: { __id__: 1 } },
@@ -799,6 +804,17 @@ test('create_prefab_from_node serializes through scene bridge and writes asset f
     nodeCount: 1,
     componentCount: 1,
     fileIdCount: 2,
+    objectReferenceCount: 7,
+  });
+  assert.equal(result.value.data.referencePreflight.ok, true);
+  assert.deepEqual(result.value.data.verification, {
+    imported: true,
+    uuid: 'generated-asset-uuid',
+    dbUrl: 'db://assets/Prefabs/SettingsPanel.prefab',
+    metadataUuidMatchesAsset: true,
+    rootName: 'SettingsPanel',
+    nodeCount: 1,
+    componentCount: 1,
   });
   assert.equal(fs.existsSync(path.join(tmp, 'assets', 'Prefabs', 'SettingsPanel.prefab')), true);
 });
@@ -824,12 +840,13 @@ test('create_prefab_from_node rejects non-UI_2D node layers before writing', asy
     sceneBridge: {
       call: async () => ({
         source: { name: 'SourceNode', path: 'SourceNode', uuid: 'source-uuid' },
+        sourceUnchanged: true,
         root: { name: 'SourceNode' },
         content: JSON.stringify([
-          { __type__: 'cc.Prefab', data: { __id__: 1 } },
+          { __type__: 'cc.Prefab', _name: 'WrongLayer', data: { __id__: 1 } },
           {
             __type__: 'cc.Node',
-            _name: 'SourceNode',
+            _name: 'WrongLayer',
             _layer: 1,
             _components: [],
             _prefab: { __id__: 2 },
@@ -864,8 +881,9 @@ test('create_prefab_from_node rejects serialized output without PrefabInfo', asy
     sceneBridge: {
       call: async () => ({
         source: { name: 'SourceNode', path: 'Canvas/SourceNode', uuid: 'source-uuid' },
+        sourceUnchanged: true,
         root: { name: 'SourceNode' },
-        content: '[{"__type__":"cc.Prefab","data":{"__id__":1}},{"__type__":"cc.Node","_name":"SourceNode","_layer":33554432,"_components":[],"_prefab":null}]',
+        content: '[{"__type__":"cc.Prefab","_name":"Invalid","data":{"__id__":1}},{"__type__":"cc.Node","_name":"Invalid","_layer":33554432,"_components":[],"_prefab":null}]',
       }),
     },
   });
@@ -878,6 +896,41 @@ test('create_prefab_from_node rejects serialized output without PrefabInfo', asy
     /cc.Node at index 1\._prefab is not an object reference/
   );
   assert.equal(fs.existsSync(path.join(tmp, 'assets', 'Prefabs', 'Invalid.prefab')), false);
+});
+
+test('create_prefab_from_node rejects missing asset references before asset-db writes', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-prefab-preflight-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(tmp, 'assets'), { recursive: true });
+  const editorCalls = [];
+  mockEditorRequests(t, async (channel, method, target) => {
+    editorCalls.push({ channel, method, target });
+    if (channel === 'asset-db' && method === 'query-asset-info') {
+      throw new Error(`Asset not found: ${target}`);
+    }
+    throw new Error(`Unexpected editor request: ${channel}:${method}`);
+  });
+  const registry = createRegistry('full', tmp, {}, {
+    sceneBridge: { call: async () => ({
+      source: { name: 'Source', path: 'Source', uuid: 'source' },
+      sourceUnchanged: true,
+      root: { name: 'Rejected' },
+      content: JSON.stringify([
+        { __type__: 'cc.Prefab', _name: 'Rejected', data: { __id__: 1 } },
+        { __type__: 'cc.Node', _name: 'Rejected', _layer: 33554432, _children: [],
+          _components: [{ __id__: 2 }], _prefab: { __id__: 4 } },
+        { __type__: 'cc.Sprite', node: { __id__: 1 }, __prefab: { __id__: 3 },
+          _spriteFrame: { __uuid__: 'missing-sprite-frame' } },
+        { __type__: 'cc.CompPrefabInfo', fileId: 'component-file-id' },
+        { __type__: 'cc.PrefabInfo', root: { __id__: 1 }, asset: { __id__: 0 }, fileId: 'node-file-id' },
+      ]),
+    }) },
+  });
+  await assert.rejects(() => registry.callToolDetailed('create_prefab_from_node', {
+    target: 'Prefabs/Rejected', name: 'Source',
+  }), /reference preflight failed: 1 asset reference\(s\) are missing.*No asset was written/);
+  assert.deepEqual(editorCalls.map((call) => call.method), ['query-asset-info']);
+  assert.equal(fs.existsSync(path.join(tmp, 'assets', 'Prefabs', 'Rejected.prefab')), false);
 });
 
 test('create_prefab_instance creates a cc.Prefab node and verifies its linkage', async (t) => {
