@@ -57,7 +57,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   inspect_prefab_instance: '检查场景节点是否关联到 Prefab 实例，并在可用时返回 Prefab 元数据。',
   apply_prefab_instance: '将明确选中的非嵌套实例属性经单次原生消息应用回源预制体，核对序列化写回和实例身份；会影响同源实例。要求已保存场景，之后须显式保存场景。拒绝层级/组件变更、外部场景引用及不可核验序列化，不自动重试或回滚。',
   unlink_prefab_instance: '通过原生消息解除明确选中的独立、非嵌套预制体实例关联；核对节点/组件身份、层级、变换及元信息清除。嵌套层级因引用持久化限制被拒绝；要求已保存场景，操作后须显式保存，不回退或自动重新关联。',
-  revert_prefab_instance: '使用可用的 Cocos 编辑器 Prefab 还原消息，将场景 Prefab 实例还原为关联资源状态。',
+  revert_prefab_instance: '经单次原生消息丢弃明确选中的非嵌套实例属性覆盖，核对源值、源资源未变及实例身份。保留根名称、位置和旋转，缩放会还原。要求已保存场景，之后须显式保存；拒绝结构变更、外部场景引用及不可核验序列化，不自动重试或回滚。',
   instantiate_prefab: '复用 create_prefab_instance 的原生创建与关联校验；坐标为父节点本地坐标，需显式保存场景，不再使用未经校验的运行态实例化。',
   run_scene_asset: '按 uuid 将场景资源直接加载到当前运行时场景上下文。',
   list_assets: '按模式或资源类型从 asset-db 查询项目资源。需要精确查找资源时优先使用；更广泛的自动化使用 execute_javascript。',

@@ -2936,7 +2936,7 @@ exports.methods = {
     const root = findNode({ uuid: state.node.uuid });
     const instance = root._prefab && root._prefab.instance;
     if (instance && ['mountedChildren', 'mountedComponents', 'removedComponents'].some(key => instance[key] && instance[key].length)) {
-      throw new Error('Applying mounted or removed prefab structure is not supported.');
+      throw new Error('Prefab property operations on mounted or removed structure are not supported.');
     }
     const nodeIds = new Set(state.nodes.map(node => node.uuid));
     const componentIds = new Set(state.nodes.flatMap(node => node.components.map(component => component.uuid)));
@@ -2959,11 +2959,11 @@ exports.methods = {
       seen.add(value);
       if (value instanceof Node || value instanceof Component) {
         const ids = value instanceof Node ? nodeIds : componentIds;
-        if (!ids.has(value.uuid)) throw new Error('Prefab contains an external scene node/component reference; applying would discard it.');
+        if (!ids.has(value.uuid)) throw new Error('Prefab property operations do not support external scene node/component references.');
         return;
       }
       if (value instanceof Asset) {
-        if (!(value.uuid || value._uuid)) throw new Error('Unsaved asset references cannot be applied to a prefab.');
+        if (!(value.uuid || value._uuid)) throw new Error('Unsaved asset references are not supported by prefab property operations.');
         return;
       }
       if ([Vec2, Vec3, Vec4, Quat, Color, Size, cc.Rect, cc.Mat3, cc.Mat4].some(type =>
@@ -2985,7 +2985,7 @@ exports.methods = {
       for (const component of node.components) {
         const fields = component.constructor && component.constructor.__values__;
         if (!Array.isArray(fields) || typeof readField(component, '_serialize') === 'function') {
-          throw new Error('Prefab application requires declared component serialization metadata without a custom serializer.');
+          throw new Error('Prefab property operations require declared component serialization metadata without a custom serializer.');
         }
         for (const field of fields) if (field !== '__prefab') inspect(readField(component, field));
       }
