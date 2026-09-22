@@ -164,12 +164,12 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 |---|---|---|---|
 | `apply_prefab_instance` | `full` | stateful | [core] Apply a scene prefab instance back to its associated prefab asset using the Cocos editor scene apply-prefab message. |
 | `create_prefab_from_node` | `full` | stateful | [core] Create a prefab from an ordinary scene node after validating the cloned hierarchy, component ownership, PrefabInfo metadata, and explicit asset references. Persists only through asset-db and verifies the imported asset; linked nested instances are rejected. |
-| `create_prefab_instance` | `full` | stateful | [core] Create and verify a linked prefab instance in the editor hierarchy using Cocos scene create-node when available. |
+| `create_prefab_instance` | `full` | stateful | [core] Create a linked prefab in a saved scene through native editor messages and verify its identity, parent, name and local position. Reject linked parents, missing UI Canvas context, Canvas roots and enabled root Widget/parent Layout controllers. Requires explicit save; no runtime fallback on uncertain creation. |
 | `duplicate_prefab` | `full` | stateful | [core] Duplicate a prefab through asset-db, preserving references while assigning the new asset its own UUID. |
 | `edit_prefab_json` | `full` | stateful | [core] Edit serialized prefab JSON through asset-db, verify stable persistence, then validate references. |
 | `inspect_prefab` | `core`, `full` | read-only | [specialist] Inspect a prefab asset, compact metadata, serialized root and component structure, and bounded UUID-like references. Optionally list matching instance roots in the active scene; truncated scans are marked. |
 | `inspect_prefab_instance` | `core`, `full` | read-only | [specialist] Inspect whether a scene node is linked to a prefab instance and return prefab metadata when available. |
-| `instantiate_prefab` | `full` | stateful | Instantiate a prefab into the active scene by prefab uuid. |
+| `instantiate_prefab` | `full` | stateful | Create a verified linked prefab instance using the same native editor workflow and safety checks as create_prefab_instance. Position is parent-local, and the scene must be saved explicitly; no unverified runtime fallback. |
 | `list_prefabs` | `full` | read-only | [core] List prefab assets and import status with stable pagination. Optionally include bounded asset metadata and links from the active scene; scene instance counts are partial when the scan is truncated. |
 | `revert_prefab_instance` | `full` | stateful | [core] Revert a scene prefab instance from its associated prefab asset using available Cocos editor prefab revert messages. |
 

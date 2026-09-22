@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Unified `create_prefab_instance` and `instantiate_prefab` around verified native linked creation and persistent parent-local position overrides, with exact parent selection, saved-scene/layout guards, scoped failure cleanup, and no runtime retry on uncertain creation. Creator 3.8.8 save/reopen and editor-restart checks passed for ordinary UI and non-UI instances.
 - Hardened `delete_asset` for exact project prefab targets with identity/path/metadata guards, native incoming-reference checks, and database plus source/.meta removal verification. Referenced prefabs are refused without force/cascade deletion or filesystem fallback.
 - Hardened `create_prefab_from_node` with connected hierarchy and component-owner validation, bounded asset-reference preflight, source-scene immutability proof, and imported asset identity/structure verification.
 - Expanded `validate_prefab_references` to check beyond the former 500-reference display limit, report incomplete scans and lookup errors, and inspect serialized component links and declared nested prefab assets.

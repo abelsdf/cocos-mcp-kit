@@ -717,6 +717,7 @@ function getPrefabInfo(node) {
   const asset = prefab.asset || prefab._asset || null;
   return {
     linked: Boolean(asset || prefab.fileId || prefab.root),
+    rootUuid: prefab.root && prefab.root.uuid || '',
     fileId: prefab.fileId || '',
     asset: asset
       ? {
@@ -2380,40 +2381,53 @@ exports.methods = {
     }
   },
 
-  async instantiatePrefab(options = {}) {
+  async preparePrefabInstance(options = {}) {
     const prefabUuid = String(options.prefabUuid || '').trim();
     if (!prefabUuid) {
       throw new Error('prefabUuid is required.');
     }
 
-    const parent = options.parentPath ? findNodeByPath(options.parentPath) : getScene();
+    const scene = getScene();
+    const parent = options.parentPath || options.parentUuid
+      ? findNode({ path: options.parentPath, uuid: options.parentUuid }) : scene;
     if (!parent) {
-      throw new Error(`Parent not found: ${options.parentPath}`);
+      throw new Error(`Parent not found: ${options.parentUuid || options.parentPath}`);
     }
-
+    if (hasLinkedPrefabAncestor(parent, scene)) {
+      throw new Error('Instantiating inside a linked prefab hierarchy is not supported. Choose an ordinary scene parent.');
+    }
     const asset = await loadAssetByUuid(prefabUuid);
-    if (!(asset instanceof Prefab)) {
+    if (!(asset instanceof Prefab) || !asset.data || (asset.uuid || asset._uuid) !== prefabUuid) {
       throw new Error(`Asset '${prefabUuid}' is not a Prefab.`);
     }
-
-    const node = instantiate(asset);
-    node.parent = parent;
-
-    if (options.name) {
-      node.name = options.name;
+    if (getScene() !== scene || findNode({ uuid: parent.uuid }) !== parent || hasLinkedPrefabAncestor(parent, scene)) {
+      throw new Error('Scene or parent changed while loading the prefab. No node was created.');
     }
-    if (options.position) {
-      node.setPosition(options.position.x || 0, options.position.y || 0, options.position.z || 0);
+    if (asset.data.getComponent(Canvas)) {
+      throw new Error('Canvas root prefabs have editor-controlled placement and are not supported by local-position instantiation.');
     }
-
+    const widget = asset.data.getComponent(Widget);
+    const layout = parent.getComponent(cc.Layout);
+    if (widget && widget.enabled || layout && layout.enabled) {
+      throw new Error('An enabled root Widget or parent Layout can override the instance position. Choose a prefab and parent without these active layout controllers.');
+    }
+    if (asset.data.getComponent(UITransform)) {
+      let canvasParent = parent;
+      while (canvasParent && !canvasParent.getComponent(Canvas)) canvasParent = canvasParent.parent;
+      if (!canvasParent) {
+        throw new Error('UI prefab requires a Canvas ancestor on the target parent. Create/select a Canvas first; automatic Canvas insertion is not supported.');
+      }
+    }
+    const position = options.position === undefined
+      ? vectorToObject(asset.data.position) : readBatchVector(options.position, 'position');
+    const name = options.name === undefined ? asset.data.name : String(options.name).trim();
+    if (!name) throw new Error('Prefab instance name must be non-empty.');
     return {
-      instantiated: true,
-      prefabUuid,
-      node: {
-        name: node.name,
-        path: getNodePath(node),
-        uuid: node.uuid,
-      },
+      sceneUuid: scene.uuid,
+      parentUuid: parent.uuid,
+      childUuids: parent.children.map((child) => child.uuid),
+      name,
+      position,
     };
   },
 
@@ -2884,10 +2898,13 @@ exports.methods = {
       throw new Error('Target node was not found.');
     }
     return {
+      sceneUuid: getScene().uuid,
       node: {
         name: node.name,
         path: getNodePath(node),
         uuid: node.uuid,
+        parentUuid: node.parent && node.parent.uuid || '',
+        position: vectorToObject(node.position),
       },
       prefab: getPrefabInfo(node),
     };
