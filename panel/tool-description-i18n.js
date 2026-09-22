@@ -56,6 +56,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   create_prefab_instance: '在已保存场景中通过原生消息创建关联预制体，校验身份、父节点、名称及本地坐标，需显式保存。拒绝关联父节点、缺少 Canvas 环境的 UI、Canvas 根及启用的根 Widget/父 Layout，不做运行态回退。',
   inspect_prefab_instance: '检查场景节点是否关联到 Prefab 实例，并在可用时返回 Prefab 元数据。',
   apply_prefab_instance: '使用 Cocos 编辑器场景 apply-prefab 消息，将场景中的 Prefab 实例改动应用回关联资源。',
+  unlink_prefab_instance: '通过原生消息解除明确选中的独立、非嵌套预制体实例关联；核对节点/组件身份、层级、变换及元信息清除。嵌套层级因引用持久化限制被拒绝；要求已保存场景，操作后须显式保存，不回退或自动重新关联。',
   revert_prefab_instance: '使用可用的 Cocos 编辑器 Prefab 还原消息，将场景 Prefab 实例还原为关联资源状态。',
   instantiate_prefab: '复用 create_prefab_instance 的原生创建与关联校验；坐标为父节点本地坐标，需显式保存场景，不再使用未经校验的运行态实例化。',
   run_scene_asset: '按 uuid 将场景资源直接加载到当前运行时场景上下文。',

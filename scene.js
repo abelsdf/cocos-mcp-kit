@@ -2892,6 +2892,45 @@ exports.methods = {
     };
   },
 
+  getPrefabUnlinkState(options = {}) {
+    const scene = getScene();
+    const root = findNode(options);
+    if (!root || root === scene) throw new Error('Target node was not found or is the scene root.');
+    const nodes = [];
+    const pending = [{ node: root, nested: false }];
+    while (pending.length) {
+      const { node, nested: inheritedNested } = pending.pop();
+      if (nodes.length >= 5000) throw new Error('Prefab unlink verification is limited to 5000 nodes; partial checks are not allowed.');
+      if (!isSceneContentNode(node)) throw new Error('Cannot unlink a subtree containing editor-only nodes.');
+      const prefab = node._prefab;
+      const nested = inheritedNested || Boolean(node !== root && prefab && prefab.root === node);
+      const asset = prefab && (prefab.asset || prefab._asset);
+      nodes.push({
+        uuid: node.uuid, name: node.name, parentUuid: node.parent && node.parent.uuid || '',
+        childUuids: node.children.map(child => child.uuid), active: node.active, layer: node.layer,
+        position: vectorToObject(node.position), rotation: quatToObject(node.rotation), scale: vectorToObject(node.scale),
+        nested,
+        prefab: prefab ? {
+          rootUuid: prefab.root && prefab.root.uuid || '', assetUuid: asset && (asset.uuid || asset._uuid) || '',
+          fileId: prefab.fileId || '', instanceId: prefab.instance && prefab.instance.fileId || '',
+        } : null,
+        components: node.components.map(component => ({
+          uuid: component.uuid, type: js.getClassName(component),
+          prefab: component.__prefab ? { fileId: component.__prefab.fileId || '' } : null,
+        })),
+      });
+      for (let index = node.children.length - 1; index >= 0; index -= 1) {
+        pending.push({ node: node.children[index], nested });
+      }
+    }
+    return {
+      sceneUuid: scene.uuid,
+      node: { uuid: root.uuid, name: root.name, path: getNodePath(root), parentUuid: root.parent.uuid },
+      linkedAncestor: hasLinkedPrefabAncestor(root.parent, scene),
+      nodes,
+    };
+  },
+
   async getPrefabInstanceInfo(options = {}) {
     const node = findNode(options);
     if (!node) {
