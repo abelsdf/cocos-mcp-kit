@@ -2994,6 +2994,23 @@ exports.methods = {
     return state;
   },
 
+  getPrefabEditingState(options = {}) {
+    if (typeof options.prefabUuid !== 'string' || !options.prefabUuid.trim()) throw new Error('A prefab asset UUID is required.');
+    const pending = sceneContentChildren(getScene()).slice();
+    const roots = [];
+    let scanned = 0;
+    while (pending.length) {
+      if (++scanned > 5000) throw new Error('Prefab edit root discovery is limited to 5000 nodes; partial checks are not allowed.');
+      const node = pending.pop();
+      const prefab = node._prefab;
+      const asset = prefab && (prefab.asset || prefab._asset);
+      if (prefab && prefab.root === node && !prefab.instance && asset && (asset.uuid || asset._uuid) === options.prefabUuid) roots.push(node);
+      pending.push(...sceneContentChildren(node));
+    }
+    if (roots.length !== 1) throw new Error('Exactly one non-instance prefab edit root must be present.');
+    return exports.methods.getPrefabApplyState({ uuid: roots[0].uuid });
+  },
+
   async getPrefabInstanceInfo(options = {}) {
     const node = findNode(options);
     if (!node) {
