@@ -65,6 +65,8 @@ For `bind_button_click_event`, the target node must have exactly one matching co
 
 `create_prefab_from_node` clones an ordinary scene hierarchy, rejects linked nested instances and editor-only nodes, and validates a single connected node tree, component ownership, PrefabInfo metadata, and explicit asset references before writing through asset-db. It then verifies the imported UUID, metadata, root name, and node/component counts; the source scene hierarchy is not modified.
 
+`delete_asset` requires an exact UUID, db URL, or file path; it does not guess extensions. For project `.prefab` assets it verifies identity, import status, source/metadata paths, and native asset/script and active-scene reference queries before deleting once through asset-db. Referenced or currently edited prefabs are rejected; there is no force/cascade option. Success requires both database mappings and source/`.meta` files to be absent. A verification failure may occur after deletion: inspect the asset before retrying. These prefab-specific safeguards do not cover folder deletion, dynamic string-based loading, or references outside the native queries; recovery relies on your own backups/version control. See the [Creator 3.8.8 verification](./docs/verification/PREFAB_DELETE_2026-09-22.md).
+
 ## Development and documentation
 
 Run `npm run check` for JavaScript syntax, `npm test` for the bundled tests, and `npm run docs:check` to verify the generated tool catalog. The [development plan](./docs/PLAN.md) distinguishes implemented tools from broader requirements still in progress; [verification reports](./docs/verification) record what was tested in Creator. This fork currently has no configured release update channel or package registry publication; install it locally.

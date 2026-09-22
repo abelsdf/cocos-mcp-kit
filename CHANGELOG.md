@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Hardened `delete_asset` for exact project prefab targets with identity/path/metadata guards, native incoming-reference checks, and database plus source/.meta removal verification. Referenced prefabs are refused without force/cascade deletion or filesystem fallback.
 - Hardened `create_prefab_from_node` with connected hierarchy and component-owner validation, bounded asset-reference preflight, source-scene immutability proof, and imported asset identity/structure verification.
 - Expanded `validate_prefab_references` to check beyond the former 500-reference display limit, report incomplete scans and lookup errors, and inspect serialized component links and declared nested prefab assets.
 - Expanded `inspect_prefab` with compact serialized structure, metadata UUID consistency, explicit reference truncation, and optional bounded active-scene instance roots.

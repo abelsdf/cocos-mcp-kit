@@ -31,7 +31,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 | Tool | Profiles | Access | Description |
 |---|---|---|---|
 | `create_scene` | `core`, `full` | stateful | [core] Create an empty scene or a copy of the active scene at an explicit assets path without opening an interactive save dialog. |
-| `delete_asset` | `full` | mutating | Delete an asset from asset-db by uuid, db url, or path. |
+| `delete_asset` | `full` | mutating | Delete an exact asset by UUID, db URL, or path through asset-db. Project prefabs require no asset/script or active-scene references, and deletion is confirmed against both asset-db mappings and source/.meta files. Prefab deletion has no force or cascade option. |
 | `inspect_asset` | `core`, `full` | read-only | [specialist] Inspect asset-db info, metadata, and serialized asset data by uuid or path. Prefer this when you need a precise structured asset read. |
 | `inspect_asset_dependencies` | `core`, `full` | read-only | [specialist] Inspect UUID-style dependencies referenced by a serialized Cocos asset. |
 | `list_assets` | `core`, `full` | read-only | [specialist] Query project assets from asset-db by pattern or asset type. Prefer this when you need exact asset discovery; otherwise use execute_javascript for broader automation. |

@@ -62,7 +62,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   list_assets: '按模式或资源类型从 asset-db 查询项目资源。需要精确查找资源时优先使用；更广泛的自动化使用 execute_javascript。',
   inspect_asset: '按 uuid 或路径检查 asset-db 信息、元数据和序列化资源数据。需要精确结构化资源读取时优先使用。',
   open_asset: '按 uuid、db url 或路径在 Cocos Creator 中打开资源。仅当明确需要打开资源本身时使用。',
-  delete_asset: '按 uuid、db url 或路径从 asset-db 删除资源。',
+  delete_asset: '按精确 uuid、db url 或路径通过 asset-db 删除资源；预制体须无资源、脚本和当前场景引用，并回查数据库及源文件/.meta 均已移除。预制体删除不支持强制或级联选项。',
   select_asset: '在 Cocos 编辑器中选择资源。编辑器选择状态很重要时使用；其他情况继续以 execute_javascript 作为主要工作流。',
   inspect_asset_dependencies: '检查 Cocos 序列化资源中引用的 UUID 类型依赖。',
   validate_asset_dependencies: '验证单个资源或项目资源查询结果中的 UUID 类型依赖。',

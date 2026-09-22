@@ -65,6 +65,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 `create_prefab_from_node` 会克隆普通场景层级，拒绝关联的嵌套实例和编辑器专用节点；写入 asset-db 前检查单一连通节点树、组件归属、PrefabInfo 元信息和显式资源引用，随后回查导入 UUID、元信息、根名称及节点/组件数量。源场景层级不会被修改。
 
+`delete_asset` 只接受精确 UUID、db URL 或文件路径，不猜测扩展名。删除工程内 `.prefab` 前核对身份、导入状态、源文件/元信息路径，并通过原生接口检查资源/脚本及当前场景引用；被引用或正在编辑的预制体会被拒绝，不提供强制/级联选项。只向 asset-db 请求一次删除，数据库映射与源文件/`.meta` 均消失才报告成功。回查失败时删除可能已经发生，应先检查现场再重试。这些预制体专项保护不覆盖目录删除、运行时字符串加载或原生查询之外的引用；恢复依赖工程自身备份/版本控制。详见 [Creator 3.8.8 验收](./docs/verification/PREFAB_DELETE_2026-09-22.md)。
+
 ## 开发与文档
 
 运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。
