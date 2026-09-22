@@ -2931,6 +2931,69 @@ exports.methods = {
     };
   },
 
+  getPrefabApplyState(options = {}) {
+    const state = exports.methods.getPrefabUnlinkState(options);
+    const root = findNode({ uuid: state.node.uuid });
+    const instance = root._prefab && root._prefab.instance;
+    if (instance && ['mountedChildren', 'mountedComponents', 'removedComponents'].some(key => instance[key] && instance[key].length)) {
+      throw new Error('Applying mounted or removed prefab structure is not supported.');
+    }
+    const nodeIds = new Set(state.nodes.map(node => node.uuid));
+    const componentIds = new Set(state.nodes.flatMap(node => node.components.map(component => component.uuid)));
+    const seen = new Set();
+    let checked = 0;
+    const readField = (object, key) => {
+      for (let current = object; current; current = Object.getPrototypeOf(current)) {
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
+        if (!descriptor) continue;
+        if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+          throw new Error(`Cannot verify serialized accessor '${key}' without invoking a getter.`);
+        }
+        return descriptor.value;
+      }
+      return undefined;
+    };
+    const inspect = (value, depth = 0) => {
+      if (++checked > 100000 || depth > 32) throw new Error('Prefab reference check limit exceeded (100000 values / 32 levels).');
+      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (value instanceof Node || value instanceof Component) {
+        const ids = value instanceof Node ? nodeIds : componentIds;
+        if (!ids.has(value.uuid)) throw new Error('Prefab contains an external scene node/component reference; applying would discard it.');
+        return;
+      }
+      if (value instanceof Asset) {
+        if (!(value.uuid || value._uuid)) throw new Error('Unsaved asset references cannot be applied to a prefab.');
+        return;
+      }
+      if ([Vec2, Vec3, Vec4, Quat, Color, Size, cc.Rect, cc.Mat3, cc.Mat4].some(type =>
+        typeof type === 'function' && Object.getPrototypeOf(value) === type.prototype)) return;
+      const constructor = readField(value, 'constructor');
+      const declared = constructor && readField(constructor, '__values__');
+      const prototype = Object.getPrototypeOf(value);
+      const prototypeConstructor = prototype && readField(prototype, 'constructor');
+      if (typeof readField(value, '_serialize') === 'function' || !Array.isArray(declared) &&
+          !Array.isArray(value) && prototype && (!prototypeConstructor || prototypeConstructor.name !== 'Object')) {
+        throw new Error('Cannot verify opaque or custom-serialized prefab reference values.');
+      }
+      const fields = Array.isArray(declared) ? declared : Object.keys(value);
+      for (const key of fields) inspect(readField(value, key), depth + 1);
+    };
+    const pending = [root];
+    while (pending.length) {
+      const node = pending.pop();
+      for (const component of node.components) {
+        const fields = component.constructor && component.constructor.__values__;
+        if (!Array.isArray(fields) || typeof readField(component, '_serialize') === 'function') {
+          throw new Error('Prefab application requires declared component serialization metadata without a custom serializer.');
+        }
+        for (const field of fields) if (field !== '__prefab') inspect(readField(component, field));
+      }
+      pending.push(...node.children);
+    }
+    return state;
+  },
+
   async getPrefabInstanceInfo(options = {}) {
     const node = findNode(options);
     if (!node) {

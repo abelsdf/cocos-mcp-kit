@@ -162,7 +162,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 39 too
 
 | Tool | Profiles | Access | Description |
 |---|---|---|---|
-| `apply_prefab_instance` | `full` | stateful | [core] Apply a scene prefab instance back to its associated prefab asset using the Cocos editor scene apply-prefab message. |
+| `apply_prefab_instance` | `full` | stateful | Apply property changes from an explicit non-nested instance root to its source prefab through one native message. Verifies serialized source writeback and instance identity; affects other instances. Requires a saved scene and explicit scene save afterward. Refuses hierarchy/component changes, external scene references and unverifiable serialization. No automatic retry or rollback. |
 | `create_prefab_from_node` | `full` | stateful | [core] Create a prefab from an ordinary scene node after validating the cloned hierarchy, component ownership, PrefabInfo metadata, and explicit asset references. Persists only through asset-db and verifies the imported asset; linked nested instances are rejected. |
 | `create_prefab_instance` | `full` | stateful | [core] Create a linked prefab in a saved scene through native editor messages and verify its identity, parent, name and local position. Reject linked parents, missing UI Canvas context, Canvas roots and enabled root Widget/parent Layout controllers. Requires explicit save; no runtime fallback on uncertain creation. |
 | `duplicate_prefab` | `full` | stateful | [core] Duplicate a prefab through asset-db, preserving references while assigning the new asset its own UUID. |
