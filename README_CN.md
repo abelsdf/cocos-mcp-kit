@@ -81,6 +81,8 @@ UI 预制体要求父节点已有 Canvas 祖先；关联父层级、Canvas 根�
 
 `exit_prefab_edit_mode`（`full` 配置）通过一次原生 `close-scene` 退出已保存且内容一致的非嵌套预制体。明确传入 `prefabUuid`，以及首次进入或核验保存返回的 `previousScene.uuid` 作为 `returnSceneUuid`；预制体脏状态、dirty=false 但序列化仍有修改、原场景不匹配、嵌套和不可核验引用均在关闭前拒绝。两次核验返回场景及源资源/原场景文件未变；在匹配且通过核验的场景重复调用不会关闭该场景。已保存的预制体更新可能让返回场景变脏，应检查 `needsSave` 并按需显式保存场景。不会自动保存、丢弃、重试、重开或回滚，保存与退出保持独立。详见[退出编辑验收与限制](./docs/verification/PREFAB_EDIT_EXIT_2026-09-22.md)。
 
+`test_prefab_edit_mode`（`full` 配置）只接受明确的 `prefabUuid`，只读检查编辑上下文、源资源/引用和保留原场景；仅当目标已经打开时比较编辑内容。未打开的目标不会被打开（`editing: null`、`complete: false`），每项返回 `passed/failed/not_checked`。`readChecksPassed` 表示没有读取检查失败，`complete` 表示全部读取检查通过，均不是进入/保存/退出的许可或实测证明；读取通过仍可报告未保存差异，包括 dirty=false 的修改。`observationsStable` 为复查成功/失败的 true/false，前提不足时为 null，不是事务保证；外层 `ok` 仅表示报告已生成。`mutationTests` 始终为 `not_run`，不自动打开、保存、关闭、记录快照、创建或丢弃，也不返回可替换保存令牌的新源哈希。详见[编辑态诊断验收与限制](./docs/verification/PREFAB_EDIT_TEST_2026-09-22.md)。
+
 `delete_asset` 只接受精确 UUID、db URL 或文件路径，不猜测扩展名。删除工程内 `.prefab` 前核对身份、导入状态、源文件/元信息路径，并通过原生接口检查资源/脚本及当前场景引用；被引用或正在编辑的预制体会被拒绝，不提供强制/级联选项。只向 asset-db 请求一次删除，数据库映射与源文件/`.meta` 均消失才报告成功。回查失败时删除可能已经发生，应先检查现场再重试。这些预制体专项保护不覆盖目录删除、运行时字符串加载或原生查询之外的引用；恢复依赖工程自身备份/版本控制。详见 [Creator 3.8.8 验收](./docs/verification/PREFAB_DELETE_2026-09-22.md)。
 
 ## 开发与文档
