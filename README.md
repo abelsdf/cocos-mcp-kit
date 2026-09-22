@@ -4,7 +4,7 @@
 
 Cocos MCP Kit is an open-source extension that runs an MCP server inside Cocos Creator. It lets an MCP client inspect a project, work with scenes and assets, and verify results in the editor. It is built on [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp) and has its own package, extension, and configuration identity.
 
-The current target is Cocos Creator 3.8.x; the editor checks linked below were performed on **3.8.8**. Available tools are not a promise that every workflow or Creator version has been validated. See the [tool reference](./docs/TOOLS.md), [development plan](./docs/PLAN.md), and [requirements](./docs/REQUIREMENTS.md) for the exact scope.
+The current target is Cocos Creator 3.8.x; the editor checks linked below were performed on **3.8.8**. Available tools are not a promise that every workflow or Creator version has been validated. See the [tool reference](./docs/TOOLS.md), [development plan](./docs/PLAN.md), [requirements](./docs/REQUIREMENTS.md), and [official Cocos CLI comparison](./docs/OFFICIAL_CLI_ANALYSIS.md) for the exact scope.
 
 ## Quick start
 
