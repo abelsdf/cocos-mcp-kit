@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { createHash } = require('node:crypto');
 const test = require('node:test');
 const { createToolRegistry } = require('../lib/tool-registry');
 
@@ -95,6 +96,7 @@ test('edit entry opens once and verifies native mode, root content, source and o
   assert.equal(value.data.entered, true); assert.equal(value.data.verified, true); assert.equal(value.data.alreadyOpen, false);
   assert.equal(value.data.mode, 'prefab'); assert.equal(value.data.prefabUuid, 'asset'); assert.equal(value.data.node.uuid, 'root');
   assert.equal(value.data.needsSave, false); assert.equal(value.data.previousScene.uuid, 'scene');
+  assert.equal(value.data.sourceHash, createHash('sha256').update(before).digest('hex'));
   assert.equal(value.data.nodeCount, 1); assert.equal(value.data.componentCount, 1);
   assert.equal(f.state.opens, 1); assert.equal(f.state.rootReads, 2); assert.equal(fs.readFileSync(f.file, 'utf8'), before);
 });
