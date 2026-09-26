@@ -113,7 +113,8 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 132);
+  assert.equal(tools.length, 133);
+  assert.equal(tools.some((tool) => tool.name === 'check_asset_ready'), true);
   assert.equal(tools.some((tool) => tool.name === 'test_prefab_edit_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'exit_prefab_edit_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'save_prefab_edit_mode'), true);
