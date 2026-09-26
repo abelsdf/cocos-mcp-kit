@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
-| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建 JSON/文本资源、复制或移动受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`copy_asset`、`move_asset`、`list_assets` |
+| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建或保存 JSON/文本资源、复制或移动受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`save_asset`、`copy_asset`、`move_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
 | UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
@@ -52,6 +52,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 `inspect_asset` 是只读精确查询，接受 UUID、`db://` URL、`assets/...` 路径或工程 `assets` 目录内的绝对文件路径，不补猜扩展名。稳定的 `details` 投影会区分目标与源资源，并报告工程相对源文件、磁盘存在性和大小、目标/源/元数据 importer、元数据归属以及主/子资源关系；需要深查时仍可读取有界原始 info 和 meta。仅在 `includeData: true` 时读取序列化数据；深度、条目、节点、字符串和总字符上限共同约束快照，并报告截断原因。asset-db 报告的源文件缺失时 `complete` 为 false；`complete: true` 也只表示按本次选项完成了有界查询，不能证明运行时字符串引用或画面行为有效。
 
 `create_asset` 是仅在 `full` 配置开放的安全创建入口，首批只接受新的 UTF-8 `.json` 和 `.txt` 资源，父目录必须已存在于 `assets/`。它会拒绝已有源文件、`.meta` 或 asset-db 身份，校验 JSON 与 1 MiB 内容上限，经 `asset-db:create-asset` 创建后再核对源内容、元数据 UUID/importer、导入后的 Cocos 类型、数据库就绪状态和等待后的第二次读取。它不会覆盖已有资源、在原生创建结果不确定时自动重试，也不接受场景、预制体、脚本、元数据或二进制格式；Cocos 序列化资源应使用对应的场景或预制体工具。
+
+`save_asset` 是对应的 `full` 安全更新入口，仅支持最大 1 MiB、可写、已完整导入的 UTF-8 `.json` 和 `.txt` 主资源。可选的 `expectedSha256` 会在修改前拒绝过期内容；内容未变化时返回经过核验的空操作，否则只发送一次 `asset-db:save-asset`。成功前必须确认新内容完全一致，UUID、importer 与元数据未变，资源数据库就绪，并完成等待后的第二次读取。场景、预制体、动画片段、脚本、图片、音频、目录和导入子资源会被拒绝，并返回对应保存流程提示。`write_file` 与 `replace_in_file` 仍是文件系统辅助工具，不能证明 Cocos 资源已可靠持久化。
 
 `copy_asset` 是仅在 `full` 配置开放的安全复制入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同的受支持扩展名，且父目录已存在于 `assets/`。工具只调用一次 `asset-db:copy-asset`，拒绝任何目标源文件、`.meta` 或 asset-db 身份冲突，并核对字节一致、importer 设置、全新的主资源 UUID、图片子资源 UUID、源资源未变化、数据库就绪及等待后的第二次读取。它不复制目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式，也不会覆盖或在原生复制结果不确定时自动重试。
 

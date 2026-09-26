@@ -11,13 +11,14 @@ function createSchema(properties, required) {
   return { type: 'object', properties, required };
 }
 
-function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl) {
+function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl) {
   return createFileTools({
     createSchema,
     getRuntimeContext: () => ({ projectPath }),
     createAssetImpl,
     copyAssetImpl,
     moveAssetImpl,
+    saveAssetImpl,
   });
 }
 
@@ -98,6 +99,33 @@ test('move_asset exposes the verified asset-db move workflow through the full fi
   assert.deepEqual(calls, [{
     projectPath: 'C:/project',
     args: { source: 'source-uuid', target: 'assets/moved.png' },
+  }]);
+});
+
+test('save_asset exposes the verified asset-db save workflow through the full file tool set', async () => {
+  const calls = [];
+  const tools = createTools('C:/project', undefined, undefined, undefined, async (projectPath, args) => {
+    calls.push({ projectPath, args });
+    return { saved: true, path: args.target };
+  });
+  const tool = getTool(tools, 'save_asset');
+  assert.equal(tool.profile, 'full');
+  assert.deepEqual(tool.inputSchema.required, ['target', 'content']);
+  assert.deepEqual(await tool.handler({
+    target: 'asset-uuid',
+    content: '{"value":2}',
+    expectedSha256: 'a'.repeat(64),
+  }), {
+    saved: true,
+    path: 'asset-uuid',
+  });
+  assert.deepEqual(calls, [{
+    projectPath: 'C:/project',
+    args: {
+      target: 'asset-uuid',
+      content: '{"value":2}',
+      expectedSha256: 'a'.repeat(64),
+    },
   }]);
 });
 
