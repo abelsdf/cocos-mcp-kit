@@ -203,7 +203,7 @@ Generated from `lib/tool-registry.js`. The default `core` profile exposes 40 too
 | Tool | Profiles | Access | Description |
 |---|---|---|---|
 | `get_editor_state` | `core`, `full` | read-only | [specialist] Return a structured editor-state snapshot including project info, runtime server status, current selection, and visible Electron windows. Prefer this when you want one compact editor summary. |
-| `get_project_info` | `core`, `full` | read-only | [specialist] Return the active Cocos project path, version, and MCP server configuration. Prefer this for a fast structured project summary; use execute_javascript when you need to inspect and act in one step. |
+| `get_project_info` | `core`, `full` | read-only | [specialist] Return the active project identity and Creator version from public Editor.Project and Editor.App fields, alongside the existing MCP runtime context. Unavailable native fields are null. Prefer this for a structured project summary. |
 | `get_tool_catalog` | `core`, `full` | read-only | [specialist] Return every built-in MCP tool with profile, category, and current exposure state. Use this before changing custom tool exposure. |
 
 ### Runtime

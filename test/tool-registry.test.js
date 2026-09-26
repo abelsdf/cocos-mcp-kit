@@ -752,6 +752,20 @@ test('callToolDetailed preserves structured values and text output', async () =>
   assert.match(result.text, /projectPath/);
 });
 
+test('get_project_info exposes the native manifest name and Creator version', async (t) => {
+  const previousEditor = global.Editor;
+  t.after(() => { global.Editor = previousEditor; });
+  global.Editor = {
+    Project: { name: 'native-project-name', path: 'D:/Game/project', tmpDir: 'D:/Game/project/temp', uuid: 'native-uuid' },
+    App: { version: '3.8.8', dev: false },
+  };
+  const result = await createRegistry('core').callToolDetailed('get_project_info', {});
+  assert.equal(result.value.data.projectName, 'native-project-name');
+  assert.equal(result.value.data.cocosVersion, '3.8.8');
+  assert.equal(result.value.data.project.uuid, 'native-uuid');
+  assert.equal(result.value.data.app.dev, false);
+});
+
 test('tool calls retain diagnostic summaries with detached activity previews', async () => {
   const { InteractionLog } = require('../lib/interaction-log');
   const log = new InteractionLog();

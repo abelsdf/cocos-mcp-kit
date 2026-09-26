@@ -165,7 +165,7 @@ Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源
 
 | ID | action/topic | 判断 | 需求/优先级 | Funplay候选入口 | 独立实现路线与待验证点 | 依据 |
 | --- | --- | --- | --- | --- | --- | --- |
-| OP-083 | `project_info` | A | FR-21 / P1 | `get_project_info` | 读取 Editor.Project 与 Editor.App 的公开项目和版本信息。 | [S12](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/project.html)、[S13](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/app.html) |
+| OP-083 | `project_info` | A | FR-21 / P1 | `get_project_info` | 已在 Creator 3.8.8 正式入口验证：直接读取 Editor.Project 的名称、路径、临时目录、UUID 和 Editor.App 的版本、程序路径、主/临时目录、开发模式；保留原 MCP 上下文字段，缺失公开字段为 `null`。 | [S12](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/project.html)、[S13](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/app.html) |
 | OP-084 | `project_settings` | B | FR-21 / P1 | `get_editor_preference`、`execute_editor_script` | 使用 Profile 项目层读取已确认键；未知设置不按私有文件布局推断。 | [S07](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/profile.html)、[S12](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/project.html) |
 | OP-085 | `run` | C | FR-21 / P1 | `run_project_preview`、`set_preview_mode`、`get_runtime_state` | 复用预览入口，核对原生模式切换/启动消息和实际启动状态。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[S03](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/message.html) |
 | OP-086 | `stop` | C | FR-21 / P1 | `get_runtime_state`、`execute_editor_script` | 针对实际预览模式核对停止入口，避免影响编辑场景 director。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[S03](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/message.html) |
