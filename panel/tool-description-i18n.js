@@ -67,6 +67,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   list_assets: '在工程资源中按名称、类型、目录和模式搜索；稳定分页，可选包含子资源，并明确返回精确名称的重名候选。',
   find_asset_by_name: '按精确资源名称解析唯一目标；未找到或重名时明确返回状态与有界候选，不会任意选择。',
   inspect_asset: '按精确 UUID、db URL 或工程资源路径检查目标/源资源、文件和 importer 详情，并有界返回 info、元数据及可选序列化数据；明确区分主资源与子资源。',
+  move_asset: '通过 Cocos asset-db 安全移动或重命名 JSON、文本、图片或音频主资源；拒绝覆盖并核对源路径已移除、主/子资源 UUID 保持、字节、导入设置和稳定导入状态。',
   copy_asset: '通过 Cocos asset-db 安全复制 JSON、文本、图片或音频主资源；拒绝覆盖并核对源资源未变、目标字节、全新 UUID、导入设置、子资源和稳定导入状态。',
   create_asset: '通过 Cocos asset-db 安全创建新的 JSON 或纯文本资源；拒绝覆盖并核对源内容、.meta、UUID、导入器、资源类型和稳定导入状态。',
   open_asset: '按 uuid、db url 或路径在 Cocos Creator 中打开资源。仅当明确需要打开资源本身时使用。',

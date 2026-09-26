@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
-| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建 JSON/文本资源、复制受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`copy_asset`、`list_assets` |
+| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建 JSON/文本资源、复制或移动受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`copy_asset`、`move_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
 | UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
@@ -54,6 +54,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 `create_asset` 是仅在 `full` 配置开放的安全创建入口，首批只接受新的 UTF-8 `.json` 和 `.txt` 资源，父目录必须已存在于 `assets/`。它会拒绝已有源文件、`.meta` 或 asset-db 身份，校验 JSON 与 1 MiB 内容上限，经 `asset-db:create-asset` 创建后再核对源内容、元数据 UUID/importer、导入后的 Cocos 类型、数据库就绪状态和等待后的第二次读取。它不会覆盖已有资源、在原生创建结果不确定时自动重试，也不接受场景、预制体、脚本、元数据或二进制格式；Cocos 序列化资源应使用对应的场景或预制体工具。
 
 `copy_asset` 是仅在 `full` 配置开放的安全复制入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同的受支持扩展名，且父目录已存在于 `assets/`。工具只调用一次 `asset-db:copy-asset`，拒绝任何目标源文件、`.meta` 或 asset-db 身份冲突，并核对字节一致、importer 设置、全新的主资源 UUID、图片子资源 UUID、源资源未变化、数据库就绪及等待后的第二次读取。它不复制目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式，也不会覆盖或在原生复制结果不确定时自动重试。
+
+`move_asset` 是对应的 `full` 安全移动/重命名入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同扩展名，父目录须已存在于 `assets/`；工具拒绝仅修改大小写以及任何源文件、`.meta` 或 asset-db 目标冲突，并且只调用一次 `asset-db:move-asset`。成功前必须确认旧源文件和 `.meta` 已消失，同时目标字节、importer 设置、主 UUID、图片子资源 UUID、导入状态和等待后的第二次读取全部一致。依赖主/子 UUID 的引用会保持有效；字符串或路径引用不会被发现或改写。它不移动目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式；原生结果不确定时必须先检查两个精确路径再决定是否重试。详见 [Creator 3.8.8 验收](./docs/verification/ASSET_MOVE_2026-09-26.md)。
 
 `list_assets` 默认只搜索工程资源，按 URL 稳定排序后返回有界分页，不再直接输出无界 asset-db 结果。可组合使用 `name` 的 `contains`、`prefix`、`exact` 模式、精确 `ccType` 和 `assets` 目录。`IconPair` 这样的无扩展名精确名称可以匹配 `IconPair.prefab`；若精确名称命中多个资源，`selection.candidates` 会保留各候选的 UUID、URL、类型及主/子资源身份，调用方必须明确选择。带名称筛选的结果还会报告同名分组。设置 `includeSubassets: false` 可排除导入生成的 SpriteFrame/纹理；只有明确需要编辑器内置资源时才使用 `scope: "all"`。
 
