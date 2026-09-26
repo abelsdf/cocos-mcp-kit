@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
-| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据、资源 UUID、真实源路径及 asset-db 就绪状态，安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`query_asset_uuid`、`query_asset_path`、`check_asset_ready`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
+| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据、资源 UUID、规范 URL、真实源路径及 asset-db 就绪状态，安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`query_asset_uuid`、`query_asset_url`、`query_asset_path`、`check_asset_ready`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
 | UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
@@ -68,6 +68,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 `query_asset_path` 是 `full` 配置下的只读精确定位工具，支持 UUID、db URL、工程内 `assets/` 相对路径及工程资源目录内的绝对路径。它会交叉核对资源身份和原生路径映射。对于导入子资源，`source.path` 是所属主资源的真实文件；`nativeMapping.path` 可能带有 Creator 的 `@子资源` 别名，并标记 `isPhysicalSource: false`，不能当作可直接读写的源文件。资源缺失、未导入、身份不一致或源文件不存在时返回不完整状态，不会打开或修改资源。详见 [Creator 3.8.8 验证记录](./docs/verification/ASSET_PATH_2026-09-26.md)。
 
 `query_asset_uuid` 是 `full` 配置下的只读精确 UUID 查询，支持资源 UUID、db URL、工程内 `assets/` 相对路径及资源目录内的绝对路径。它会核对资源记录、Creator 原生 URL 到 UUID 的映射，以及导入子资源与主资源的关系。由于原生 `query-uuid` 不直接解析相对路径，工具会先转换为 db URL；只有全部身份校验通过时才填充顶层 `uuid`，缺失或不一致时为 `null`。详见 [Creator 3.8.8 验证记录](./docs/verification/ASSET_UUID_2026-09-26.md)。
+
+`query_asset_url` 是 `full` 配置下对相同精确目标的只读规范 URL 查询。顶层 `url` 是已导入资源记录中的规范 URL，`nativeMapping.url` 单独展示 Creator 原生 UUID 到 URL 的结果。图片子资源的原生结果可能是 `@` 别名，而规范 URL 为 `/texture`；只有两种形式均映射到同一个 UUID 才返回可用的顶层 URL。缺失、未导入或身份不一致时返回 `url: null`。详见[验证记录](./docs/verification/ASSET_URL_2026-09-26.md)。
 
 `copy_asset` 是仅在 `full` 配置开放的安全复制入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同的受支持扩展名，且父目录已存在于 `assets/`。工具只调用一次 `asset-db:copy-asset`，拒绝任何目标源文件、`.meta` 或 asset-db 身份冲突，并核对字节一致、importer 设置、全新的主资源 UUID、图片子资源 UUID、源资源未变化、数据库就绪及等待后的第二次读取。它不复制目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式，也不会覆盖或在原生复制结果不确定时自动重试。
 

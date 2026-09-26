@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added full-profile read-only `query_asset_url` for OP-082. It returns a verified canonical asset URL, separately reports Creator's native subasset `@` alias, and withholds the selected URL when either mapping disagrees with the imported UUID.
 - Added full-profile read-only `query_asset_uuid` for OP-081. It verifies native URL-to-UUID mappings and asset identity, keeps imported subasset UUIDs distinct from their parent, and never selects an inconsistent or missing UUID.
 - Added full-profile read-only `query_asset_path` for OP-080. It resolves exact asset targets to a verified physical source path, while keeping imported subasset `@` mappings separate from their parent source file and reporting missing or inconsistent records as incomplete.
 - Added full-profile read-only `check_asset_ready` for OP-079. It distinguishes stable database query readiness from a stable imported target identity, polls within a bounded wait, and reports unresolved states without claiming the importer queue or build artifacts are complete.
