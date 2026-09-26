@@ -5,13 +5,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { buildSnippet, createFileTools } = require('../lib/tools/files');
+const { buildSnippet, createFileTools, refreshAssets } = require('../lib/tools/files');
 
 function createSchema(properties, required) {
   return { type: 'object', properties, required };
 }
 
-function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl, reimportAssetImpl, importAssetImpl, importFolderImpl) {
+function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl, reimportAssetImpl, importAssetImpl, importFolderImpl, refreshAssetImpl) {
   return createFileTools({
     createSchema,
     getRuntimeContext: () => ({ projectPath }),
@@ -22,6 +22,7 @@ function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl,
     reimportAssetImpl,
     importAssetImpl,
     importFolderImpl,
+    refreshAssetImpl,
   });
 }
 
@@ -173,6 +174,41 @@ test('import_folder exposes a bounded external-directory import through the full
   const args = { source: 'C:/external/folder', target: 'assets/NewFolder' };
   assert.deepEqual(await tool.handler(args), { imported: true, url: args.target });
   assert.deepEqual(calls, [{ projectPath: 'C:/project', args }]);
+});
+
+test('refresh_asset exposes exact verified file refresh through the full file tool set', async () => {
+  const calls = [];
+  const tools = createTools('C:/project', undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, async (projectPath, args) => {
+      calls.push({ projectPath, args });
+      return { refreshed: true, path: args.target };
+    });
+  const tool = getTool(tools, 'refresh_asset');
+  assert.equal(tool.profile, 'full');
+  assert.deepEqual(tool.inputSchema.required, ['target']);
+  assert.deepEqual(await tool.handler({ target: 'assets/sample.json' }), {
+    refreshed: true, path: 'assets/sample.json',
+  });
+  assert.deepEqual(calls, [{ projectPath: 'C:/project', args: { target: 'assets/sample.json' } }]);
+});
+
+test('legacy file helper never widens a failed exact refresh to the assets root', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-mcp-refresh-helper-'));
+  fs.mkdirSync(path.join(root, 'assets'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const previousEditor = global.Editor;
+  const calls = [];
+  global.Editor = { Message: { request: async (channel, method, url) => {
+    calls.push({ channel, method, url });
+    throw new Error('exact refresh unavailable');
+  } } };
+  t.after(() => {
+    if (previousEditor === undefined) delete global.Editor;
+    else global.Editor = previousEditor;
+  });
+  const message = await refreshAssets(root, path.join(root, 'assets', 'sample.txt'));
+  assert.match(message, /exact asset refresh failed/);
+  assert.deepEqual(calls, [{ channel: 'asset-db', method: 'refresh-asset', url: 'db://assets/sample.txt' }]);
 });
 
 test('file tools write, read, replace, search, list, and check project files', async () => {

@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
-| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`reimport_asset`、`list_assets` |
+| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
 | UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
@@ -60,6 +60,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 `import_asset` 是仅在 `full` 配置开放的单文件新建入口，支持最大 64 MiB 的外部 JSON、UTF-8 文本、图片和音频。`source` 填本机绝对路径，`target` 填工程 `assets/` 已有目录下的新路径且扩展名相同；可选 `expectedSha256` 用于拒绝过期源文件。它只调用一次 `asset-db:import-asset`，随后核对导入字节、新 UUID、磁盘与数据库元信息、子资源身份、`library` 产物、数据库就绪及等待后的第二次读取。已有目标、外部 `.meta`、符号链接源路径、不支持格式和 Cocos 序列化资源均被拒绝；原生结果不确定时不自动重试。详见[Creator 3.8.8 验证记录](./docs/verification/ASSET_IMPORT_2026-09-26.md)。
 
 `import_folder` 是仅在 `full` 配置开放的外部目录导入入口，在工程 `assets/` 的已有父目录下新建一个目录。源目录最多包含 64 个受支持文件、16 个目录、4 层子目录，合计不超过 64 MiB。它会在单次原生导入前拒绝 `.meta`、符号链接、不支持格式和目标冲突；成功前核对目录树、文件字节、不同的目录/文件/子资源 UUID、元信息、`library` 产物以及稳定的 asset-db 查询。部分导入或原生结果不确定时保留现场供显式检查，不自动重试或删除。详见[验证记录](./docs/verification/ASSET_IMPORT_FOLDER_2026-09-26.md)。
+
+`refresh_asset` 是仅在 `full` 配置开放的精确文件刷新入口，支持工程 `assets/` 中最大 64 MiB 的单个 JSON、文本、图片或音频文件。传入 `db://assets/` URL 或文件路径，只发送一次 `asset-db:refresh-asset`，随后核对源字节未变、元数据、主/子资源身份、`library` 产物、数据库就绪和等待后的稳定读取。数据库尚未登记的文件可以获得新身份；若 Creator 原本已认为资源是最新状态，工具只证明刷新后的资源一致，不宣称 `library` 必然重新生成。根目录和目录目标会被拒绝，精确刷新失败时也不会扩大到整个工程。若必须证明实际重新生成导入产物，应使用 `reimport_asset`。详见 [Creator 3.8.8 验证记录](./docs/verification/ASSET_REFRESH_2026-09-26.md)。
 
 `copy_asset` 是仅在 `full` 配置开放的安全复制入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同的受支持扩展名，且父目录已存在于 `assets/`。工具只调用一次 `asset-db:copy-asset`，拒绝任何目标源文件、`.meta` 或 asset-db 身份冲突，并核对字节一致、importer 设置、全新的主资源 UUID、图片子资源 UUID、源资源未变化、数据库就绪及等待后的第二次读取。它不复制目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式，也不会覆盖或在原生复制结果不确定时自动重试。
 

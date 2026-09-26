@@ -86,7 +86,7 @@ test('copy target normalization requires exact project assets and supported exte
   assert.equal(normalizeCopyTarget(f.projectPath, 'McpKitValidation/target.JSON').dbUrl,
     'db://assets/McpKitValidation/target.JSON');
   assert.throws(() => normalizeCopySourceTarget(f.projectPath, 'db://internal/default.json'), /project asset/);
-  assert.throws(() => normalizeCopyTarget(f.projectPath, 'assets/McpKitValidation/target.prefab'), /Unsupported target/);
+  assert.throws(() => normalizeCopyTarget(f.projectPath, 'assets/McpKitValidation/target.prefab'), /Unsupported target extension\. copy_asset supports/);
   assert.throws(() => normalizeCopyTarget(f.projectPath, 'assets/McpKitValidation/../target.json'), /must not contain/);
   assert.throws(() => normalizeCopyTarget(f.projectPath, 'assets/Missing/target.json'), /parent directory/);
 });

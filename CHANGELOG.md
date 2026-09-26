@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added full-profile `refresh_asset` for OP-076. It refreshes one exact project JSON, text, image, or audio file through a single asset-db request, then verifies source bytes, imported identity, metadata, subassets, library availability, readiness, and settled reads. The existing best-effort file helper no longer falls back to refreshing all assets after an exact refresh error. Unsupported-target errors now name `refresh_asset` rather than the shared copy workflow.
 - Added full-profile `import_folder` for OP-075. A bounded external directory is imported through one asset-db request, with exact tree, byte, directory/file/subasset identity, metadata, library, and settled-read verification. Existing targets and uncertain outcomes are never automatically overwritten or retried.
 - Added full-profile `import_asset` for OP-074. One external JSON, text, image, or audio file is imported through asset-db into a new target; bounded checks confirm exact bytes, new metadata/UUID, subassets, library output, and settled readiness. Existing targets and uncertain native results are never automatically retried.
 - Added full-profile `reimport_asset` for OP-073. A single native asset-db reimport is followed by bounded checks that library outputs were regenerated and settled while source bytes, main/subasset UUIDs, and nested import settings remain stable. It is limited to imported JSON, text, image, and audio main assets.
