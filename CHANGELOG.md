@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added full-profile read-only `query_asset_path` for OP-080. It resolves exact asset targets to a verified physical source path, while keeping imported subasset `@` mappings separate from their parent source file and reporting missing or inconsistent records as incomplete.
 - Added full-profile read-only `check_asset_ready` for OP-079. It distinguishes stable database query readiness from a stable imported target identity, polls within a bounded wait, and reports unresolved states without claiming the importer queue or build artifacts are complete.
 - Added full-profile `refresh_asset` for OP-076. It refreshes one exact project JSON, text, image, or audio file through a single asset-db request, then verifies source bytes, imported identity, metadata, subassets, library availability, readiness, and settled reads. The existing best-effort file helper no longer falls back to refreshing all assets after an exact refresh error. Unsupported-target errors now name `refresh_asset` rather than the shared copy workflow.
 - Added full-profile `import_folder` for OP-075. A bounded external directory is imported through one asset-db request, with exact tree, byte, directory/file/subasset identity, metadata, library, and settled-read verification. Existing targets and uncertain outcomes are never automatically overwritten or retried.
