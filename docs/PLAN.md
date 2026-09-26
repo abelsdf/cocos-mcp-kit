@@ -250,13 +250,15 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 关联：FR-26、FR-29。依赖阶段 1；只处理会影响 P0 架构的最小范围，不要求安装官方 CLI。
 
 - [ ] 固定本轮分析使用的官方仓库提交 SHA、版本和许可证文件，记录根 MIT 与 `package.json` ISC 字段差异的处理结论。
-- [ ] 设计只读 capability manifest：后端 ID、版本、项目路径、Creator/引擎版本、平台、可用操作、风险、实验状态和不支持原因。
+- [x] 设计并实测只读 capability manifest：后端 ID、版本、项目路径、Creator/引擎版本、平台、可用操作、风险、实验状态和不支持原因；结构与限制见[后端能力报告设计](./BACKEND_CAPABILITY_DESIGN.md)，Creator 正式入口结果见[验收记录](./verification/BACKEND_CAPABILITIES_2026-09-26.md)。
 - [ ] 定义后端选择规则：当前扩展后端始终可独立工作；官方 CLI 缺失、版本不兼容或探测失败时明确降级，不影响 P0。
 - [ ] 设计公开节点批次 DTO，区分节点/组件身份、资源引用、批次内部引用和批次外部引用；不直接暴露官方 CLI 或 Creator 内部 dump。
 - [ ] 设计批次创建的预检、名称冲突、新身份映射、失败整批清理、单次 Undo 和恢复报告；跨资源写入不纳入首版事务承诺。
 - [ ] 用纯逻辑夹具验证引用重映射、重复根、循环/断链、外部引用 clear/resolve 策略和故障注入；Creator 适配未实测前不进入正式写工具。
 
 交付：来源记录、capability schema、节点批次 DTO、恢复边界和测试设计。通过条件：这些设计不扩大首版功能承诺，也不要求官方 CLI 才能使用当前扩展。
+
+- FR-26 P0 只读部分新增 `get_backend_capabilities`（`core` 41、`full` 137）：直接报告当前扩展及 Creator/项目/平台身份、当前 profile 实际开放的工具分页、注解风险提示和未知引擎版本；官方 CLI 适配器固定为 `not_configured`，不探测安装、不触发 CLI，也不影响扩展后端。Creator 3.8.8 正式 MCP 入口返回 137 项，默认 50 项与续页 87 项无重漏，超限参数拒绝；项目名、UUID、Creator 版本和只读注解一致。新增 5 项测试，全量 1045 项通过、0 失败、0 跳过；版本仍为 0.1.0 Unreleased。FR-26 的 P1 CLI 接入与阶段 1.5 其他设计任务仍未完成。详见[能力报告验证](verification/BACKEND_CAPABILITIES_2026-09-26.md)。
 
 ## 阶段 2：构建器与 UI 模板
 

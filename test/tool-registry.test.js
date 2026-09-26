@@ -95,10 +95,11 @@ function mockAssetDbPersistence(t, projectPath) {
 
 test('core profile exposes the documented focused tool set', () => {
   const tools = createRegistry('core').listTools();
-  assert.equal(tools.length, 40);
+  assert.equal(tools.length, 41);
   assert.equal(tools.some((tool) => tool.name === 'execute_javascript'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_tool_catalog'), true);
+  assert.equal(tools.some((tool) => tool.name === 'get_backend_capabilities'), true);
   assert.equal(tools.some((tool) => tool.name === 'validate_scene'), true);
   assert.equal(tools.some((tool) => tool.name === 'inspect_asset_dependencies'), true);
   assert.equal(tools.some((tool) => tool.name === 'find_asset_by_name'), true);
@@ -113,7 +114,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 136);
+  assert.equal(tools.length, 137);
   assert.equal(tools.some((tool) => tool.name === 'check_asset_ready'), true);
   assert.equal(tools.some((tool) => tool.name === 'query_asset_path'), true);
   assert.equal(tools.find((tool) => tool.name === 'query_asset_path').annotations.readOnlyHint, true);
@@ -732,6 +733,21 @@ test('tool catalog reports disabled tools under the current exposure settings', 
   const executeTool = catalog.find((tool) => tool.name === 'execute_javascript');
   assert.equal(executeTool.enabled, false);
   assert.equal(executeTool.category, 'execution');
+});
+
+test('backend capabilities follow the effective custom tool exposure', async () => {
+  const registry = createRegistry('custom', path.resolve('/tmp/funplay-cocos-test-project'), {
+    disabledTools: ['write_file'], enabledTools: ['query_asset_url'],
+  });
+  const tool = registry.listTools().find((item) => item.name === 'get_backend_capabilities');
+  assert.equal(tool.annotations.readOnlyHint, true);
+  const { value } = await registry.callToolDetailed('get_backend_capabilities', { limit: 200 });
+  const ids = value.data.operationPage.items.map((item) => item.id);
+  assert.equal(value.data.backends.creatorExtension.exposedOperationCount, ids.length);
+  assert.equal(ids.includes('get_backend_capabilities'), true);
+  assert.equal(ids.includes('query_asset_url'), true);
+  assert.equal(ids.includes('write_file'), false);
+  assert.equal(value.data.backends.officialCli.status, 'not_configured');
 });
 
 test('file tools reject writes outside the project root', async () => {
