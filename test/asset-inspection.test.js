@@ -31,7 +31,8 @@ function fixture(t) {
     imported: true, invalid: false, readonly: false, isDirectory: false,
     subAssets: { texture, spriteFrame: frame },
   };
-  const meta = { uuid: 'image-uuid', importer: 'image', userData: { trimType: 'auto' } };
+  const meta = { uuid: 'image-uuid', importer: 'image', ver: '1.0.0',
+    userData: { trimType: 'auto', generateMipmaps: false } };
   const data = { width: 64, height: 32, pixels: ['a', 'b', 'c'] };
   const calls = [];
   const state = { metadataError: false, dataError: false, directSubassetMetadata: false };
@@ -94,6 +95,18 @@ test('inspectAsset reports a bounded main asset and optional serialized data', a
   assert.equal(result.queries.metadata.scope, 'asset');
   assert.equal(result.queries.data.status, 'available');
   assert.deepEqual(JSON.parse(JSON.stringify(result.data)), f.data);
+  assert.equal(result.details.status, 'available');
+  assert.equal(result.details.target.kind, 'main');
+  assert.equal(result.details.target.scope, 'project');
+  assert.equal(result.details.source.uuid, f.image.uuid);
+  assert.equal(result.details.source.file.projectRelativePath, 'assets/icons/arrow.png');
+  assert.equal(result.details.source.file.status, 'available');
+  assert.equal(result.details.source.file.kind, 'file');
+  assert.equal(result.details.source.file.sizeBytes, 5);
+  assert.equal(result.details.import.status, 'ready');
+  assert.equal(result.details.import.sourceImporter, 'image');
+  assert.equal(result.details.metadata.version, '1.0.0');
+  assert.deepEqual(result.details.metadata.userDataKeys, ['generateMipmaps', 'trimType']);
   assert.equal(result.complete, true);
   assert.equal(result.truncated, false);
 });
@@ -111,6 +124,15 @@ test('inspectAsset identifies a SpriteFrame subasset and main-asset metadata', a
   assert.equal(result.identity.metadataMatchesMainAsset, true);
   assert.equal(result.queries.data.status, 'not_requested');
   assert.equal(result.data, null);
+  assert.equal(result.details.target.kind, 'subasset');
+  assert.equal(result.details.target.importer, '');
+  assert.equal(result.details.source.uuid, f.image.uuid);
+  assert.equal(result.details.source.importer, 'image');
+  assert.equal(result.details.source.file.path, f.file);
+  assert.equal(result.details.metadata.scope, 'main_asset');
+  assert.equal(result.details.metadata.matchesTarget, false);
+  assert.equal(result.details.metadata.matchesSource, true);
+  assert.equal(result.details.relationship.subAssetKey, 'spriteFrame');
   assert.equal(result.complete, true);
 });
 
@@ -135,6 +157,19 @@ test('inspectAsset exposes query errors and never reports an incomplete read as 
   assert.match(result.queries.data.errors[0], /data unavailable/);
   assert.equal(result.meta, null);
   assert.equal(result.data, null);
+  assert.equal(result.details.status, 'incomplete');
+  assert.equal(result.details.complete, false);
+  assert.equal(result.complete, false);
+});
+
+test('inspectAsset reports a missing source file without treating details as complete', async (t) => {
+  const f = fixture(t);
+  fs.rmSync(f.file);
+  const result = await inspectAsset(f.image.uuid, { projectPath: f.projectPath });
+  assert.equal(result.details.source.file.status, 'missing');
+  assert.equal(result.details.source.file.exists, false);
+  assert.equal(result.details.status, 'incomplete');
+  assert.equal(result.details.complete, false);
   assert.equal(result.complete, false);
 });
 
@@ -191,5 +226,8 @@ test('inspect_asset registry exposes bounded controls and preserves the structur
   assert.equal(value.data.identity.kind, 'subasset');
   assert.equal(value.data.relationship.subAssets.length, 1);
   assert.equal(value.data.relationship.subAssetsTruncated, true);
+  assert.equal(value.data.details.metadata.userDataKeyCount, 2);
+  assert.equal(value.data.details.metadata.userDataKeys.length, 1);
+  assert.equal(value.data.details.metadata.userDataKeysTruncated, true);
   assert.equal(value.data.truncated, true);
 });

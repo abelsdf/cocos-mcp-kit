@@ -11,10 +11,12 @@ function createSchema(properties, required) {
   return { type: 'object', properties, required };
 }
 
-function createTools(projectPath) {
+function createTools(projectPath, createAssetImpl, copyAssetImpl) {
   return createFileTools({
     createSchema,
     getRuntimeContext: () => ({ projectPath }),
+    createAssetImpl,
+    copyAssetImpl,
   });
 }
 
@@ -39,6 +41,44 @@ test('buildSnippet returns focused line-numbered context', () => {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('create_asset exposes the safe asset-db workflow through the full file tool set', async () => {
+  const calls = [];
+  const tools = createTools('C:/project', async (projectPath, args) => {
+    calls.push({ projectPath, args });
+    return { created: true, path: args.target };
+  });
+  const tool = getTool(tools, 'create_asset');
+  assert.equal(tool.profile, 'full');
+  assert.deepEqual(tool.inputSchema.required, ['target', 'content']);
+  assert.deepEqual(await tool.handler({ target: 'assets/data.json', content: '{}' }), {
+    created: true,
+    path: 'assets/data.json',
+  });
+  assert.deepEqual(calls, [{
+    projectPath: 'C:/project',
+    args: { target: 'assets/data.json', content: '{}' },
+  }]);
+});
+
+test('copy_asset exposes the verified asset-db copy workflow through the full file tool set', async () => {
+  const calls = [];
+  const tools = createTools('C:/project', undefined, async (projectPath, args) => {
+    calls.push({ projectPath, args });
+    return { copied: true, target: args.target };
+  });
+  const tool = getTool(tools, 'copy_asset');
+  assert.equal(tool.profile, 'full');
+  assert.deepEqual(tool.inputSchema.required, ['source', 'target']);
+  assert.deepEqual(await tool.handler({ source: 'source-uuid', target: 'assets/copy.png' }), {
+    copied: true,
+    target: 'assets/copy.png',
+  });
+  assert.deepEqual(calls, [{
+    projectPath: 'C:/project',
+    args: { source: 'source-uuid', target: 'assets/copy.png' },
+  }]);
 });
 
 test('file tools write, read, replace, search, list, and check project files', async () => {
