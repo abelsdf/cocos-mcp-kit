@@ -23,7 +23,7 @@ Replace `PORT` with the port shown in the panel. The bridge requires Node.js 18 
 
 | Area | Current capabilities | Examples |
 |---|---|---|
-| Project and assets | Inspect the editor, scenes, asset metadata, dependencies, logs, and script diagnostics. | `get_project_info`, `get_scene_info`, `list_assets`, `validate_asset_dependencies` |
+| Project and assets | Inspect the editor, scenes, exact asset metadata/data, dependencies, logs, and script diagnostics. | `get_project_info`, `inspect_asset`, `list_assets`, `validate_asset_dependencies` |
 | Scene graph | Create and inspect nodes; move, reorder, duplicate, transform, or batch-edit ordinary scene nodes. | `find_nodes`, `move_node`, `reorder_node`, `batch_modify_nodes` |
 | Components and scripts | Discover registered types; attach, remove, list, inspect, and edit supported component fields. | `list_available_component_types`, `attach_script_component`, `list_components`, `set_component_property` |
 | UI and events | Create Canvas, Label, Button, and Sprite nodes; resolve SpriteFrames and manage Button click bindings. | `create_sprite`, `set_sprite_frame`, `list_button_click_events`, `bind_button_click_event` |
@@ -48,6 +48,10 @@ These are examples, not the complete catalog. Some entries come from the Funplay
    ```
 
 4. Save the scene, reopen it in Creator, and inspect the node or resource again. For a visual or interactive change, also check the running preview. An MCP success response alone does not prove persistence or visible behavior.
+
+`inspect_asset` is a read-only exact lookup by UUID, `db://` URL, `assets/...` path, or an absolute file path inside the project's `assets` directory. It does not add guessed extensions. The result identifies main assets and imported subassets such as SpriteFrames, reports which identity supplied metadata, and exposes missing/error states instead of silently substituting an empty value. Serialized asset data is omitted unless `includeData: true`; depth, item, node, string, and character limits bound returned snapshots and report truncation. Treat `complete: true` as a complete bounded query under the requested options, not as proof that runtime string-based references or visual behavior are valid.
+
+`list_assets` searches project assets by default and returns a compact, URL-sorted page instead of an unbounded raw asset-db result. Combine `name` with `contains`, `prefix`, or `exact` matching, an exact `ccType`, and an `assets` directory. Extensionless exact names such as `IconPair` can match `IconPair.prefab`; when an exact name has multiple matches, `selection.candidates` retains their UUIDs, URLs, types, and main/subasset identities so the caller must choose explicitly. Name-filtered results also report duplicate-name groups. Use `includeSubassets: false` to omit imported SpriteFrames/textures, or `scope: "all"` when internal editor assets are intentionally required.
 
 `set_component_property` currently accepts one supported top-level field at a time: CCClass-declared project-script fields and selected Cocos UI fields. It converts compatible Color, vector, node/component, and asset references, but rejects dot paths, undeclared script state, incompatible values, and linked prefab instances. SpriteFrame assignment can resize UITransform; set `contentSize` afterward if a custom size is needed. `reset_component_property_to_default` restores a declared CCClass default; `reset_component_property` only clears a field.
 

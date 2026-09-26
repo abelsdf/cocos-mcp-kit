@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
-| 工程与资源 | 查询编辑器、场景、资源元数据、引用、日志和脚本诊断。 | `get_project_info`、`get_scene_info`、`list_assets`、`validate_asset_dependencies` |
+| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据、引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`list_assets`、`validate_asset_dependencies` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
 | UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
@@ -48,6 +48,10 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
    ```
 
 4. 保存并在 Creator 中重新打开场景，再检查节点或资源。涉及画面或交互时，还要检查运行中的预览。仅有 MCP 成功返回不能证明持久化或视觉效果正确。
+
+`inspect_asset` 是只读精确查询，接受 UUID、`db://` URL、`assets/...` 路径或工程 `assets` 目录内的绝对文件路径，不补猜扩展名。结果区分主资源和 SpriteFrame 等导入子资源，标明元数据来自当前资源还是主资源，并把缺失与查询错误明确分开。仅在 `includeData: true` 时读取序列化数据；深度、条目、节点、字符串和总字符上限共同约束快照，并报告截断原因。`complete: true` 只表示按本次选项完成了有界查询，不能证明运行时字符串引用或画面行为有效。
+
+`list_assets` 默认只搜索工程资源，按 URL 稳定排序后返回有界分页，不再直接输出无界 asset-db 结果。可组合使用 `name` 的 `contains`、`prefix`、`exact` 模式、精确 `ccType` 和 `assets` 目录。`IconPair` 这样的无扩展名精确名称可以匹配 `IconPair.prefab`；若精确名称命中多个资源，`selection.candidates` 会保留各候选的 UUID、URL、类型及主/子资源身份，调用方必须明确选择。带名称筛选的结果还会报告同名分组。设置 `includeSubassets: false` 可排除导入生成的 SpriteFrame/纹理；只有明确需要编辑器内置资源时才使用 `scope: "all"`。
 
 `set_component_property` 目前每次只接受一个受支持的顶层字段：CCClass 声明的项目脚本字段及少量 Cocos UI 字段。工具会转换兼容的 Color、向量、节点/组件和资源引用，但拒绝点路径、未声明的脚本状态、不兼容值与关联预制体实例。设置 SpriteFrame 可能使 UITransform 自动改变尺寸；如需自定义尺寸，可随后设置 `contentSize`。`reset_component_property_to_default` 恢复 CCClass 声明默认值；`reset_component_property` 只清除字段。
 

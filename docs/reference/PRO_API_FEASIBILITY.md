@@ -139,8 +139,8 @@ Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源
 
 | ID | action/topic | 判断 | 需求/优先级 | Funplay候选入口 | 独立实现路线与待验证点 | 依据 |
 | --- | --- | --- | --- | --- | --- | --- |
-| OP-064 | `query_info` | B | FR-04 / P0 | `inspect_asset` | 复用资源信息/元数据查询，区分原文件、子资产及导入器信息。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js) |
-| OP-065 | `search` | B | FR-04 / P0 | `list_assets` | 复用资产查询，增加名称、类型、目录过滤及重名候选。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js) |
+| OP-064 | `query_info` | B | FR-04 / P0 | `inspect_asset` | 已独立强化精确 UUID/db URL/工程路径定位、有界信息/元数据/可选数据快照，并区分主资源、子资源、元数据来源、缺失、错误和截断；不猜扩展名。Creator 3.8.8 正式入口验收见验证记录。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js)、[V64](../verification/ASSET_INFO_2026-09-26.md) |
+| OP-065 | `search` | B | FR-04 / P0 | `list_assets` | 已独立实现工程默认范围、名称/类型/目录/子资源组合过滤、稳定有界分页、去重及精确名称多候选；内置资源须显式 `scope: all`。Creator 3.8.8 正式入口验收见验证记录。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js)、[V65](../verification/ASSET_SEARCH_2026-09-26.md) |
 | OP-066 | `find_by_name` | B | FR-04 / P0 | `list_assets` | 复用资产查询，增加名称、类型、目录过滤及重名候选。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js) |
 | OP-067 | `details` | B | FR-04 / P0 | `inspect_asset` | 复用资源信息/元数据查询，区分原文件、子资产及导入器信息。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js) |
 | OP-068 | `create` | C | FR-05 / P0 | `write_file`、`refresh_assets` | 通过已验证资产创建/导入入口建立资源，校验格式和 meta，而不是任意直写场景格式。 | [S02](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/messages.html)、[F02](../../lib/assets.js) |
