@@ -77,6 +77,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   refresh_asset: '精确刷新工程中的单个 JSON、文本、图片或音频文件；核对源字节、主/子资源身份、元数据、导入产物和稳定就绪状态，不扩大刷新到目录或整个工程。',
   check_asset_ready: '有界只读检查 asset-db 查询就绪；指定资源时再核对稳定的导入记录及 UUID/URL 双向身份。结果不代表导入队列、源字节或构建产物已完成。',
   query_asset_path: '按精确 UUID、db URL 或工程路径查询资源的真实源路径；子资源会区分所属主资源文件与不可直接读写的原生映射路径。',
+  query_asset_uuid: '按精确 db URL、工程路径或 UUID 查询已导入资源的 UUID，并核对原生映射及子资源与主资源的关系。',
   open_asset: '按 uuid、db url 或路径在 Cocos Creator 中打开资源。仅当明确需要打开资源本身时使用。',
   delete_asset: '通过单次 asset-db 请求安全删除精确的工程预制体或已导入 JSON、文本、图片、音频主资源；主资源及导入子资源 UUID 均须无外部引用，同一主资源的内部子资源链接会被忽略。核对身份、源字节、元信息、数据库映射和源文件/.meta 已移除；不支持强制、级联、目录、子资源、脚本或场景删除。',
   select_asset: '在 Cocos 编辑器中选择资源。编辑器选择状态很重要时使用；其他情况继续以 execute_javascript 作为主要工作流。',
