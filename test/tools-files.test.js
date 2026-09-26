@@ -11,7 +11,7 @@ function createSchema(properties, required) {
   return { type: 'object', properties, required };
 }
 
-function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl) {
+function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl, reimportAssetImpl) {
   return createFileTools({
     createSchema,
     getRuntimeContext: () => ({ projectPath }),
@@ -19,6 +19,7 @@ function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl,
     copyAssetImpl,
     moveAssetImpl,
     saveAssetImpl,
+    reimportAssetImpl,
   });
 }
 
@@ -127,6 +128,19 @@ test('save_asset exposes the verified asset-db save workflow through the full fi
       expectedSha256: 'a'.repeat(64),
     },
   }]);
+});
+
+test('reimport_asset exposes the verified asset-db reimport workflow through the full file tool set', async () => {
+  const calls = [];
+  const tools = createTools('C:/project', undefined, undefined, undefined, undefined, async (projectPath, args) => {
+    calls.push({ projectPath, args });
+    return { reimported: true, path: args.target };
+  });
+  const tool = getTool(tools, 'reimport_asset');
+  assert.equal(tool.profile, 'full');
+  assert.deepEqual(tool.inputSchema.required, ['target']);
+  assert.deepEqual(await tool.handler({ target: 'asset-uuid' }), { reimported: true, path: 'asset-uuid' });
+  assert.deepEqual(calls, [{ projectPath: 'C:/project', args: { target: 'asset-uuid' } }]);
 });
 
 test('file tools write, read, replace, search, list, and check project files', async () => {
