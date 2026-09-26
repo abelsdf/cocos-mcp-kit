@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added the core-profile read-only `validate_node_batch` preflight for the FR-29 P0 DTO. It checks local identities, hierarchy and reference policy, and returns a creation plan without accessing or changing a Creator scene.
 - Added a core-profile read-only backend capability report for the FR-26 P0 architecture. It pages currently exposed tools with annotation hints and reports the official CLI adapter as unconfigured without probing or depending on it.
 - Expanded core-profile `get_project_info` for OP-083 with public `Editor.Project` and `Editor.App` fields. The native project name and Creator version now take precedence over folder-name and fallback values; existing MCP runtime fields remain available.
 - Added full-profile read-only `query_asset_url` for OP-082. It returns a verified canonical asset URL, separately reports Creator's native subasset `@` alias, and withholds the selected URL when either mapping disagrees with the imported UUID.

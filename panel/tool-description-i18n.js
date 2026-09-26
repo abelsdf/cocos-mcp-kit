@@ -36,6 +36,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   reset_node_transform: '将普通场景节点选定的局部位置、旋转或缩放重置为单位值；关联预制体实例需使用单独的还原流程。',
   get_project_info: '读取 Editor.Project 和 Editor.App 公开字段中的项目名称、UUID、路径及 Creator 版本，并保留现有 MCP 运行上下文；不可用的原生字段返回 null。',
   get_backend_capabilities: '只读报告当前 Creator 扩展后端、工程与平台身份、实际开放的工具及风险提示；官方 CLI 适配器未配置，工具开放不代表功能已通过运行验收。',
+  validate_node_batch: '只读预检局部 ID 节点/组件批次、父子结构和引用策略，返回父先子的创建顺序与待处理引用；不读取或修改场景，组件和资源仍需 Creator 核验。',
   save_current_scene: '使用可用的编辑器场景消息保存当前打开的 Cocos 场景。',
   open_build_panel: '打开 Cocos 构建面板，默认使用 builder 面板 ID。',
   get_build_status: '通过已知的 builder 消息变体查询 Cocos 构建和预览状态。',

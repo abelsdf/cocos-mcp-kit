@@ -24,6 +24,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
 | 后端能力报告 | 只读查询当前 Creator 扩展、工程与平台、工具开放状态及风险提示。可选官方 CLI 适配器明确标为未配置；工具开放不代表运行验收通过。 | `get_backend_capabilities`、`get_tool_catalog` |
+| 节点批次预检 | 校验有界的局部 ID 节点/组件结构与引用策略，返回父先子的创建顺序和待处理引用。仅检查 DTO，不读取或修改 Creator 场景。 | `validate_node_batch` |
 | 工程与资源 | 读取当前工程的公开名称、UUID、路径及 Creator 版本；查询场景、精确资源元数据/数据、资源 UUID、规范 URL、真实源路径及 asset-db 就绪状态；安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`query_asset_uuid`、`query_asset_url`、`query_asset_path`、`check_asset_ready`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
