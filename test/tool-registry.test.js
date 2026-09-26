@@ -113,7 +113,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 130);
+  assert.equal(tools.length, 131);
   assert.equal(tools.some((tool) => tool.name === 'test_prefab_edit_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'exit_prefab_edit_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'save_prefab_edit_mode'), true);
@@ -124,6 +124,7 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'save_asset'), true);
   assert.equal(tools.some((tool) => tool.name === 'reimport_asset'), true);
   assert.equal(tools.some((tool) => tool.name === 'import_asset'), true);
+  assert.equal(tools.some((tool) => tool.name === 'import_folder'), true);
   assert.equal(tools.some((tool) => tool.name === 'copy_asset'), true);
   assert.equal(tools.some((tool) => tool.name === 'move_asset'), true);
   assert.equal(tools.some((tool) => tool.name === 'edit_prefab_json'), true);

@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added full-profile `import_folder` for OP-075. A bounded external directory is imported through one asset-db request, with exact tree, byte, directory/file/subasset identity, metadata, library, and settled-read verification. Existing targets and uncertain outcomes are never automatically overwritten or retried.
 - Added full-profile `import_asset` for OP-074. One external JSON, text, image, or audio file is imported through asset-db into a new target; bounded checks confirm exact bytes, new metadata/UUID, subassets, library output, and settled readiness. Existing targets and uncertain native results are never automatically retried.
 - Added full-profile `reimport_asset` for OP-073. A single native asset-db reimport is followed by bounded checks that library outputs were regenerated and settled while source bytes, main/subasset UUIDs, and nested import settings remain stable. It is limited to imported JSON, text, image, and audio main assets.
 - Added full-profile `save_asset` for OP-072, limited to existing writable imported JSON/text main assets. It supports optimistic SHA-256 conflict detection, verifies exact content and unchanged UUID/importer/metadata after a single native save, returns verified no-ops for unchanged content, and routes unsupported resource types to their specialized workflows.

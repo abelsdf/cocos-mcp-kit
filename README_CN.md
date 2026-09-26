@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
-| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建或保存 JSON/文本资源、导入外部文件、复制、移动或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`save_asset`、`import_asset`、`copy_asset`、`move_asset`、`reimport_asset`、`list_assets` |
+| 工程与资源 | 查询编辑器、场景、精确资源元数据/数据，安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
 | UI 与事件 | 创建 Canvas、Label、Button、Sprite；解析 SpriteFrame 并管理 Button 点击事件。 | `create_sprite`、`set_sprite_frame`、`list_button_click_events`、`bind_button_click_event` |
@@ -58,6 +58,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 `reimport_asset` 是仅在 `full` 配置开放的已有资源重导入入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。它仅发送一次 `asset-db:reimport-asset`，并要求至少一个 `library` 导入产物实际重新生成且稳定，同时核对源字节、主/子资源 UUID 与嵌套 importer 设置未变化。目录、子资源、场景、预制体、脚本、其他格式和符号链接源路径均拒绝。若原生调用返回但导入产物未更新，会报告验收失败，且不会自动重复导入。
 
 `import_asset` 是仅在 `full` 配置开放的单文件新建入口，支持最大 64 MiB 的外部 JSON、UTF-8 文本、图片和音频。`source` 填本机绝对路径，`target` 填工程 `assets/` 已有目录下的新路径且扩展名相同；可选 `expectedSha256` 用于拒绝过期源文件。它只调用一次 `asset-db:import-asset`，随后核对导入字节、新 UUID、磁盘与数据库元信息、子资源身份、`library` 产物、数据库就绪及等待后的第二次读取。已有目标、外部 `.meta`、符号链接源路径、不支持格式和 Cocos 序列化资源均被拒绝；原生结果不确定时不自动重试。详见[Creator 3.8.8 验证记录](./docs/verification/ASSET_IMPORT_2026-09-26.md)。
+
+`import_folder` 是仅在 `full` 配置开放的外部目录导入入口，在工程 `assets/` 的已有父目录下新建一个目录。源目录最多包含 64 个受支持文件、16 个目录、4 层子目录，合计不超过 64 MiB。它会在单次原生导入前拒绝 `.meta`、符号链接、不支持格式和目标冲突；成功前核对目录树、文件字节、不同的目录/文件/子资源 UUID、元信息、`library` 产物以及稳定的 asset-db 查询。部分导入或原生结果不确定时保留现场供显式检查，不自动重试或删除。详见[验证记录](./docs/verification/ASSET_IMPORT_FOLDER_2026-09-26.md)。
 
 `copy_asset` 是仅在 `full` 配置开放的安全复制入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同的受支持扩展名，且父目录已存在于 `assets/`。工具只调用一次 `asset-db:copy-asset`，拒绝任何目标源文件、`.meta` 或 asset-db 身份冲突，并核对字节一致、importer 设置、全新的主资源 UUID、图片子资源 UUID、源资源未变化、数据库就绪及等待后的第二次读取。它不复制目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式，也不会覆盖或在原生复制结果不确定时自动重试。
 

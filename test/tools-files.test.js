@@ -11,7 +11,7 @@ function createSchema(properties, required) {
   return { type: 'object', properties, required };
 }
 
-function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl, reimportAssetImpl, importAssetImpl) {
+function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl, saveAssetImpl, reimportAssetImpl, importAssetImpl, importFolderImpl) {
   return createFileTools({
     createSchema,
     getRuntimeContext: () => ({ projectPath }),
@@ -21,6 +21,7 @@ function createTools(projectPath, createAssetImpl, copyAssetImpl, moveAssetImpl,
     saveAssetImpl,
     reimportAssetImpl,
     importAssetImpl,
+    importFolderImpl,
   });
 }
 
@@ -155,6 +156,21 @@ test('import_asset exposes a bounded external-file import through the full file 
   assert.equal(tool.profile, 'full');
   assert.deepEqual(tool.inputSchema.required, ['source', 'target']);
   const args = { source: 'C:/external/asset.png', target: 'assets/asset.png', expectedSha256: 'a'.repeat(64) };
+  assert.deepEqual(await tool.handler(args), { imported: true, url: args.target });
+  assert.deepEqual(calls, [{ projectPath: 'C:/project', args }]);
+});
+
+test('import_folder exposes a bounded external-directory import through the full file tool set', async () => {
+  const calls = [];
+  const tools = createTools('C:/project', undefined, undefined, undefined, undefined, undefined,
+    undefined, async (projectPath, args) => {
+      calls.push({ projectPath, args });
+      return { imported: true, url: args.target };
+    });
+  const tool = getTool(tools, 'import_folder');
+  assert.equal(tool.profile, 'full');
+  assert.deepEqual(tool.inputSchema.required, ['source', 'target']);
+  const args = { source: 'C:/external/folder', target: 'assets/NewFolder' };
   assert.deepEqual(await tool.handler(args), { imported: true, url: args.target });
   assert.deepEqual(calls, [{ projectPath: 'C:/project', args }]);
 });
