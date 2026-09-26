@@ -72,6 +72,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   create_asset: '通过 Cocos asset-db 安全创建新的 JSON 或纯文本资源；拒绝覆盖并核对源内容、.meta、UUID、导入器、资源类型和稳定导入状态。',
   save_asset: '通过 Cocos asset-db 安全保存已有 JSON 或纯文本主资源；可用源 SHA-256 防止并发覆盖，并核对内容、UUID、导入器、元数据和稳定导入状态。',
   reimport_asset: '通过 Cocos asset-db 重新导入已有 JSON、文本、图片或音频主资源，并核对源文件、UUID、导入设置、子资源和稳定就绪状态。',
+  import_asset: '通过 Cocos asset-db 将外部 JSON、文本、图片或音频文件导入为全新工程资源；拒绝覆盖，核对字节、元数据、子资源与稳定导入状态。',
   open_asset: '按 uuid、db url 或路径在 Cocos Creator 中打开资源。仅当明确需要打开资源本身时使用。',
   delete_asset: '通过单次 asset-db 请求安全删除精确的工程预制体或已导入 JSON、文本、图片、音频主资源；主资源及导入子资源 UUID 均须无外部引用，同一主资源的内部子资源链接会被忽略。核对身份、源字节、元信息、数据库映射和源文件/.meta 已移除；不支持强制、级联、目录、子资源、脚本或场景删除。',
   select_asset: '在 Cocos 编辑器中选择资源。编辑器选择状态很重要时使用；其他情况继续以 execute_javascript 作为主要工作流。',
