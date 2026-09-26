@@ -95,12 +95,13 @@ function mockAssetDbPersistence(t, projectPath) {
 
 test('core profile exposes the documented focused tool set', () => {
   const tools = createRegistry('core').listTools();
-  assert.equal(tools.length, 39);
+  assert.equal(tools.length, 40);
   assert.equal(tools.some((tool) => tool.name === 'execute_javascript'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_tool_catalog'), true);
   assert.equal(tools.some((tool) => tool.name === 'validate_scene'), true);
   assert.equal(tools.some((tool) => tool.name === 'inspect_asset_dependencies'), true);
+  assert.equal(tools.some((tool) => tool.name === 'find_asset_by_name'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_build_status'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_preview_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_performance_snapshot'), true);
@@ -112,7 +113,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 123);
+  assert.equal(tools.length, 124);
   assert.equal(tools.some((tool) => tool.name === 'test_prefab_edit_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'exit_prefab_edit_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'save_prefab_edit_mode'), true);

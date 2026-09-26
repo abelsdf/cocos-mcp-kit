@@ -222,6 +222,8 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 
 - OP-065 扩展只读 `list_assets`（工具总数不变，`full` 123、`core` 39）：默认限定工程资源，支持名称 contains/prefix/exact、精确类型、工程目录、原生 pattern、主/子资源开关及显式 all 范围；按 URL/UUID 去重稳定排序，默认 50、最多 200 项分页。无扩展名精确名称可匹配资源文件；多候选通过有界 `selection.candidates` 明确返回，带名称结果另报告同名组。Creator 3.8.8 正式入口核对 1821 条工程记录的重复页顺序、第二页、3 个目录预制体、2 个前缀图片、单一 IconPair、2 个同名 SpriteFrame、子资源排除、2 个显式内置 Camera 及非法上限；无名称分页不再附带全工程同名目录。查询前后 3519 个 `assets` 文件的合并 SHA-256 一致。新增 6 项测试，定向 102 项及全量 929 项均通过、0 失败、0 跳过。分页稳定性以调用期间 asset-db 集合不变为前提，正则/模糊搜索及跨调用快照令牌不在本项范围；下一项为 OP-066 按名称查找 `find_by_name`。详见[资源搜索验证](verification/ASSET_SEARCH_2026-09-26.md)。
 
+- OP-066 新增核心只读 `find_asset_by_name`（`full` 124、`core` 40）：固定精确名称解析，明确返回 `not_found`、`unique` 或 `ambiguous`，只有唯一结果提供 `selected`；重名候选按 URL/UUID 稳定排序并由 `maxCandidates` 有界返回，可用精确类型、工程目录、大小写和主/子资源范围继续缩小。Creator 3.8.8 正式入口核对唯一 IconPair、2 个同名 SpriteFrame、ArrowHammer 的 ImageAsset/SpriteFrame/Texture2D 三类同名、主资源和 SpriteFrame 单独解析、未找到、大小写、2 个内置 Camera 及 3 类非法参数。首次正式调用发现唯一结果共享对象引用会让活动快照把候选显示为 `[Circular]`，修正后候选对象完整并复核通过。查询前后 3519 个 `assets` 文件的合并 SHA-256 一致。新增 6 项测试，定向 68 项及全量 935 项均通过、0 失败、0 跳过。工具不做模糊匹配，也不在重名时猜选；候选被截断时需添加过滤条件或改用 `list_assets`。下一项为 OP-067 资源详情 `details`。详见[资源名称解析验证](verification/ASSET_NAME_LOOKUP_2026-09-26.md)。
+
 ## 阶段 1.5：官方 CLI 架构预留
 
 关联：FR-26、FR-29。依赖阶段 1；只处理会影响 P0 架构的最小范围，不要求安装官方 CLI。

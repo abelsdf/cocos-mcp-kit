@@ -65,6 +65,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   instantiate_prefab: '复用 create_prefab_instance 的原生创建与关联校验；坐标为父节点本地坐标，需显式保存场景，不再使用未经校验的运行态实例化。',
   run_scene_asset: '按 uuid 将场景资源直接加载到当前运行时场景上下文。',
   list_assets: '在工程资源中按名称、类型、目录和模式搜索；稳定分页，可选包含子资源，并明确返回精确名称的重名候选。',
+  find_asset_by_name: '按精确资源名称解析唯一目标；未找到或重名时明确返回状态与有界候选，不会任意选择。',
   inspect_asset: '按精确 UUID、db URL 或工程资源路径有界检查 asset-db 信息和元数据，可选读取序列化数据，并区分主资源与子资源。不会猜测扩展名。',
   open_asset: '按 uuid、db url 或路径在 Cocos Creator 中打开资源。仅当明确需要打开资源本身时使用。',
   delete_asset: '按精确 uuid、db url 或路径通过 asset-db 删除资源；预制体须无资源、脚本和当前场景引用，并回查数据库及源文件/.meta 均已移除。预制体删除不支持强制或级联选项。',

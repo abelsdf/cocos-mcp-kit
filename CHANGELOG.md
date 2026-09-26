@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added the core read-only `find_asset_by_name` resolver for OP-066. Exact names now resolve to explicit `not_found`, `unique`, or `ambiguous` states; only a unique match exposes `selected`, while bounded stable candidates and type/directory/subasset filters support safe disambiguation.
 - Expanded `list_assets` for OP-065 with project-only default scope, name/type/directory/subasset filters, compact stable pagination, deduplication, and explicit exact-name ambiguity candidates. Internal editor assets require the opt-in `all` scope.
 - Hardened `inspect_asset` for OP-064 with exact UUID/db URL/project-path resolution, explicit main/subasset relationships and metadata scope, optional serialized data, bounded/redacted snapshots, and distinct missing/error/truncation states. Extension guessing is no longer used by this tool.
 - Added full-profile `test_prefab_edit_mode` for read-only diagnostics of an explicit prefab UUID, with per-check failures/skips, source/live/reference comparisons and observation stability. Never opens an unopened target or runs enter/save/exit tests; successful reads can still report unsaved content and never imply write-operation support or permission.
