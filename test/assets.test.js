@@ -67,6 +67,89 @@ function notDeleted(f) {
   assert.equal(fs.existsSync(`${f.file}.meta`), true);
 }
 
+function regularFixture(t, options = {}) {
+  const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'cocos-regular-delete-'));
+  const extension = options.extension || '.png';
+  const file = path.join(projectPath, 'assets', `Delete${extension}`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const uuid = 'regular-main-uuid';
+  const defaults = {
+    '.json': { importer: 'json', type: 'cc.JsonAsset' },
+    '.txt': { importer: 'text', type: 'cc.TextAsset' },
+    '.png': { importer: 'image', type: 'cc.ImageAsset' },
+    '.mp3': { importer: 'audio-clip', type: 'cc.AudioClip' },
+  }[extension] || { importer: 'unknown', type: 'cc.Asset' };
+  const importer = options.importer || defaults.importer;
+  const type = options.type || defaults.type;
+  const subAssets = options.subAssets || (extension === '.png' ? {
+    spriteFrame: { uuid: `${uuid}@sprite`, type: 'cc.SpriteFrame' },
+    texture: { uuid: `${uuid}@texture`, type: 'cc.Texture2D' },
+  } : {});
+  const url = `db://assets/Delete${extension}`;
+  const metadata = { ver: '1.0.0', uuid, importer, files: [], subMetas: {}, userData: { quality: 'test' } };
+  fs.writeFileSync(file, options.bytes || Buffer.from('delete-me'));
+  fs.writeFileSync(`${file}.meta`, JSON.stringify(metadata));
+  const info = {
+    uuid, url, source: url, type, importer, imported: true, invalid: false,
+    readonly: false, isDirectory: false, file, subAssets,
+  };
+  const calls = [];
+  const state = {
+    info,
+    metadata,
+    deleted: false,
+    dbReady: true,
+    sceneReady: true,
+    assetUsers: Object.create(null),
+    sceneNodes: Object.create(null),
+  };
+  if (extension === '.png') {
+    state.assetUsers[`${uuid}@texture`] = [`${uuid}@sprite`];
+  }
+  const remove = () => {
+    state.deleted = true;
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+    if (fs.existsSync(`${file}.meta`)) fs.unlinkSync(`${file}.meta`);
+  };
+  const previous = global.Editor;
+  global.Editor = { Message: { request: async (channel, method, ...args) => {
+    calls.push({ channel, method, args });
+    if (state.request) {
+      const override = await state.request(channel, method, ...args);
+      if (override !== undefined) return override;
+    }
+    if (channel === 'scene') {
+      if (method === 'query-is-ready') return state.sceneReady;
+      if (method === 'query-nodes-by-asset-uuid') return state.sceneNodes[args[0]] || [];
+    }
+    assert.equal(channel, 'asset-db');
+    if (method === 'query-ready') return state.dbReady;
+    if (method === 'query-asset-info') {
+      return !state.deleted && [uuid, url, file.replace(/\\/g, '/')].includes(args[0]) ? state.info : null;
+    }
+    if (method === 'query-asset-meta') return !state.deleted && args[0] === state.info.uuid ? state.metadata : null;
+    if (method === 'query-asset-users') return state.assetUsers[args[0]] || [];
+    if (method === 'query-url') return state.deleted ? null : url;
+    if (method === 'query-uuid') return state.deleted ? '' : uuid;
+    if (method === 'delete-asset') {
+      assert.deepEqual(args, [uuid]);
+      if (state.delete) return state.delete(...args);
+      remove();
+      return info;
+    }
+    throw new Error(`Unexpected request: ${channel}:${method}`);
+  } } };
+  t.after(() => {
+    if (previous === undefined) delete global.Editor;
+    else global.Editor = previous;
+    fs.rmSync(projectPath, { recursive: true, force: true });
+  });
+  return {
+    projectPath, file, info, metadata, calls, state, remove,
+    options: { projectPath, retries: 0, retryDelayMs: 0 },
+  };
+}
+
 for (const kind of ['uuid', 'url', 'relative', 'backslashes', 'absolute']) {
   test(`prefab deletion resolves an exact ${kind} and verifies database and disk removal`, async (t) => {
     const f = fixture(t);
@@ -224,13 +307,154 @@ test('prefab deletion propagates asset-db failure without filesystem fallback or
   assert.equal(f.calls.filter((call) => call.method === 'delete-asset').length, 1);
 });
 
-test('non-prefab asset deletion keeps the existing asset-db route', async (t) => {
-  const f = fixture(t);
-  f.info.type = 'cc.TextAsset';
-  f.info.url = 'db://assets/Note.txt';
+test('regular asset deletion verifies references for main and subassets and confirms all disk/database removals', async (t) => {
+  const f = regularFixture(t);
   const result = await deleteAsset(f.info.uuid, f.options);
-  assert.deepEqual(result, { deleted: true, url: f.info.url });
-  assert.equal(f.calls.some((call) => call.method === 'query-asset-users'), false);
+  assert.equal(result.deleted, true);
+  assert.equal(result.uuid, f.info.uuid);
+  assert.equal(result.url, f.info.url);
+  assert.equal(result.type, 'cc.ImageAsset');
+  assert.equal(result.referencePreflight.identitiesChecked, 3);
+  assert.equal(result.referencePreflight.internalAssetUserCount, 1);
+  assert.equal(Object.values(result.verification).every(Boolean), true);
+  assert.match(result.warnings[0], /string or path-based/);
+  assert.deepEqual(
+    f.calls.filter((call) => call.method === 'query-asset-users').map((call) => call.args[0]),
+    ['regular-main-uuid', 'regular-main-uuid@sprite', 'regular-main-uuid@texture']
+  );
+  assert.deepEqual(f.calls.filter((call) => call.method === 'delete-asset').map((call) => call.args), [[f.info.uuid]]);
+});
+
+test('regular asset deletion supports imported JSON, text, image, and audio main assets', async (t) => {
+  for (const extension of ['.json', '.txt', '.png', '.mp3']) {
+    const f = regularFixture(t, { extension });
+    const result = await deleteAsset(f.info.uuid, f.options);
+    assert.equal(result.deleted, true);
+    assert.equal(result.type, f.info.type);
+    assert.equal(f.calls.filter((call) => call.method === 'delete-asset').length, 1);
+  }
+});
+
+test('regular asset deletion refuses main and imported-subasset references before deletion', async (t) => {
+  const main = regularFixture(t);
+  main.state.assetUsers[main.info.uuid] = ['db://assets/UsesImage.prefab'];
+  await assert.rejects(() => deleteAsset(main.info.uuid, main.options), /main regular-main-uuid.*UsesImage/);
+  notDeleted(main);
+
+  const child = regularFixture(t);
+  child.state.sceneNodes[`${child.info.uuid}@sprite`] = ['scene-sprite-node'];
+  await assert.rejects(() => deleteAsset(child.info.uuid, child.options), /subasset:spriteFrame.*scene-sprite-node/);
+  notDeleted(child);
+});
+
+test('regular asset deletion rejects unsupported identities, paths, metadata, sizes, and retry bounds', async (t) => {
+  const mutations = [
+    (f) => { f.state.info.type = 'cc.SceneAsset'; },
+    (f) => { f.state.info.uuid = 'regular-main-uuid@child'; f.state.info.source = 'db://assets/Delete.png'; },
+    (f) => { f.state.info.readonly = true; },
+    (f) => { f.state.info.imported = false; },
+    (f) => { f.state.info.file = path.join(os.tmpdir(), 'outside.png'); },
+    (f) => { fs.writeFileSync(`${f.file}.meta`, JSON.stringify({ ...f.metadata, uuid: 'other' })); },
+    (f) => { fs.truncateSync(f.file, (64 * 1024 * 1024) + 1); },
+  ];
+  for (const mutate of mutations) {
+    const f = regularFixture(t);
+    mutate(f);
+    await assert.rejects(() => deleteAsset(f.info.uuid, f.options));
+    notDeleted(f);
+  }
+  const bounds = regularFixture(t);
+  await assert.rejects(() => deleteAsset(bounds.info.uuid, { ...bounds.options, retries: -1 }), /retries/);
+  notDeleted(bounds);
+  await assert.rejects(() => deleteAsset(bounds.info.uuid, { ...bounds.options, retryDelayMs: -1 }), /retryDelayMs/);
+  notDeleted(bounds);
+});
+
+test('regular asset deletion requires ready asset and scene databases', async (t) => {
+  const assetDb = regularFixture(t);
+  assetDb.state.dbReady = false;
+  await assert.rejects(() => deleteAsset(assetDb.info.uuid, assetDb.options), /must be ready/);
+  notDeleted(assetDb);
+
+  const scene = regularFixture(t);
+  scene.state.sceneReady = false;
+  await assert.rejects(() => deleteAsset(scene.info.uuid, scene.options), /must be ready/);
+  notDeleted(scene);
+});
+
+test('regular asset deletion fails closed for invalid reference query results and lookup errors', async (t) => {
+  const invalid = regularFixture(t);
+  invalid.state.assetUsers[invalid.info.uuid] = [null];
+  await assert.rejects(() => deleteAsset(invalid.info.uuid, invalid.options), /invalid asset users/);
+  notDeleted(invalid);
+
+  const unavailable = regularFixture(t);
+  unavailable.state.request = (channel, method) => {
+    if (channel === 'scene' && method === 'query-nodes-by-asset-uuid') throw new Error('scene reference lookup unavailable');
+  };
+  await assert.rejects(() => deleteAsset(unavailable.info.uuid, unavailable.options), /lookup unavailable/);
+  notDeleted(unavailable);
+});
+
+test('regular asset deletion rechecks identity, source bytes, metadata, and subassets after reference queries', async (t) => {
+  for (const mutation of ['identity', 'source', 'metadata', 'subassets']) {
+    const f = regularFixture(t);
+    let changed = false;
+    f.state.request = (channel, method, target) => {
+      if (!changed && channel === 'scene' && method === 'query-nodes-by-asset-uuid' && target === `${f.info.uuid}@texture`) {
+        changed = true;
+        if (mutation === 'identity') f.state.info = { ...f.info, uuid: 'replacement-uuid' };
+        if (mutation === 'source') fs.appendFileSync(f.file, 'changed');
+        if (mutation === 'metadata') f.state.metadata = { ...f.metadata, userData: { changed: true } };
+        if (mutation === 'subassets') f.state.info = { ...f.info, subAssets: {
+          ...f.info.subAssets,
+          texture: { uuid: 'replacement@texture', type: 'cc.Texture2D' },
+        } };
+      }
+    };
+    await assert.rejects(() => deleteAsset(f.info.uuid, f.options), /changed during deletion preflight/);
+    notDeleted(f);
+  }
+});
+
+test('regular asset deletion never repeats a destructive request and rejects incomplete removal', async (t) => {
+  const f = regularFixture(t);
+  f.state.delete = () => {
+    f.remove();
+    fs.writeFileSync(f.file, 'remaining');
+    return f.info;
+  };
+  await assert.rejects(() => deleteAsset(f.info.uuid, f.options), /not confirmed.*fileAbsent/);
+  assert.equal(f.calls.filter((call) => call.method === 'delete-asset').length, 1);
+});
+
+test('regular asset deletion waits for completion, but reports native and post-delete query failures as uncertain', async (t) => {
+  const delayed = regularFixture(t);
+  let requested = false;
+  let polls = 0;
+  delayed.state.delete = () => { requested = true; return null; };
+  delayed.state.request = (channel, method, target) => {
+    if (requested && channel === 'asset-db' && method === 'query-asset-info' && target === delayed.info.uuid && ++polls === 2) {
+      delayed.remove();
+    }
+  };
+  const result = await deleteAsset(delayed.info.uuid, { ...delayed.options, retries: 3 });
+  assert.equal(result.deleted, true);
+  assert.equal(delayed.calls.filter((call) => call.method === 'delete-asset').length, 1);
+
+  const native = regularFixture(t);
+  native.state.delete = () => { throw new Error('native refused'); };
+  await assert.rejects(() => deleteAsset(native.info.uuid, native.options), /result may be uncertain/);
+  assert.equal(native.calls.filter((call) => call.method === 'delete-asset').length, 1);
+  assert.equal(fs.existsSync(native.file), true);
+
+  const query = regularFixture(t);
+  query.state.delete = () => { query.remove(); return null; };
+  query.state.request = (channel, method) => {
+    if (query.state.deleted && channel === 'asset-db' && method === 'query-asset-info') throw new Error('database disconnected');
+  };
+  await assert.rejects(() => deleteAsset(query.info.uuid, query.options), /not confirmed.*database disconnected/);
+  assert.equal(query.calls.filter((call) => call.method === 'delete-asset').length, 1);
 });
 
 test('delete_asset registry supplies the project root and wraps verified deletion or refusal', async (t) => {

@@ -71,7 +71,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   copy_asset: '通过 Cocos asset-db 安全复制 JSON、文本、图片或音频主资源；拒绝覆盖并核对源资源未变、目标字节、全新 UUID、导入设置、子资源和稳定导入状态。',
   create_asset: '通过 Cocos asset-db 安全创建新的 JSON 或纯文本资源；拒绝覆盖并核对源内容、.meta、UUID、导入器、资源类型和稳定导入状态。',
   open_asset: '按 uuid、db url 或路径在 Cocos Creator 中打开资源。仅当明确需要打开资源本身时使用。',
-  delete_asset: '按精确 uuid、db url 或路径通过 asset-db 删除资源；预制体须无资源、脚本和当前场景引用，并回查数据库及源文件/.meta 均已移除。预制体删除不支持强制或级联选项。',
+  delete_asset: '通过单次 asset-db 请求安全删除精确的工程预制体或已导入 JSON、文本、图片、音频主资源；主资源及导入子资源 UUID 均须无外部引用，同一主资源的内部子资源链接会被忽略。核对身份、源字节、元信息、数据库映射和源文件/.meta 已移除；不支持强制、级联、目录、子资源、脚本或场景删除。',
   select_asset: '在 Cocos 编辑器中选择资源。编辑器选择状态很重要时使用；其他情况继续以 execute_javascript 作为主要工作流。',
   inspect_asset_dependencies: '检查 Cocos 序列化资源中引用的 UUID 类型依赖。',
   validate_asset_dependencies: '验证单个资源或项目资源查询结果中的 UUID 类型依赖。',
