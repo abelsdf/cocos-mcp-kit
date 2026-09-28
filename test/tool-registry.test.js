@@ -22,6 +22,15 @@ function createRegistry(profile, projectPath = path.resolve('/tmp/funplay-cocos-
   });
 }
 
+test('UI template tool generates schema-checked JSON without editor or asset queries', async (t) => {
+  mockEditorRequests(t, async () => assert.fail('Template generation must not call Editor'));
+  const registry = createRegistry('full', undefined, {}, { sceneBridge: { call: async () => assert.fail('No scene calls') } });
+  const { value } = await registry.callToolDetailed('get_ui_template', { template: 'pause_menu', spriteFrame: 'db://assets/White.png/spriteFrame' });
+  assert.equal(value.ok, true); assert.equal(value.data.ui.roots[0].name, 'PauseMenu');
+  assert.equal(value.data.validation.resources, 'not_checked');
+  await assert.rejects(() => registry.callToolDetailed('get_ui_template', { template: 'login', spriteFrame: 'db://assets/White.png/spriteFrame' }), /template must be/);
+});
+
 test('runtime tools control the preview toolbar instead of calling edit-scene director helpers', async (t) => {
   const commands = [];
   t.mock.method(previewRuntime, 'controlPreviewToolbar', async (command) => {
@@ -104,6 +113,7 @@ test('core profile exposes the documented focused tool set', () => {
   assert.equal(tools.some((tool) => tool.name === 'validate_node_batch'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_node_batch'), false);
   assert.equal(tools.some((tool) => tool.name === 'build_ui'), false);
+  assert.equal(tools.some((tool) => tool.name === 'get_ui_template'), false);
   assert.equal(tools.some((tool) => tool.name === 'validate_scene'), true);
   assert.equal(tools.some((tool) => tool.name === 'inspect_asset_dependencies'), true);
   assert.equal(tools.some((tool) => tool.name === 'find_asset_by_name'), true);
@@ -118,7 +128,9 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 141);
+  assert.equal(tools.length, 142);
+  assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.readOnlyHint, true);
+  assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.destructiveHint, false);
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.readOnlyHint, false);
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.destructiveHint, true);
   assert.equal(tools.find(tool => tool.name === 'create_node_batch').annotations.destructiveHint, true);
