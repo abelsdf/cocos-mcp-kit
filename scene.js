@@ -6,6 +6,7 @@ const cc = require('cc');
 const { assertNoLinkedPrefabInstances, attachPrefabMetadata, normalizePrefabNodeLayers } = require('./lib/prefab-metadata');
 const { resolveNode } = require('./lib/node-resolution');
 const { captureScriptExecution } = require('./lib/script-execution');
+const { createNodeBatchMethods } = require('./lib/node-batch-scene');
 
 const {
   Node,
@@ -1139,6 +1140,8 @@ async function executeUserCode(code, args, scriptConsole = console) {
 }
 
 exports.methods = {
+  ...createNodeBatchMethods({ cc, getScene, findNode, hasLinkedPrefabAncestor,
+    convertEditableComponentValue, componentRuntimeValue, loadAssetByUuid }),
   async getSceneInfo(options = {}) {
     const maxDepth = readQueryLimit(options.maxDepth, 2, 32, 'maxDepth');
     const maxNodes = readQueryLimit(options.maxNodes, 200, 2000, 'maxNodes');

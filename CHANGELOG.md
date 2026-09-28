@@ -8,6 +8,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ### Changed
 
+- Added full-profile `create_node_batch` for the FR-29 P0 recovery foundation: exact scene/parent and imported-project-asset preflight, sibling-name conflict checks, a small built-in UI component/property allowlist, internal identity/reference binding, readback verification and new-node-only cleanup reports. Failed writes retain structured MCP error data; uncertain replies are never retried. No automatic save, existing-node edits, external-reference resolution, prefab creation or Undo recording.
 - Added the core-profile read-only `validate_node_batch` preflight for the FR-29 P0 DTO. It checks local identities, hierarchy and reference policy, and returns a creation plan without accessing or changing a Creator scene.
 - Added a core-profile read-only backend capability report for the FR-26 P0 architecture. It pages currently exposed tools with annotation hints and reports the official CLI adapter as unconfigured without probing or depending on it.
 - Expanded core-profile `get_project_info` for OP-083 with public `Editor.Project` and `Editor.App` fields. The native project name and Creator version now take precedence over folder-name and fallback values; existing MCP runtime fields remain available.
