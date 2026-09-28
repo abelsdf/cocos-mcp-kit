@@ -31,6 +31,27 @@ test('UI template tool generates schema-checked JSON without editor or asset que
   await assert.rejects(() => registry.callToolDetailed('get_ui_template', { template: 'login', spriteFrame: 'db://assets/White.png/spriteFrame' }), /template must be/);
 });
 
+test('verify_ui keeps image bytes out of metadata/logs and preserves structure on capture failure', async t => {
+  const validation = require('../lib/ui-validation'), screenshots = require('../lib/screenshots');
+  t.mock.method(validation, 'validateUI', async () => ({ passed: true, complete: true }));
+  let fail = false;
+  t.mock.method(screenshots, 'capturePanelScreenshot', async () => {
+    if (fail) throw Error('Target missing');
+    return { dataUri: 'data:image/png;base64,YQ==', filePath: 'capture.png', visualValidation: 'not_run' };
+  });
+  mockEditorRequests(t, async (_channel, method) => ({ 'query-is-ready': true, 'query-current-scene': 'scene', 'query-scene-mode': 'general', 'multi-is-multi-edit-mode': false, 'query-scene-json': 'serialized' })[method]);
+  const logs = [], registry = createRegistry('full', undefined, {}, { interactionLog: { add: (...args) => logs.push(args) } });
+  const args = { sceneUuid: 'scene', nodeUuids: ['node'], waitMs: 0, screenshot: 'scene' };
+  const result = await registry.callToolDetailed('verify_ui', args);
+  assert.equal(result.image, 'data:image/png;base64,YQ=='); assert.equal(result.value.data.structure.passed, true);
+  assert.equal(JSON.stringify(result.value).includes('YQ=='), false); assert.equal(JSON.stringify(logs).includes('YQ=='), false);
+  fail = true;
+  await assert.rejects(registry.callToolDetailed('verify_ui', args), error => {
+    assert.equal(error.toolEnvelope.ok, false); assert.equal(error.toolEnvelope.data.completed, false);
+    assert.equal(error.toolEnvelope.data.structure.passed, true); assert.equal(error.toolEnvelope.data.screenshot.status, 'failed'); return true;
+  });
+});
+
 test('runtime tools control the preview toolbar instead of calling edit-scene director helpers', async (t) => {
   const commands = [];
   t.mock.method(previewRuntime, 'controlPreviewToolbar', async (command) => {
@@ -128,7 +149,8 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 143);
+  assert.equal(tools.length, 144);
+  assert.equal(tools.find(tool => tool.name === 'verify_ui').annotations.destructiveHint, false);
   assert.equal(tools.find(tool => tool.name === 'validate_ui').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.destructiveHint, false);

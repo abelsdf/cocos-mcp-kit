@@ -25,6 +25,8 @@ Read `cocos://knowledge/index` through MCP Resources for a compact catalog, then
 
 ## What it can do
 
+Full-profile `verify_ui` adds a bounded wait, edit-mode structure checks and optional strictly targeted Scene/Game View PNGs with separate metadata. In preview mode structure is explicitly `not_checked`; a captured image is never a visual pass. Missing/ambiguous targets fail without window fallback, and clipped Game View captures are marked as partial. See the [workflow and screenshot limits](./docs/UI_VERIFICATION.md).
+
 For explicit UI nodes, full-profile `validate_ui` checks UITransform, project design bounds, Sprite/Label asset references and serialized Button events, with rule/node exclusions. Missing data and truncated results remain incomplete. It never repairs, saves, invokes callbacks or proves visual correctness; Widget/Animation coexistence is only a potential-conflict warning. See the [validation contract](./docs/UI_VALIDATION.md) and [Creator 3.8.8 checks](./docs/verification/UI_VALIDATION_2026-09-28.md).
 
 | Area | Current capabilities | Examples |

@@ -35,6 +35,15 @@ function createServer(toolRegistry = {}, config = {}, options = {}) {
   });
 }
 
+test('structured verification metadata and PNG travel in separate MCP content blocks', async () => {
+  const value = { ok: true, data: { structure: { passed: false }, screenshot: { status: 'captured' }, visualValidation: 'not_run' } };
+  const server = createServer({ callToolDetailed: async () => ({ value, text: JSON.stringify(value), image: 'data:image/png;base64,YQ==' }) });
+  const { result } = await server.handleRpcRequest({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'verify_ui' } });
+  assert.deepEqual(result.structuredContent, value); assert.equal(result.content.length, 2);
+  assert.equal(result.content[0].type, 'text'); assert.deepEqual(result.content[1], { type: 'image', mimeType: 'image/png', data: 'YQ==' });
+  assert.equal(JSON.stringify(result.structuredContent).includes('YQ=='), false);
+});
+
 test('MCP resources expose bundled knowledge without calling scene APIs', async () => {
   const { ResourceProvider } = require('../lib/resources');
   const server = createServer();

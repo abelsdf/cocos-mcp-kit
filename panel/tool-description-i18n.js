@@ -38,6 +38,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   get_backend_capabilities: '只读报告当前 Creator 扩展后端、工程与平台身份、实际开放的工具及风险提示；官方 CLI 适配器未配置，工具开放不代表功能已通过运行验收。',
   validate_node_batch: '只读预检局部 ID 节点/组件批次、父子结构和引用策略，返回父先子的创建顺序与待处理引用；不读取或修改场景，组件和资源仍需 Creator 核验。',
   create_node_batch: '在当前场景的明确普通父节点下创建受限批次，预检 UI 属性、资源及工程脚本 UUID，绑定内部引用和按钮事件并回读。失败仅清理本批新节点，脚本构造/生命周期的外部副作用不回滚。Creator 3.8.8 记录一次父范围撤销；记录不确定时阻止后续批次，需人工检查并安全重启。不自动保存、调用事件、执行撤销/重做或解析外部引用。',
+  verify_ui: '修改后等待有界时间，在 general 模式检查明确 UI 节点，按需返回严格定位的 Scene 或 Game View 图片。preview 模式的结构明确标为未检查。默认不截图；只新增临时图片，不自动启动预览、保存、修复或给出视觉结论。截图失败保留结构报告并返回 MCP 错误，运行场景新鲜度未验证。',
   validate_ui: '只读检查明确指定 UI 节点的 UITransform、设计范围越界、Sprite/Label 资源和 Button 事件，返回问题级别与建议，支持按规则或节点排除。Widget/Animation 仅提示潜在冲突，未分析轨道；不自动修复、保存、触发事件或证明视觉通过。',
   get_ui_template: '只读生成暂停菜单、设置弹窗或结果弹窗的可编辑 UI JSON，支持文案、尺寸、颜色及工程脚本事件参数；检查后交给 build_ui 构建。未绑定按钮默认禁用，不自带素材或游戏逻辑，不修改场景、保存或验证资源。',
   build_ui: '在现有活跃 Canvas/UI 父节点下按嵌套 JSON 新建 UI，支持局部位置、尺寸、锚点、文字、项目图片、按钮 target、工程脚本 UUID 挂载和指向同批脚本的有序事件。同名拒绝、失败只清理本批，脚本构造/生命周期外部副作用不回滚。Creator 3.8.8 记录一次撤销，成功后附加独立视口报告。不自动保存、创建 Canvas/Camera、生成脚本或调用事件，不承诺运行画面可见。',
@@ -141,16 +142,16 @@ const ZH_TOOL_DESCRIPTIONS = {
   invoke_component_method: '调用组件方法，用于运行时验证和测试钩子。',
   get_script_diagnostic_context: '运行 TypeScript 诊断并为每个错误附加源码片段。修复前分析编译错误时优先使用此专用工具。',
   capture_desktop_screenshot: '截取本地桌面，并以 MCP 图片数据返回。',
-  capture_editor_screenshot: '截取当前聚焦的 Cocos Creator 编辑器窗口，并以 MCP 图片数据返回。仅在明确需要视觉验证时优先使用截图工具。',
-  capture_scene_screenshot: '截取编辑器 Scene 面板区域，并在可用时按面板裁剪。仅用于场景侧结果的视觉验证。',
-  capture_game_screenshot: '截取编辑器 Game/Preview 面板区域，并在可用时按面板裁剪。',
+  capture_editor_screenshot: '截取唯一可见的 Creator 主窗口，返回 PNG 与来源信息。可按窗口 ID/标题过滤，无匹配或有歧义时明确失败，不回退到聚焦窗口、不覆盖已有图片。',
+  capture_scene_screenshot: '严格核对可见 Scene 面板及内部编辑视图来源后裁剪，返回 PNG、窗口、范围和时间。不回退到 Game View、其他面板或任意画布，不给出视觉通过结论。',
+  capture_game_screenshot: '严格裁剪已经运行的内嵌 Game View，返回 PNG、来源及运行状态。不启动预览、不回退到 Scene/浏览器/模拟器，不验证运行场景新鲜度或视觉通过。',
   list_editor_windows: '列出可用的 Electron 窗口，便于截图或输入工具选择正确目标。明确需要处理窗口目标问题时使用。',
   simulate_mouse_click: '向编辑器、预览或模拟器窗口发送底层 Electron 鼠标点击。',
   simulate_mouse_drag: '向编辑器、预览或模拟器窗口发送底层 Electron 鼠标拖拽。',
   simulate_key_press: '向编辑器、预览或模拟器窗口发送底层 Electron 按键。',
   simulate_key_combo: '向编辑器、预览或模拟器窗口发送底层 Electron 组合按键，例如 Ctrl+S 或 Cmd+P。',
   simulate_preview_input: '底层预览或模拟器输入的便捷封装。默认模拟鼠标点击；提供 keyCode 时模拟按键。',
-  capture_preview_screenshot: '截取预览或模拟器窗口，并以 MCP 图片数据返回。仅在需要游戏或预览输出的视觉证明时使用。',
+  capture_preview_screenshot: '内嵌 Game View 严格截图入口，返回 PNG 与来源信息；要求唯一可见 Creator 主窗口及已运行预览。外部浏览器和独立模拟器不受支持，不作窗口回退。',
 };
 
 function localizeToolDescription(tool, language) {

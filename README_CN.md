@@ -21,6 +21,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 ## 当前能力
 
+`full` 配置新增 `verify_ui`：有界等待、编辑态结构检查、按需返回严格定位的 Scene/Game View PNG 与独立元数据。preview 模式明确结构“未检查”，截图成功不等于视觉通过；目标缺失或歧义时报错，不回退到其他窗口，Game View 仅截可见区域时标记裁剪。详见[流程与截图边界](./docs/UI_VERIFICATION.md)。
+
 `full` 配置新增只读 `validate_ui`，检查明确 UI 节点的 UITransform、设计范围越界、Sprite/Label 资源及序列化 Button 事件，支持按规则或节点排除。数据不可用或结果截断时明确报告未完成；不自动修复、保存、触发回调或证明视觉正确，Widget/Animation 共存只提示潜在冲突。详见[规则契约](./docs/UI_VALIDATION.md)与 [Creator 3.8.8 验证](./docs/verification/UI_VALIDATION_2026-09-28.md)。
 
 | 领域 | 已提供的能力 | 示例工具 |
