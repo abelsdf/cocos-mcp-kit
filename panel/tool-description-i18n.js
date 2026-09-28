@@ -38,6 +38,7 @@ const ZH_TOOL_DESCRIPTIONS = {
   get_backend_capabilities: '只读报告当前 Creator 扩展后端、工程与平台身份、实际开放的工具及风险提示；官方 CLI 适配器未配置，工具开放不代表功能已通过运行验收。',
   validate_node_batch: '只读预检局部 ID 节点/组件批次、父子结构和引用策略，返回父先子的创建顺序与待处理引用；不读取或修改场景，组件和资源仍需 Creator 核验。',
   create_node_batch: '在当前场景的明确普通父节点下创建受限批次，预检 UI 属性与资源、绑定内部引用并回读。失败仅清理本批新节点；Creator 3.8.8 成功时记录一次父节点范围的撤销，其他版本不承诺。记录状态不确定时阻止后续批次，须人工检查并安全重启 Creator；不自动保存或执行撤销/重做，不修改旧节点或解析外部引用。',
+  build_ui: '在当前场景的明确 UI 父节点下按嵌套 JSON 新建 UI，核对现有 Canvas、关联屏幕相机及层可见性。支持局部位置、尺寸、锚点、文字、项目图片和按钮 target 引用；同名拒绝、失败仅清理本批，Creator 3.8.8 记录一次撤销。不自动保存、创建 Canvas/Camera、挂脚本或绑定事件；不将局部坐标当作屏幕像素，也不承诺视口内可见。',
   save_current_scene: '使用可用的编辑器场景消息保存当前打开的 Cocos 场景。',
   open_build_panel: '打开 Cocos 构建面板，默认使用 builder 面板 ID。',
   get_build_status: '通过已知的 builder 消息变体查询 Cocos 构建和预览状态。',

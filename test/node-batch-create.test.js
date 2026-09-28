@@ -59,6 +59,42 @@ test('batch create resolves a saved scene and performs one write-bridge call wit
   const f = fixture(t); const r = await f.run(); assert.equal(r.created, true);
   assert.deepEqual(f.state.methods, ['preflightNodeBatch', 'createNodeBatch']); assert.deepEqual(f.state.execution.assets, []);
 });
+
+function uiInput() {
+  return { sceneUuid: 'scene', parentUuid: 'parent', ui: { schemaVersion: 1, mode: 'create', failurePolicy: 'cleanup_new_nodes',
+    roots: [{ id: 'panel', name: 'Panel', size: { width: 300, height: 200 }, label: { text: 'UI' } }] } };
+}
+test('build_ui formal entry reuses the same preflight, one write call and native Undo lifecycle', async t => {
+  const f = fixture(t); f.state.version = '3.8.8';
+  const { value } = await f.registry.callToolDetailed('build_ui', uiInput());
+  assert.equal(value.ok, true); assert.equal(value.data.phase, 'complete'); assert.equal(value.data.undo.recorded, true);
+  assert.deepEqual(f.state.methods, ['preflightNodeBatch', 'createNodeBatch']);
+  assert.equal(f.state.execution.batch.ui, true);
+  assert.deepEqual(f.state.recordings.map(r => r.method), ['begin-recording', 'end-recording']);
+});
+test('build_ui invalid schema returns structured no-write preflight failure', async t => {
+  const f = fixture(t); const args = uiInput(); args.ui.roots[0].size.width = -1;
+  await assert.rejects(f.registry.callToolDetailed('build_ui', args), error => {
+    assert.equal(error.toolEnvelope.ok, false); assert.equal(error.toolEnvelope.data.phase, 'preflight');
+    assert.equal(error.toolEnvelope.data.cleanup.status, 'not_needed'); return true;
+  });
+  assert.equal(f.state.calls.length, 0);
+});
+test('build_ui preserves scene asset preflight errors without starting Undo', async t => {
+  const f = fixture(t); f.state.notImported = true;
+  await assert.rejects(f.registry.callToolDetailed('build_ui', uiInput()), error => {
+    assert.equal(error.toolEnvelope.data.phase, 'preflight'); assert.equal(error.toolEnvelope.data.created, false); return true;
+  });
+  assert.equal(f.state.methods.length, 0); assert.equal(f.state.recordings, undefined);
+});
+test('build_ui incomplete native finalization is never reported as a successful build', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state['end-recordingError'] = true;
+  await assert.rejects(f.registry.callToolDetailed('build_ui', uiInput()), error => {
+    const result = error.toolEnvelope.data;
+    assert.equal(result.created, true); assert.equal(result.uncertain, true);
+    assert.equal(result.undo.recorded, null); assert.equal(result.phase, 'undo_finalize'); return true;
+  });
+});
 for (const change of [a => { delete a.sceneUuid; }, a => { a.parentUuid = ''; }, a => { a.force = true; }, a => { a.batch.roots.push('root'); }]) {
   test(`invalid batch arguments reject before IPC: ${change}`, async t => { const f = fixture(t); change(f.args); await assert.rejects(f.run()); assert.equal(f.state.calls.length, 0); });
 }

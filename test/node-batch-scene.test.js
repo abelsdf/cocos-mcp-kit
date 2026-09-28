@@ -17,7 +17,9 @@ function fixture() {
   assert.ok(fs.existsSync(modulePath), 'Batch scene implementation must exist before behavior tests');
   let id = 0; const control = {}; const all = [];
   class Node {
-    constructor(name) { if (control.failName === name) throw new Error('Injected creation failure'); Object.assign(this, { name, uuid: `node-${++id}`, children: [], components: [], active: true, layer: 33554432, valid: true, _parent: null }); all.push(this); }
+    constructor(name) { if (control.failName === name) throw new Error('Injected creation failure'); Object.assign(this, { name, uuid: `node-${++id}`, children: [], components: [], active: true, layer: 33554432, valid: true, _parent: null, position: { x: 0, y: 0, z: 0 } }); all.push(this); }
+    get activeInHierarchy() { return this.active && (!this.parent || this.parent.activeInHierarchy); }
+    setPosition(x, y, z) { if (!control.ignorePosition) this.position = { x, y, z }; }
     get parent() { return this._parent; }
     set parent(value) { if (this._parent) this._parent.children.splice(this._parent.children.indexOf(this), 1); this._parent = value; if (value) value.children.push(this); }
     getComponent(type) { return this.components.find(c => c instanceof type); }
@@ -25,14 +27,15 @@ function fixture() {
     removeFromParent() { this.parent = null; }
     destroy() { if (control.failDestroy === this.name) throw new Error('Injected cleanup failure'); this.valid = false; for (const c of this.children.slice()) { c.removeFromParent(); c.destroy(); } }
   }
-  class Component {}
+  class Component { constructor() { this.enabled = true; this.valid = true; } get enabledInHierarchy() { return this.enabled && this.node.activeInHierarchy; } }
   class UITransform extends Component { constructor() { super(); this.contentSize = { width: 100, height: 100 }; this.anchorPoint = { x: 0.5, y: 0.5 }; } }
   class Label extends Component { constructor() { super(); this.string = ''; this.color = { r: 255, g: 255, b: 255, a: 255 }; } }
   class Sprite extends Component { constructor() { super(); this.spriteFrame = null; } }
   class Button extends Component { constructor() { super(); this.target = null; this.interactable = true; } }
   class ProgressBar extends Component { constructor() { super(); this.barSprite = null; this.progress = 1; } }
   class Canvas extends Component {} class Layout extends Component {} class Asset {} class SpriteFrame extends Asset {}
-  const cc = { Node, Component, UITransform, Label, Sprite, Button, ProgressBar, Canvas, Layout, Asset, SpriteFrame, isValid: n => n.valid, CCObjectFlags: { DontSave: 8 } };
+  class Camera extends Component { constructor() { super(); this.visibility = 33554432; this.targetTexture = null; } }
+  const cc = { Node, Component, UITransform, Label, Sprite, Button, ProgressBar, Canvas, Camera, Layout, Asset, SpriteFrame, isValid: n => Boolean(n?.valid), CCObjectFlags: { DontSave: 8 } };
   const scene = new Node('Scene'); scene.uuid = 'scene';
   const parent = new Node('Canvas'); parent.parent = scene; parent.addComponent(Canvas);
   const existing = new Node('Existing'); existing.parent = parent;
@@ -169,4 +172,71 @@ test('scene changes while loading assets cause no batch writes', async () => {
   const f = fixture(); addAssetReference(f); f.control.driftOnLoad = f.switchScene;
   const result = await f.execute(); assert.equal(result.created, false); assert.equal(result.cleanup.status, 'not_needed');
   assert.deepEqual(f.parent.children, [f.existing]);
+});
+
+function uiFixture() {
+  const f = fixture(); f.args.batch.ui = true; f.parent.addComponent(f.cc.UITransform);
+  const cameraNode = new f.cc.Node('Camera'); cameraNode.parent = f.scene;
+  f.camera = cameraNode.addComponent(f.cc.Camera);
+  f.parent.getComponent(f.cc.Canvas).cameraComponent = f.camera;
+  f.args.batch.nodes[0].position = { x: 25, y: -45, z: 0 };
+  f.args.batch.nodes[1].components[1].properties = { overflow: 1, fontSize: 24, lineHeight: 30, string: 'Fixed size' };
+  return f;
+}
+test('UI batch creates local positions and fixed label settings with validated Canvas/Camera context', async () => {
+  const f = uiFixture(); const before = await f.methods.preflightNodeBatch(f.args);
+  assert.equal(before.uiContext.canvasUuid, f.parent.uuid); assert.equal(before.uiContext.cameraUuid, f.camera.uuid);
+  const result = await f.execute(); assert.equal(result.created, true);
+  assert.deepEqual(f.parent.children.at(-1).position, { x: 25, y: -45, z: 0 });
+  assert.equal(f.parent.children.at(-1).children[0].getComponent(f.cc.Label).overflow, 1);
+  assert.deepEqual(result.uiContext, before.uiContext);
+});
+for (const change of [
+  f => { f.parent.getComponent(f.cc.Canvas).cameraComponent = null; },
+  f => { f.camera.visibility = 1; }, f => { f.camera.enabled = false; },
+  f => { f.parent.layer = 33554433; }, f => { f.parent.layer = 0; },
+  f => { f.camera.node.active = false; }, f => { f.camera.node.parent = null; },
+  f => { f.camera.node._objFlags = 8; }, f => { f.camera.targetTexture = {}; },
+  f => { f.parent.getComponent(f.cc.Canvas).enabled = false; }, f => { f.parent.active = false; },
+  f => { f.parent.components = f.parent.components.filter(c => !(c instanceof f.cc.UITransform)); },
+  f => { f.args.batch.nodes[1].components = []; },
+  f => { f.args.batch.nodes[1].components[1].properties.overflow = 0; },
+  f => { f.args.batch.nodes[1].components[1].properties.fontSize = -1; },
+  f => { f.args.batch.nodes[1].components[1].properties.lineHeight = '20'; },
+]) test(`UI batch refuses unsupported rendering/size context before writes: ${change}`, async () => {
+  const f = uiFixture(); change(f); const count = f.all.length;
+  await assert.rejects(f.methods.preflightNodeBatch(f.args)); assert.equal(f.all.length, count);
+});
+test('UI camera context drift after asset loading is refused before creating nodes', async () => {
+  const f = uiFixture(); addAssetReference(f); f.args.batch.nodes[1].components[1].properties = { sizeMode: 0 };
+  f.control.driftOnLoad = () => { f.camera.visibility = 1; };
+  const result = await f.execute(); assert.equal(result.created, false);
+  assert.equal(result.cleanup.status, 'not_needed'); assert.deepEqual(f.parent.children, [f.existing]);
+});
+test('UI camera context drift during creation cleans up only its new nodes', async () => {
+  const f = uiFixture(); f.control.onAdd = () => { f.camera.enabled = false; };
+  const result = await f.execute(); assert.equal(result.created, false);
+  assert.equal(result.cleanup.status, 'complete'); assert.deepEqual(f.parent.children, [f.existing]);
+});
+test('a local position readback mismatch cleans up the batch', async () => {
+  const f = uiFixture(); f.control.ignorePosition = true;
+  const result = await f.execute(); assert.equal(result.created, false); assert.equal(result.phase, 'verify');
+  assert.equal(result.cleanup.status, 'complete'); assert.deepEqual(f.parent.children, [f.existing]);
+});
+
+test('UI batches accept a nested UI parent and retain the nearest Canvas identity', async () => {
+  const f = uiFixture(); const outerCanvas = f.parent;
+  const target = new f.cc.Node('NestedParent'); target.parent = outerCanvas; target.addComponent(f.cc.UITransform);
+  f.args.parentUuid = target.uuid;
+  const result = await f.execute(); assert.equal(result.created, true);
+  assert.equal(result.uiContext.canvasUuid, outerCanvas.uuid); assert.equal(result.parentUuid, target.uuid);
+  assert.deepEqual(target.children[0].position, { x: 25, y: -45, z: 0 });
+});
+test('nested Canvas context uses its own associated camera, not the outer Canvas camera', async () => {
+  const f = uiFixture(); const nested = new f.cc.Node('NestedCanvas'); nested.parent = f.parent; nested.addComponent(f.cc.UITransform);
+  const cameraNode = new f.cc.Node('NestedCamera'); cameraNode.parent = f.scene;
+  const camera = cameraNode.addComponent(f.cc.Camera); nested.addComponent(f.cc.Canvas).cameraComponent = camera;
+  f.args.parentUuid = nested.uuid; f.camera.enabled = false;
+  const result = await f.execute(); assert.equal(result.created, true);
+  assert.equal(result.uiContext.canvasUuid, nested.uuid); assert.equal(result.uiContext.cameraUuid, camera.uuid);
 });

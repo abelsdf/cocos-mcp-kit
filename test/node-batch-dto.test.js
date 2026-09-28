@@ -26,6 +26,17 @@ function validBatch(policy = 'clear') {
   };
 }
 
+test('DTO v1 accepts additive local position and strict UI context opt-in', () => {
+  const batch = validBatch(); batch.ui = true; batch.nodes[0].position = { x: 2, y: -3, z: 0 };
+  assert.equal(validateNodeBatch(batch).valid, true);
+  for (const position of [{ x: 1, y: 2 }, { x: 1, y: 2, z: Infinity }, { x: 1, y: 2, z: 0, w: 1 }, null]) {
+    batch.nodes[0].position = position;
+    assert.ok(validateNodeBatch(batch).issues.some(i => i.code === 'INVALID_POSITION'));
+  }
+  delete batch.nodes[0].position; batch.ui = false;
+  assert.ok(validateNodeBatch(batch).issues.some(i => i.code === 'INVALID_UI_MODE'));
+});
+
 test('node batch preflight orders parents and distinguishes internal, asset and external references', () => {
   const result = validateNodeBatch(validBatch());
   assert.equal(result.valid, true);

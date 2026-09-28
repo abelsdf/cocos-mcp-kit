@@ -102,6 +102,7 @@ test('core profile exposes the documented focused tool set', () => {
   assert.equal(tools.some((tool) => tool.name === 'get_backend_capabilities'), true);
   assert.equal(tools.some((tool) => tool.name === 'validate_node_batch'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_node_batch'), false);
+  assert.equal(tools.some((tool) => tool.name === 'build_ui'), false);
   assert.equal(tools.some((tool) => tool.name === 'validate_scene'), true);
   assert.equal(tools.some((tool) => tool.name === 'inspect_asset_dependencies'), true);
   assert.equal(tools.some((tool) => tool.name === 'find_asset_by_name'), true);
@@ -116,7 +117,8 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 139);
+  assert.equal(tools.length, 140);
+  assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.readOnlyHint, false);
   assert.equal(tools.some((tool) => tool.name === 'check_asset_ready'), true);
   assert.equal(tools.some((tool) => tool.name === 'query_asset_path'), true);
   assert.equal(tools.find((tool) => tool.name === 'query_asset_path').annotations.readOnlyHint, true);

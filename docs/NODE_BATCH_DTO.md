@@ -1,6 +1,6 @@
 # 节点批次 DTO、预检与受限创建 v1
 
-范围：FR-29 的 P0 批次与恢复基础，尚不是跨场景复制或通用 UI 构建器。此 DTO 由 Cocos MCP Kit 独立定义，不包含 Creator 序列化 dump 或官方 CLI 的私有对象。`validate_node_batch`（core/full）仅对声明式批次做静态预检，**不读取、创建、删除、保存或撤销场景内容**。`create_node_batch`（仅 full）在 Creator 中核对实际目标、组件和资源后，执行下述受限的新节点创建。
+范围：FR-29 的 P0 批次与恢复基础，不是跨场景复制。此 DTO 由 Cocos MCP Kit 独立定义，不包含 Creator 序列化 dump 或官方 CLI 的私有对象。`validate_node_batch`（core/full）仅对声明式批次做静态预检，**不读取、创建、删除、保存或撤销场景内容**。`create_node_batch`（仅 full）在 Creator 中核对实际目标、组件和资源后，执行下述受限的新节点创建。面向用户的嵌套 JSON 由独立的 [UI 构建器](UI_BUILDER.md)编译，不与传输 DTO 混为一个 schema。
 
 ```json
 {
@@ -27,6 +27,8 @@
 
 DTO 限制：最多 128 个节点、每节点 16 个组件、256 条引用、256 KiB JSON 和 16 层层级。返回父先子的创建顺序、引用处理计划、问题代码与定位路径；不返回原始大段属性正文。输入字段与属性对象必须是可安全传输的 JSON 值，原型污染键被拒绝。静态 `valid: true` 不保证某个组件或属性被写入口支持。
 
+v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有限数的局部坐标；顶层 `ui:true` 启用构建器的严格 UI 上下文检查（只能为 true 或省略）。严格模式要求每节点 UITransform，Label 显式 CLAMP、Sprite 显式 CUSTOM，目标父节点 active/UITransform、最近 Canvas 启用且关联同场景有效屏幕相机，visibility 覆盖继承层；预检/资源加载后/写入后均检查。返回 `uiContext` 的 Canvas/Camera 身份，不计算屏幕边界；不加 `ui` 的原有批次继续遵循原兼容路径。
+
 ## 写入口与预检
 
 调用参数为 `{"sceneUuid":"<当前场景资源 UUID>","parentUuid":"<实际父节点 UUID>","batch":<上述 DTO>}`；不接受其他参数。
@@ -37,13 +39,13 @@ DTO 限制：最多 128 个节点、每节点 16 个组件、256 条引用、256
 - 无组件的普通节点不要求 Canvas。带组件的节点必须有已有 Canvas 祖先，且显式声明一个 `cc.UITransform`。同节点不允许重复组件类型或同时存在 Label 与 Sprite。
 - 字面量先做类型校验；引用字段只能用 `references` 或字面量 `null`。内部节点/组件引用在创建后绑定真实对象；资源须是 asset-db 精确解析、类型匹配的已导入项目 SpriteFrame，保留真实子资源 UUID，不猜测后缀、不接受内置资源。加载失败发生在创建前。
 - `externalPolicy: "clear"` 只对 Sprite.spriteFrame / ProgressBar.barSprite 设为 `null`，不读取外部目标。Button.target 在激活时会被 Creator 自动设为自身，因此显式 null / external clear 写前拒绝，须使用内部节点引用或保留默认行为。`resolve` 的静态计划仍可生成，但实际解析绑定未实现，包含该动作的写入被拒绝。
-- 预检后再次核对编辑器、资源和父节点结构。节点先保持 inactive，依次创建组件、赋值、绑定，再激活并等待回读。新节点继承父层级，使用默认变换；v1 不接收位置、旋转、缩放、active 或任意构造脚本。
+- 预检后再次核对编辑器、资源和父节点结构。节点先保持 inactive，依次创建组件、赋值、绑定，再激活并等待回读。新节点继承父 layer，可选 position 通过公开 setPosition 设置并回读；旋转/缩放使用默认值，不接收 active 或任意构造脚本。严格 UI 模式在渲染属性和引用绑定后再应用声明尺寸。
 
 | 组件 | 支持的属性/引用 |
 | --- | --- |
 | `cc.UITransform` | `contentSize: {width,height}`（非负有限数）、`anchorPoint: {x,y}`（有限数） |
-| `cc.Label` | `string`（字符串）、`color`（`#RRGGBB[AA]` 或 RGBA 对象） |
-| `cc.Sprite` | `color`、`spriteFrame`（项目 SpriteFrame 资源引用） |
+| `cc.Label` | `string`（字符串）、`color`（`#RRGGBB[AA]` 或 RGBA 对象）、正有限 `fontSize`（≤512）、`lineHeight`（≤1024）、`overflow`（只支持 CLAMP 数值 1） |
+| `cc.Sprite` | `color`、`spriteFrame`（项目 SpriteFrame 资源引用）、`sizeMode`（只支持 CUSTOM 数值 0） |
 | `cc.Button` | `interactable`（布尔）、`target`（本批节点引用） |
 | `cc.ProgressBar` | `progress`（0—1 有限数）、`barSprite`（本批 Sprite 组件引用） |
 
