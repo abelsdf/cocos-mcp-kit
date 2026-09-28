@@ -1143,7 +1143,8 @@ async function executeUserCode(code, args, scriptConsole = console) {
 exports.methods = {
   ...createUIViewportMethods({ cc, getScene, findNode }),
   ...createNodeBatchMethods({ cc, getScene, findNode, hasLinkedPrefabAncestor,
-    convertEditableComponentValue, componentRuntimeValue, loadAssetByUuid }),
+    convertEditableComponentValue, componentRuntimeValue, loadAssetByUuid, resolveButtonEventMethod, getEventHandlerComponentName,
+    resolveScriptClass: uuid => js.getClassById(Editor.Utils.UUID.compressUUID(uuid)) }),
   async getSceneInfo(options = {}) {
     const maxDepth = readQueryLimit(options.maxDepth, 2, 32, 'maxDepth');
     const maxNodes = readQueryLimit(options.maxNodes, 200, 2000, 'maxNodes');

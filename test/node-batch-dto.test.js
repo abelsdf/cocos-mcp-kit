@@ -37,6 +37,19 @@ test('DTO v1 accepts additive local position and strict UI context opt-in', () =
   assert.ok(validateNodeBatch(batch).issues.some(i => i.code === 'INVALID_UI_MODE'));
 });
 
+test('DTO adds script UUIDs and ordered local Button events without turning them into field references', () => {
+  const batch = validBatch(); batch.nodes[0].components.push({ id: 'button', type: 'cc.Button' });
+  batch.nodes[1].components.push({ id: 'controller', type: 'script', scriptUuid: '12345678-1234-1234-1234-123456789abc' });
+  batch.events = [{ buttonComponentId: 'button', targetComponentId: 'controller', handler: 'resume', customEventData: '' }];
+  assert.equal(validateNodeBatch(batch).valid, true);
+  for (const event of [null, {}, { ...batch.events[0], customEventData: 'x'.repeat(1025) }, { ...batch.events[0], handler: 'constructor' }, { ...batch.events[0], extra: true }]) {
+    assert.equal(validateNodeBatch({ ...batch, events: [event] }).valid, false);
+  }
+  for (const events of [null, {}, Array(51).fill(batch.events[0]), [batch.events[0], batch.events[0]]]) assert.equal(validateNodeBatch({ ...batch, events }).valid, false);
+  const c = batch.nodes[1].components.at(-1); delete c.scriptUuid; assert.equal(validateNodeBatch(batch).valid, false);
+  c.type = 'cc.Label'; c.scriptUuid = '12345678-1234-1234-1234-123456789abc'; assert.equal(validateNodeBatch(batch).valid, false);
+});
+
 test('node batch preflight orders parents and distinguishes internal, asset and external references', () => {
   const result = validateNodeBatch(validBatch());
   assert.equal(result.valid, true);

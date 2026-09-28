@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const SCRIPT_UUID = '12345678-1234-1234-1234-123456789abc';
 
 function batch() {
   return { schemaVersion: 1, roots: ['panel'], nodes: [
@@ -31,11 +32,15 @@ function fixture() {
   class UITransform extends Component { constructor() { super(); this.contentSize = { width: 100, height: 100 }; this.anchorPoint = { x: 0.5, y: 0.5 }; } }
   class Label extends Component { constructor() { super(); this.string = ''; this.color = { r: 255, g: 255, b: 255, a: 255 }; } }
   class Sprite extends Component { constructor() { super(); this.spriteFrame = null; } }
-  class Button extends Component { constructor() { super(); this.target = null; this.interactable = true; } }
+  class Button extends Component { constructor() { super(); this.target = null; this.interactable = true; this.clickEvents = []; } }
+  class Controller extends Component { constructor() { super(); if (control.failScript) throw new Error('Script constructor failed'); this.hits = 0; } onAction() { this.hits++; } }
+  class EventHandler { set handler(value) { if (control.failEvent) throw new Error('Event binding failed'); this.method = value; } get handler() { return this.method; } }
   class ProgressBar extends Component { constructor() { super(); this.barSprite = null; this.progress = 1; } }
   class Canvas extends Component {} class Layout extends Component {} class Asset {} class SpriteFrame extends Asset {}
   class Camera extends Component { constructor() { super(); this.visibility = 33554432; this.targetTexture = null; } }
-  const cc = { Node, Component, UITransform, Label, Sprite, Button, ProgressBar, Canvas, Camera, Layout, Asset, SpriteFrame, isValid: n => Boolean(n?.valid), CCObjectFlags: { DontSave: 8 } };
+  const cc = { Node, Component, UITransform, Label, Sprite, Button, ProgressBar, Canvas, Camera, Layout, Asset, SpriteFrame, Controller, EventHandler,
+    js: { getClassName: cls => cls.name, getClassByName: name => name === 'Controller' ? Controller : null },
+    isValid: n => Boolean(n?.valid), CCObjectFlags: { DontSave: 8 } };
   const scene = new Node('Scene'); scene.uuid = 'scene';
   const parent = new Node('Canvas'); parent.parent = scene; parent.addComponent(Canvas);
   const existing = new Node('Existing'); existing.parent = parent;
@@ -45,6 +50,16 @@ function fixture() {
   const methods = createNodeBatchMethods({ cc, getScene: () => current,
     findNode: ({ uuid }) => all.find(n => n.uuid === uuid && n.valid),
     hasLinkedPrefabAncestor: node => Boolean(node.linked),
+    resolveScriptClass: uuid => uuid === SCRIPT_UUID && !control.unregistered ? Controller : null,
+    getEventHandlerComponentName: event => event.component,
+    resolveButtonEventMethod: (object, name) => {
+      if (['constructor', 'onLoad', 'update', 'destroy'].includes(name)) return null;
+      for (let p = object; p && p !== Component.prototype; p = Object.getPrototypeOf(p)) {
+        const descriptor = Object.getOwnPropertyDescriptor(p, name);
+        if (descriptor) return typeof descriptor.value === 'function' ? descriptor.value : null;
+      }
+      return null;
+    },
     convertEditableComponentValue: async ({ kind }, value) => {
       if (['number', 'boolean', 'string'].includes(kind) && typeof value !== kind) throw new Error('Invalid property value');
       return value;
@@ -55,10 +70,67 @@ function fixture() {
   const args = { sceneUuid: 'scene', parentUuid: parent.uuid, batch: batch() };
   const execute = async (options = args) => {
     const expected = await methods.preflightNodeBatch(options);
-    return methods.createNodeBatch({ ...options, expected, assets: [{ id: 'frame', uuid: 'frame', type: 'cc.SpriteFrame' }] });
+    return methods.createNodeBatch({ ...options, expected, assets: [{ id: 'frame', uuid: 'frame', type: 'cc.SpriteFrame' }, { id: SCRIPT_UUID, uuid: SCRIPT_UUID, type: 'cc.Script' }] });
   };
   return { methods, args, execute, scene, parent, existing, all, control, cc, asset, switchScene: () => { current = new Node('Other'); } };
 }
+
+function addScriptEvent(f) {
+  f.args.batch.nodes[1].components.push({ id: 'controller', type: 'script', scriptUuid: SCRIPT_UUID });
+  f.args.batch.events = [{ buttonComponentId: 'button', targetComponentId: 'controller', handler: 'onAction', customEventData: 'resume' }];
+}
+test('batch preflights script identity without construction and binds real EventHandler targets before activation', async () => {
+  const f = fixture(); addScriptEvent(f); f.control.failScript = true;
+  const before = f.all.length; const preflight = await f.methods.preflightNodeBatch(f.args);
+  assert.equal(f.all.length, before); assert.deepEqual(preflight.assetReferences, [{ id: SCRIPT_UUID, type: 'cc.Script' }]);
+  f.control.failScript = false; const r = await f.execute(); assert.equal(r.created, true); assert.equal(r.eventCount, 1);
+  const root = f.parent.children.at(-1), target = root.children[0], event = root.getComponent(f.cc.Button).clickEvents[0];
+  assert.equal(event.target, target); assert.equal(event.component, 'Controller'); assert.equal(event.handler, 'onAction'); assert.equal(event.customEventData, 'resume');
+  assert.equal(target.getComponent(f.cc.Controller).hits, 0, 'building never invokes an event');
+  assert.equal(r.scriptEffects, 'not_audited');
+});
+test('multiple ordered events and repeated script assets on distinct nodes keep exact new targets', async () => {
+  const f = fixture(); addScriptEvent(f);
+  f.args.batch.nodes[0].components.push({ id: 'secondController', type: 'script', scriptUuid: SCRIPT_UUID });
+  f.args.batch.events.push({ buttonComponentId: 'button', targetComponentId: 'secondController', handler: 'onAction' });
+  const r = await f.execute(); assert.equal(r.created, true); assert.equal(r.eventCount, 2);
+  const root = f.parent.children.at(-1); const events = root.getComponent(f.cc.Button).clickEvents;
+  assert.deepEqual(events.map(e => e.target), [root.children[0], root]); assert.deepEqual(events.map(e => e.customEventData), ['resume', '']);
+});
+test('event readback failure does not leave created UI or execute callbacks', async () => {
+  const f = fixture(); addScriptEvent(f);
+  f.control.onAdd = (node, c) => { if (c instanceof f.cc.Button) Object.defineProperty(c, 'clickEvents', { get: () => [], set() {} }); };
+  const r = await f.execute(); assert.equal(r.created, false); assert.equal(r.phase, 'verify'); assert.equal(r.cleanup.status, 'complete');
+  assert.deepEqual(f.parent.children, [f.existing]);
+});
+test('a script cannot add undeclared dependencies or acquire existing children during failure cleanup', async () => {
+  const f = fixture(); addScriptEvent(f);
+  f.control.onAdd = (node, c) => { if (c instanceof f.cc.Controller) { node.addComponent(f.cc.ProgressBar); f.existing.parent = node; } };
+  const r = await f.execute(); assert.equal(r.created, false); assert.equal(r.cleanup.status, 'partial');
+  assert.equal(f.existing.valid, true); assert.equal(f.existing.parent.name, 'Caption'); assert.equal(r.scriptEffects, 'not_audited');
+});
+test('script class changes during async asset preparation are rejected before any new nodes', async () => {
+  const f = fixture(); addScriptEvent(f); addAssetReference(f); f.control.driftOnLoad = () => { f.control.unregistered = true; };
+  const r = await f.execute(); assert.equal(r.created, false); assert.equal(r.cleanup.status, 'not_needed'); assert.deepEqual(f.parent.children, [f.existing]);
+});
+for (const change of [
+  f => { f.control.unregistered = true; }, f => { f.args.batch.events[0].handler = 'missing'; },
+  f => { f.args.batch.events[0].handler = 'onLoad'; }, f => { f.args.batch.events[0].handler = 'destroy'; },
+  f => { f.args.batch.nodes[1].components.push({ id: 'duplicateScript', type: 'script', scriptUuid: SCRIPT_UUID }); },
+  f => { f.args.batch.nodes[1].components.at(-1).properties = { hits: 7 }; },
+  f => { f.args.batch.events[0].targetComponentId = 'text'; }, f => { f.args.batch.events[0].buttonComponentId = 'text'; },
+]) test(`script/event live preflight refuses without new nodes: ${change}`, async () => {
+  const f = fixture(); addScriptEvent(f); change(f); const before = f.all.length;
+  await assert.rejects(f.methods.preflightNodeBatch(f.args)); assert.equal(f.all.length, before);
+});
+for (const cause of ['constructor', 'event', 'method shadow']) test(`script/event failure cleans only new nodes: ${cause}`, async () => {
+  const f = fixture(); addScriptEvent(f);
+  if (cause === 'constructor') f.control.failScript = true;
+  else if (cause === 'event') f.control.failEvent = true;
+  else f.control.onAdd = (node, c) => { if (c instanceof f.cc.Controller) c.onAction = null; };
+  const r = await f.execute(); assert.equal(r.created, false); assert.equal(r.cleanup.status, 'complete');
+  assert.deepEqual(f.parent.children, [f.existing]); assert.equal(r.scriptEffects, 'not_audited');
+});
 
 test('preflight checks the actual target without constructing nodes', async () => {
   const f = fixture(); const count = f.all.length;

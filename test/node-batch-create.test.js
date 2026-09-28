@@ -6,6 +6,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { createToolRegistry } = require('../lib/tool-registry');
 let fixtureId = 0;
+const SCRIPT_UUID = '12345678-1234-1234-1234-123456789abc';
 
 function fixture(t) {
   const modulePath = path.resolve(__dirname, '../lib/node-batch-create.js');
@@ -29,11 +30,12 @@ function fixture(t) {
     if (method === 'query-dirty') return state.dirty;
     if (method === 'multi-scene-query') return state.tabs || [{ uuid: 'scene', url: 'db://assets/Main.scene', type: 'scene', dirty: state.dirty }];
     if (method === 'query-asset-info') {
+      if (target === SCRIPT_UUID || target === 'db://assets/Controller.ts') return { uuid: SCRIPT_UUID, url: 'db://assets/Controller.ts', type: state.wrongScript ? 'cc.JsonAsset' : 'cc.Script', imported: true };
       if (target === 'scene' || target === 'db://assets/Main.scene') return { uuid: 'scene', url: 'db://assets/Main.scene', type: 'cc.SceneAsset', imported: !state.notImported };
       if (target === 'frame' || target === 'db://assets/Frame.asset') return state.missingAsset ? null : { uuid: 'frame', url: 'db://assets/Frame.asset', type: state.wrongAsset ? 'cc.ImageAsset' : 'cc.SpriteFrame', imported: true };
       return null;
     }
-    if (method === 'query-uuid') return target === 'db://assets/Main.scene' ? 'scene' : 'frame';
+    if (method === 'query-uuid') return target === 'db://assets/Main.scene' ? 'scene' : target === 'db://assets/Controller.ts' ? SCRIPT_UUID : 'frame';
     assert.fail(`Unexpected or mutating editor request: ${channel}:${method}`);
   } } };
   t.after(() => { if (old === undefined) delete global.Editor; else global.Editor = old; });
@@ -58,6 +60,18 @@ function fixture(t) {
 test('batch create resolves a saved scene and performs one write-bridge call without native save or undo', async t => {
   const f = fixture(t); const r = await f.run(); assert.equal(r.created, true);
   assert.deepEqual(f.state.methods, ['preflightNodeBatch', 'createNodeBatch']); assert.deepEqual(f.state.execution.assets, []);
+});
+
+test('script assets are checked in asset-db and passed by UUID to the one recorded batch write', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.assetRefs = [{ id: SCRIPT_UUID, type: 'cc.Script' }];
+  const r = await f.run(); assert.equal(r.undo.recorded, true);
+  assert.deepEqual(f.state.execution.assets, [{ id: SCRIPT_UUID, uuid: SCRIPT_UUID, type: 'cc.Script' }]);
+  assert.equal(f.state.methods.filter(m => m === 'createNodeBatch').length, 1);
+});
+test('wrong script asset type is rejected before recording or creation', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.assetRefs = [{ id: SCRIPT_UUID, type: 'cc.Script' }]; f.state.wrongScript = true;
+  await assert.rejects(f.run(), /cc.Script/); assert.equal(f.state.recordings, undefined);
+  assert.equal(f.state.methods.includes('createNodeBatch'), false);
 });
 
 function uiInput() {

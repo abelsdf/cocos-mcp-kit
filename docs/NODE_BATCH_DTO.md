@@ -35,9 +35,9 @@ v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有
 
 - 只接受一个已导入的项目场景及对应活动编辑页；拒绝 prefab 编辑、多场景、切换中的场景和不一致的 UUID/URL。允许已有未保存修改，但绝不自动保存或丢弃。
 - 父节点必须属于该场景，不能位于预制体实例或编辑器临时节点中；拒绝启用 Layout 的父节点及直接子节点超过 2000 的父节点。仅创建新节点，不覆盖、更新或重命名旧节点。
-- 同级名称冲突（包括批次内部和已有根目标）在写入前拒绝；重复调用也会冲突，不做自动后缀或更新。
+- 同级名称冲突（包括批次内部和已有根目标）在写入前拒绝；重复调用也会冲突，不做自动后缀或更新。按下节声明的工程脚本及按钮事件也走同一批次，不在批次返回后进行第二轮附加写入。
 - 无组件的普通节点不要求 Canvas。带组件的节点必须有已有 Canvas 祖先，且显式声明一个 `cc.UITransform`。同节点不允许重复组件类型或同时存在 Label 与 Sprite。
-- 字面量先做类型校验；引用字段只能用 `references` 或字面量 `null`。内部节点/组件引用在创建后绑定真实对象；资源须是 asset-db 精确解析、类型匹配的已导入项目 SpriteFrame，保留真实子资源 UUID，不猜测后缀、不接受内置资源。加载失败发生在创建前。
+- 字面量先做类型校验；引用字段只能用 `references` 或字面量 `null`。内部节点/组件引用在创建后绑定真实对象；字段资源须是 asset-db 精确解析、类型匹配的已导入项目 SpriteFrame，保留真实子资源 UUID，不猜测后缀、不接受内置资源。脚本 UUID 另按 cc.Script 核验，不通过资源加载器执行脚本。加载失败发生在创建前。
 - `externalPolicy: "clear"` 只对 Sprite.spriteFrame / ProgressBar.barSprite 设为 `null`，不读取外部目标。Button.target 在激活时会被 Creator 自动设为自身，因此显式 null / external clear 写前拒绝，须使用内部节点引用或保留默认行为。`resolve` 的静态计划仍可生成，但实际解析绑定未实现，包含该动作的写入被拒绝。
 - 预检后再次核对编辑器、资源和父节点结构。节点先保持 inactive，依次创建组件、赋值、绑定，再激活并等待回读。新节点继承父 layer，可选 position 通过公开 setPosition 设置并回读；旋转/缩放使用默认值，不接收 active 或任意构造脚本。严格 UI 模式在渲染属性和引用绑定后再应用声明尺寸。
 
@@ -49,7 +49,15 @@ v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有
 | `cc.Button` | `interactable`（布尔）、`target`（本批节点引用） |
 | `cc.ProgressBar` | `progress`（0—1 有限数）、`barSprite`（本批 Sprite 组件引用） |
 
-其他属性、组件、自定义脚本、Button 点击事件、Widget/Layout、Canvas/Camera 创建和预制体实例化不在此写入口范围。Label/Sprite/ProgressBar 的自动尺寸行为仍由 Creator 决定；相互驱动的显式属性若无法通过回读，将返回失败和清理报告，不伪称已经生效。
+除下述受限脚本/事件外，其他属性/组件、Widget/Layout、Canvas/Camera 创建和预制体实例化不在此写入口范围。Label/Sprite/ProgressBar 的自动尺寸行为仍由 Creator 决定；相互驱动的显式属性若无法通过回读，将返回失败和清理报告，不伪称已经生效。
+
+### 项目脚本与按钮事件（v1 可选扩展）
+
+组件可声明为 `{"id":"controller","type":"script","scriptUuid":"<标准工程脚本 UUID>"}`，不支持脚本 properties（仅可省略或空对象）。资产须是已导入的项目 cc.Script，且对应注册类是 Component、类名唯一。按已有挂载工具的 UUID 压缩及 getClassById 路线解析；不生成源码、不按名称猜类、不构造实例做预检。脚本在该节点所有内置组件之后添加；同节点拒绝重复/继承重叠类型，未声明的自动依赖会使创建失败并清理。
+
+顶层可选 `events`（最多 50 条）：`[{"buttonComponentId":"button","targetComponentId":"controller","handler":"onContinue","customEventData":"resume"}]`。两端必须是同批已声明的 Button 与 script 组件 ID；有序绑定，完全重复拒绝，customEventData 默认空串且最多 1024 字符。复用原按钮事件方法校验，拒绝缺失方法、getter、实例箭头函数字段和引擎/生命周期方法。全部组件创建后使用公开 EventHandler 绑定，激活后核对 target、注册组件名、方法、字符串与顺序；构建器本身不调用事件，项目脚本自行调用不受此保证约束。
+
+返回 `eventCount`；含脚本的场景执行报告同时标记 `scriptEffects:"not_audited"`。脚本构造、编辑态生命周期及销毁回调不在全事务保证内，可能影响旧内容或外部状态。清理完成只证明本批节点清除，未知影响需人工审查；工具风险注解为 destructiveHint=true。原无脚本/无事件 DTO 调用保持兼容。实测见[脚本与事件验证](verification/UI_BUILDER_EVENTS_2026-09-28.md)。
 
 ## 返回与恢复边界
 

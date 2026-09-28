@@ -35,6 +35,27 @@ test('UI defaults are explicit and button target defaults to its own local node'
   assert.equal(batch.nodes[1].components.find(c => c.type === 'cc.Label').properties.lineHeight, 20);
   assert.deepEqual(batch.nodes[0].components[0].properties.anchorPoint, { x: 0.5, y: 0.5 });
 });
+
+test('UI scripts and ordered click events compile into exact script assets and batch-local component references', () => {
+  const input = ui(); input.roots[0].children[0].scripts = [{ id: 'controller', scriptUuid: '12345678-1234-1234-1234-123456789abc' }];
+  input.events = [{ button: 'panel', target: 'controller', handler: 'onAction', customEventData: 'resume' }];
+  const result = builder().compileUI(input); const script = result.nodes[1].components.find(c => c.type === 'script');
+  assert.equal(script.scriptUuid, input.roots[0].children[0].scripts[0].scriptUuid);
+  assert.deepEqual(result.events, [{ buttonComponentId: result.nodes[0].components.find(c => c.type === 'cc.Button').id, targetComponentId: script.id, handler: 'onAction', customEventData: 'resume' }]);
+  assert.equal(validateNodeBatch(result).valid, true);
+});
+for (const change of [
+  x => { x.events[0].button = 'title'; }, x => { x.events[0].target = 'missing'; },
+  x => { x.events[0].customEventData = 1; }, x => { x.events[0].handler = 'bad.path'; },
+  x => { x.events.push({ ...x.events[0] }); }, x => { x.roots[0].scripts[0].scriptUuid = 'Controller'; },
+  x => { x.roots[0].scripts[0].properties = { value: 1 }; },
+  x => { x.roots[0].scripts.push({ ...x.roots[0].scripts[0] }); },
+  x => { x.roots[0].scripts[0].id = 'bad.id'; }, x => { x.events = Array(51).fill(x.events[0]); },
+]) test(`invalid script/event schema rejects before creation: ${change}`, () => {
+  const input = ui(); input.roots[0].scripts = [{ id: 'controller', scriptUuid: '12345678-1234-1234-1234-123456789abc' }];
+  input.events = [{ button: 'panel', target: 'controller', handler: 'onAction' }]; change(input);
+  assert.throws(() => builder().compileUI(input));
+});
 const invalid = [
   x => { x.mode = 'update'; }, x => { x.failurePolicy = 'keep'; }, x => { x.schemaVersion = 2; },
   x => { x.events = [{ from: 'panel', handler: 'onClick' }]; }, x => { x.scripts = []; },
