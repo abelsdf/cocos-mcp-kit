@@ -2503,8 +2503,8 @@ exports.methods = {
 
   async serializeScene(options = {}) {
     const mode = String(options.mode || 'empty').trim().toLowerCase();
-    if (mode !== 'empty' && mode !== 'current') {
-      throw new Error("mode must be either 'empty' or 'current'.");
+    if (!['empty', 'current', 'ui'].includes(mode)) {
+      throw new Error("mode must be 'empty', 'current' or 'ui'.");
     }
 
     const sceneName = String(options.sceneName || 'NewScene').trim() || 'NewScene';
@@ -2514,6 +2514,30 @@ exports.methods = {
     const asset = new SceneAsset();
 
     try {
+      let ui = null;
+      if (mode === 'ui') {
+        const size = cc.view.getDesignResolutionSize();
+        if (![size.width, size.height].every(value => Number.isFinite(value) && value > 0)) throw new Error('A valid design resolution is required for a UI scene.');
+        const canvasNode = new Node('Canvas');
+        canvasNode.layer = cc.Layers.Enum.UI_2D;
+        canvasNode.parent = scene;
+        canvasNode.setPosition(size.width / 2, size.height / 2, 0);
+        canvasNode.addComponent(UITransform).setContentSize(size.width, size.height);
+        const canvas = canvasNode.addComponent(Canvas);
+        canvas.alignCanvasWithScreen = false;
+        const cameraNode = new Node('Camera');
+        cameraNode.parent = scene;
+        cameraNode.setPosition(size.width / 2, size.height / 2, 1000);
+        const camera = cameraNode.addComponent(Camera);
+        camera.projection = Camera.ProjectionType.ORTHO;
+        camera.orthoHeight = size.height / 2;
+        camera.near = 1;
+        camera.far = 2000;
+        camera.visibility = cc.Layers.Enum.UI_2D;
+        canvas.cameraComponent = camera;
+        ui = { parentUuid: canvasNode.uuid, parentPath: 'Canvas', cameraUuid: cameraNode.uuid,
+          designResolution: { width: size.width, height: size.height }, alignCanvasWithScreen: false };
+      }
       scene.name = sceneName;
       asset.name = sceneName;
       asset.scene = scene;
@@ -2532,6 +2556,7 @@ exports.methods = {
           ? { name: originalName, uuid: source.uuid, childCount: sceneContentChildren(source).length }
           : null,
         scene: { name: scene.name, childCount: sceneContentChildren(scene).length },
+        ui,
         content,
       };
     } finally {

@@ -25,7 +25,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 |---|---|---|
 | 后端能力报告 | 只读查询当前 Creator 扩展、工程与平台、工具开放状态及风险提示。可选官方 CLI 适配器明确标为未配置；工具开放不代表运行验收通过。 | `get_backend_capabilities`、`get_tool_catalog` |
 | 节点批次 | DTO 只读预检，以及 full 配置下受限创建、引用核对和失败清理。Creator 3.8.8 成功批次记录一次父节点范围的 Undo，其他版本不承诺；不自动保存或执行撤销/重做，见[写入契约](./docs/NODE_BATCH_DTO.md)。 | `validate_node_batch`, `create_node_batch` |
-| JSON UI 构建 | 在现有活跃 Canvas/UI 父节点下新建嵌套 UI，配置尺寸、文字、图片、工程脚本及指向同批脚本的有序按钮事件。复用限定清理与单次 Undo；脚本对新节点外的副作用不回滚，不自动保存或承诺画面可见，见[格式与示例](./docs/UI_BUILDER.md)。 | `build_ui` |
+| JSON UI 构建 | 在明确 Canvas/UI 父节点下构建含脚本及有序按钮事件的 UI；`create_scene(mode="ui")` 提供独立 Canvas/Camera 场景入口与切换保护，不自动保存或丢弃未保存内容。节点清理/Undo 不回滚场景资产及脚本外部副作用，不承诺画面可见，见[格式与示例](./docs/UI_BUILDER.md)。 | `build_ui`、`create_scene`、`open_scene` |
 | UI 视口上下文 | 只读返回项目设计分辨率、最近 Canvas/关联相机、局部/世界/Canvas 边界及正交相机编辑态像素裁剪。构建与常用修改自动附加报告，无法计算时明确降级；不代表 Scene 观察窗口、Game View 或设备可见性，见[范围与坐标](./docs/UI_VIEWPORT.md)。 | `get_ui_viewport` |
 | 工程与资源 | 读取当前工程的公开名称、UUID、路径及 Creator 版本；查询场景、精确资源元数据/数据、资源 UUID、规范 URL、真实源路径及 asset-db 就绪状态；安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`query_asset_uuid`、`query_asset_url`、`query_asset_path`、`check_asset_ready`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |

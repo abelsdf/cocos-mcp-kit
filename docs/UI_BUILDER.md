@@ -2,7 +2,30 @@
 
 `build_ui`（仅 full）是阶段 2 的第一个可用增量：在**当前已导入场景的明确 UI 父节点下新建**声明式 UI。它把嵌套 JSON 编译为本项目[节点批次 DTO](NODE_BATCH_DTO.md)，复用预检、项目资源核验、新节点清理和 Creator 3.8.8 单次 Undo，不使用 Creator 私有序列化格式。
 
-本增量不是完整 FR-06—FR-08：不新建场景、Canvas 或 Camera，不生成脚本代码、不提供模板或更新模式。支持按已有工程脚本 UUID 挂载组件，并将按钮事件绑定到同批新脚本组件。成功构建后附加 [FR-17 视口上下文](UI_VIEWPORT.md)，报告设计分辨率、Canvas/关联相机与可计算的越界结果；**不保证 UI 在运行画面内可见**。
+本增量不是完整 FR-06—FR-08：`build_ui` 本身不切换场景，可先用 `create_scene(mode="ui")` 创建带 Canvas/Camera 的独立场景，见下节。不生成脚本代码、不提供模板或更新模式。支持按已有工程脚本 UUID 挂载组件，并将按钮事件绑定到同批新脚本组件。成功构建后附加 [FR-17 视口上下文](UI_VIEWPORT.md)，报告设计分辨率、Canvas/关联相机与可计算的越界结果；**不保证 UI 在运行画面内可见**。
+
+## 新建场景与未保存内容
+
+新场景入口与当前父节点构建明确分开：
+
+```json
+{
+  "target": "assets/Scenes/PauseMenu.scene",
+  "mode": "ui",
+  "openAfterCreate": true,
+  "expectedSceneUuid": "<当前已保存场景资源 UUID>"
+}
+```
+
+以上传给 `create_scene`（core/full）。`mode` 支持 `empty`（默认）、`current`（副本）和 `ui`。UI 模式按当前公开设计分辨率创建 Canvas 和关联正交 Camera：Canvas 层为 UI_2D、尺寸为设计分辨率、中心为宽高的一半；相机位于同一中心、z=1000，orthoHeight=高度/2、near=1、far=2000，仅显示 UI_2D。`alignCanvasWithScreen=false`，不修改工程分辨率/适配设置、不自动创建 Widget，也不承诺不同窗口宽高比下的适配或视觉效果。
+
+- 默认仅创建资源，`opened=null`；即使当前有未保存编辑也不切换、不保存当前场景。UI 模式拒绝 overwrite；目标文件或孤立 `.meta` 已存在也拒绝。
+- `openAfterCreate=true` 必须提供准确 `expectedSceneUuid`；创建前、打开前都核验单个已保存普通场景、导入状态、源文件/meta 身份、脏标记及实时序列化。预制体编辑、多场景、未保存场景、`dirty=true` 或 `dirty=false` 但内容不同均拒绝，不弹保存对话框、不自动保存或丢弃。
+- 独立 `open_scene` 同样执行切换保护，可选 `expectedSceneUuid` 拦截调用方过期上下文。它现在要求已有一个已保存且干净的场景；首次空编辑器请先手动打开场景。它不会猜 `.scene` 扩展名，也不打开预制体或其他资源。
+- 打开只请求一次，核验目标身份、两次稳定实时内容及新旧源文件未变。`verified=true` 指这些检查通过，**不等于实时内容已经写入磁盘**：Creator 初始化或脚本可能使实时内容变化；`contentMatchesSource=false` 或目标已标脏时返回 `needsSave=true`，调用方应审阅后显式 `save_current_scene`。再次切换仍须通过严格的未保存检查。
+- 若创建成功、切换前原场景变化，拒绝切换但保留新资源；若原生打开结果不明，不重试、不自动返回、不删除资源。错误包含已创建目标；先检查现场，不能盲目重复创建。节点 Undo 不跨场景撤销资源创建，脚本加载副作用也不回滚。
+
+打开核验后，用返回的 `info.uuid` 作为 `build_ui.sceneUuid`、`ui.parentUuid` 作为 `parentUuid`（`ui.cameraUuid` 为相机节点 UUID）。仅创建时这些 ID 是待打开资产内的节点身份，不能直接对当前旧场景调用 `build_ui`。完成构建后显式保存，再切换重开核验引用。详见[新场景验证记录](verification/SCENE_ENTRY_2026-09-28.md)。
 
 ## 调用示例
 
