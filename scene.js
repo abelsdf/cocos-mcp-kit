@@ -8,6 +8,7 @@ const { resolveNode } = require('./lib/node-resolution');
 const { captureScriptExecution } = require('./lib/script-execution');
 const { createNodeBatchMethods } = require('./lib/node-batch-scene');
 const { createUIViewportMethods } = require('./lib/ui-viewport-scene');
+const { createUIValidationMethods } = require('./lib/ui-validation-scene');
 
 const {
   Node,
@@ -1141,6 +1142,7 @@ async function executeUserCode(code, args, scriptConsole = console) {
 }
 
 exports.methods = {
+  ...createUIValidationMethods({ cc, getScene, findNode, getEventHandlerComponentName, findComponent, resolveButtonEventMethod }),
   ...createUIViewportMethods({ cc, getScene, findNode }),
   ...createNodeBatchMethods({ cc, getScene, findNode, hasLinkedPrefabAncestor,
     convertEditableComponentValue, componentRuntimeValue, loadAssetByUuid, resolveButtonEventMethod, getEventHandlerComponentName,

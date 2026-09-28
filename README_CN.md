@@ -21,6 +21,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 ## 当前能力
 
+`full` 配置新增只读 `validate_ui`，检查明确 UI 节点的 UITransform、设计范围越界、Sprite/Label 资源及序列化 Button 事件，支持按规则或节点排除。数据不可用或结果截断时明确报告未完成；不自动修复、保存、触发回调或证明视觉正确，Widget/Animation 共存只提示潜在冲突。详见[规则契约](./docs/UI_VALIDATION.md)与 [Creator 3.8.8 验证](./docs/verification/UI_VALIDATION_2026-09-28.md)。
+
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
 | 后端能力报告 | 只读查询当前 Creator 扩展、工程与平台、工具开放状态及风险提示。可选官方 CLI 适配器明确标为未配置；工具开放不代表运行验收通过。 | `get_backend_capabilities`、`get_tool_catalog` |

@@ -128,7 +128,8 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 142);
+  assert.equal(tools.length, 143);
+  assert.equal(tools.find(tool => tool.name === 'validate_ui').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.destructiveHint, false);
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.readOnlyHint, false);

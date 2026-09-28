@@ -6,6 +6,7 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ## [Unreleased]
 
+- Added full-profile read-only `validate_ui` for explicit-node UITransform, project design bounds, Sprite/Label asset references, serialized Button events and potential Widget/Animation coexistence warnings. Supports rule/node exclusions, bounded findings and explicit incomplete results; reuses viewport/event helpers and rejects observed state drift. No repair, save, callback execution, track analysis or visual pass. Creator 3.8.8 save/reopen and read-only checks are recorded in `docs/verification/UI_VALIDATION_2026-09-28.md`.
 - Added versioned, offline UI knowledge through MCP Resources: a compact index, six original Chinese topics and exact component-to-topic links for Creator 3.8.x. Includes official sources, review dates, bounded output, explicit invalid-query errors and a separation between general guidance and project limitations. No scene inspection, repair, network fetch or new tool. See `docs/KNOWLEDGE.md`.
 
 ### Changed
