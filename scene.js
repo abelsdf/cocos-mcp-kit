@@ -7,6 +7,7 @@ const { assertNoLinkedPrefabInstances, attachPrefabMetadata, normalizePrefabNode
 const { resolveNode } = require('./lib/node-resolution');
 const { captureScriptExecution } = require('./lib/script-execution');
 const { createNodeBatchMethods } = require('./lib/node-batch-scene');
+const { createUIViewportMethods } = require('./lib/ui-viewport-scene');
 
 const {
   Node,
@@ -1140,6 +1141,7 @@ async function executeUserCode(code, args, scriptConsole = console) {
 }
 
 exports.methods = {
+  ...createUIViewportMethods({ cc, getScene, findNode }),
   ...createNodeBatchMethods({ cc, getScene, findNode, hasLinkedPrefabAncestor,
     convertEditableComponentValue, componentRuntimeValue, loadAssetByUuid }),
   async getSceneInfo(options = {}) {
@@ -1606,6 +1608,8 @@ exports.methods = {
 
     return {
       updated: true,
+      sceneUuid: getScene().uuid,
+      nodeUuid: node.uuid,
       name: node.name,
       path: getNodePath(node),
       active: Boolean(node.active),
@@ -1740,6 +1744,7 @@ exports.methods = {
     const failedCount = results.filter((result) => result.status === 'failed').length;
     return {
       completed: results.length === changes.length,
+      sceneUuid: scene.uuid,
       allSucceeded: failedCount === 0 && results.length === changes.length,
       onError,
       total: changes.length,
@@ -1795,6 +1800,7 @@ exports.methods = {
       }
       return {
         reset: true,
+        sceneUuid: scene.uuid,
         nodeUuid: node.uuid,
         nodePath: getNodePath(node),
         fields,
@@ -2263,6 +2269,7 @@ exports.methods = {
     const expected = JSON.stringify(componentRuntimeValue(next));
     const result = {
       node: getNodePath(node),
+      sceneUuid: getScene().uuid,
       nodeUuid: node.uuid,
       component: component.constructor ? component.constructor.name : 'UnknownComponent',
       componentIndex: node.components.indexOf(component),

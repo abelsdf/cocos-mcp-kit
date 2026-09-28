@@ -2,7 +2,7 @@
 
 `build_ui`（仅 full）是阶段 2 的第一个可用增量：在**当前已导入场景的明确 UI 父节点下新建**声明式 UI。它把嵌套 JSON 编译为本项目[节点批次 DTO](NODE_BATCH_DTO.md)，复用预检、项目资源核验、新节点清理和 Creator 3.8.8 单次 Undo，不使用 Creator 私有序列化格式。
 
-本增量不是完整 FR-06—FR-08：不新建场景、Canvas 或 Camera，不挂自定义脚本、不绑定点击事件、不提供模板或更新模式。FR-17 的设计分辨率、视口及越界计算另行实施；当前只核对 Canvas/相机/层关系，**不保证 UI 在画面内可见**。
+本增量不是完整 FR-06—FR-08：不新建场景、Canvas 或 Camera，不挂自定义脚本、不绑定点击事件、不提供模板或更新模式。成功构建后附加 [FR-17 视口上下文](UI_VIEWPORT.md)，报告设计分辨率、Canvas/关联相机与可计算的越界结果；**不保证 UI 在运行画面内可见**。
 
 ## 调用示例
 
@@ -78,7 +78,7 @@ Canvas 的相机关联用于屏幕对齐，并不单独证明该相机会渲染�
 ## 返回、保存与失败
 
 - 成功：`created:true, verified:true, phase:"complete", needsSave:true`，以及 `identities.nodes`（局部 ID→真实节点 UUID）、`identities.components`（编译器局部组件 ID→组件 UUID）、`rootUuids`、节点/组件/引用计数。组件 ID 如 `c0` 只在本批有意义，不应跨调用保存为引擎身份。
-- `uiContext` 返回实际 `canvasUuid`、`cameraUuid`（组件）、`cameraNodeUuid`、`cameraVisibility`；`coordinateSpace:"parent_local_ui"` 与 warnings 提醒没有做视口、遮挡、字体视觉或点击验收。
+- `uiContext` 返回实际 `canvasUuid`、`cameraUuid`（组件）、`cameraNodeUuid`、`cameraVisibility`；`coordinateSpace:"parent_local_ui"` 标明输入位置单位。额外 `viewport` 返回项目设计分辨率、编辑态关联相机及节点几何边界/裁剪；检查其 `complete`、每个节点的 `clipping.status` 和不可用原因。查询失败不改变构建/清理/Undo 结果，不自动重试写入；它不证明遮挡、字体视觉或点击正确。
 - 预检失败：MCP 外层 `ok:false`，`data.phase:"preflight"`、`created:false`、`needsSave:null`、`cleanup.status:"not_needed"` 和错误。不会自动尝试通用脚本后备路线。
 - 写入、回读、Undo 录制与通信失败完整保留批次的 phase、identities、cleanup、undo 与 uncertain；`created:true` 但录制不确定时外层仍为失败，不能只检查 created。已知失败仅清理本批新节点；未知状态禁止自动重试，需按[批次恢复契约](NODE_BATCH_DTO.md#返回与恢复边界)人工核查。
 - Creator 3.8.8 成功构建记录一个父范围 Undo，其他版本明确不承诺。构建器从不自动调用 Undo/redo、保存或关闭场景，也不恢复外部脚本的任意副作用。调用时应避免同范围并发编辑。

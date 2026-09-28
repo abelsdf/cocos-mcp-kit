@@ -95,7 +95,8 @@ function mockAssetDbPersistence(t, projectPath) {
 
 test('core profile exposes the documented focused tool set', () => {
   const tools = createRegistry('core').listTools();
-  assert.equal(tools.length, 42);
+  assert.equal(tools.length, 43);
+  assert.equal(tools.find(tool => tool.name === 'get_ui_viewport').annotations.readOnlyHint, true);
   assert.equal(tools.some((tool) => tool.name === 'execute_javascript'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'get_tool_catalog'), true);
@@ -117,7 +118,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 140);
+  assert.equal(tools.length, 141);
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.readOnlyHint, false);
   assert.equal(tools.some((tool) => tool.name === 'check_asset_ready'), true);
   assert.equal(tools.some((tool) => tool.name === 'query_asset_path'), true);
