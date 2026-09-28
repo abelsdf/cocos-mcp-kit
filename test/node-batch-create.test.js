@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { createToolRegistry } = require('../lib/tool-registry');
+let fixtureId = 0;
 
 function fixture(t) {
   const modulePath = path.resolve(__dirname, '../lib/node-batch-create.js');
@@ -12,9 +13,15 @@ function fixture(t) {
   const { createNodeBatch } = require(modulePath);
   const args = { sceneUuid: 'scene', parentUuid: 'parent', batch: { schemaVersion: 1, roots: ['root'], nodes: [{ id: 'root', parentId: null, name: 'Root', components: [] }] } };
   const state = { mode: 'general', ready: true, multi: false, current: 'scene', dirty: false, calls: [], methods: [] };
+  const projectPath = path.join(process.cwd(), 'temp', `batch-unit-${++fixtureId}`);
   const old = global.Editor;
-  global.Editor = { Message: { request: async (channel, method, target) => {
+  global.Editor = { App: { get version() { return state.version; } }, Message: { request: async (channel, method, target) => {
     state.calls.push(`${channel}:${method}`);
+    if (['begin-recording', 'end-recording', 'cancel-recording'].includes(method)) {
+      (state.recordings ||= []).push({ method, target });
+      if (state[`${method}Error`]) throw new Error(`Lost ${method} reply`);
+      return method === 'begin-recording' ? Object.hasOwn(state, 'beginResult') ? state.beginResult : 'record-1' : state.finalizeResult;
+    }
     if (method === 'query-ready' || method === 'query-is-ready') return state.ready;
     if (method === 'query-scene-mode') return state.mode;
     if (method === 'multi-is-multi-edit-mode') return state.multi;
@@ -32,6 +39,7 @@ function fixture(t) {
   t.after(() => { if (old === undefined) delete global.Editor; else global.Editor = old; });
   const bridge = { call: async (method, options) => {
     state.methods.push(method);
+    state.calls.push(`bridge:${method}`);
     if (method === 'preflightNodeBatch') {
       if (state.drift) state.current = 'other';
       return { sceneUuid: 'scene', parentUuid: 'parent', assetReferences: state.assetRefs || [] };
@@ -40,10 +48,11 @@ function fixture(t) {
     state.execution = options;
     if (state.transportError) throw new Error('Lost reply');
     if (state.pending) await state.pending;
+    if (state.driftAfterWrite) state.current = 'other';
     return state.result || { created: true, verified: true, needsSave: true };
   } };
-  return { state, args, bridge, run: (options = args) => createNodeBatch(process.cwd(), bridge, options),
-    registry: createToolRegistry({ getRuntimeContext: () => ({ projectPath: process.cwd(), config: { toolProfile: 'full' } }), sceneBridge: bridge, interactionLog: { add() {} }, runtimeLog: { add() {} } }) };
+  return { state, args, bridge, run: (options = args) => createNodeBatch(projectPath, bridge, options),
+    registry: createToolRegistry({ getRuntimeContext: () => ({ projectPath, config: { toolProfile: 'full' } }), sceneBridge: bridge, interactionLog: { add() {} }, runtimeLog: { add() {} } }) };
 }
 
 test('batch create resolves a saved scene and performs one write-bridge call without native save or undo', async t => {
@@ -80,4 +89,98 @@ test('tool errors retain the structured cleanup report rather than reporting suc
   await assert.rejects(f.registry.callToolDetailed('create_node_batch', f.args), error => {
     assert.equal(error.toolEnvelope.ok, false); assert.deepEqual(error.toolEnvelope.data.cleanup.remainingNodeIds, ['owned']); return true;
   });
+});
+
+test('Creator 3.8.8 records exactly one parent-scoped Undo after verified creation', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; const result = await f.run();
+  assert.equal(result.created, true); assert.equal(result.undo.supported, true); assert.equal(result.undo.recorded, true);
+  assert.deepEqual(f.state.recordings, [{ method: 'begin-recording', target: 'parent' }, { method: 'end-recording', target: 'record-1' }]);
+  assert.ok(f.state.calls.indexOf('scene:begin-recording') < f.state.calls.indexOf('bridge:createNodeBatch'));
+  assert.ok(f.state.calls.indexOf('bridge:createNodeBatch') < f.state.calls.indexOf('scene:end-recording'));
+  assert.equal(f.state.calls.some(c => /:(undo|redo|snapshot)$/.test(c)), false);
+});
+
+test('an unverified Creator version keeps creation available but reports Undo unsupported', async t => {
+  const f = fixture(t); f.state.version = '3.8.7'; const result = await f.run();
+  assert.equal(result.created, true); assert.equal(result.undo.supported, false); assert.equal(result.undo.recorded, false);
+  assert.equal(result.undo.reason, 'unverified_creator_version'); assert.equal(f.state.recordings, undefined);
+});
+
+for (const beginResult of ['', undefined, 7]) test(`invalid recording identity ${beginResult} never creates or guesses a cancellation`, async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.beginResult = beginResult;
+  const result = await f.run(); assert.equal(result.created, false); assert.equal(result.uncertain, true);
+  assert.equal(f.state.methods.includes('createNodeBatch'), false); assert.equal(f.state.recordings.length, 1);
+  await assert.rejects(f.run(), /manual.*review/i);
+});
+
+test('a lost begin reply does not create or retry and blocks further batches until manual review', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state['begin-recordingError'] = true;
+  const result = await f.run(); assert.equal(result.phase, 'undo_begin'); assert.equal(result.undo.recorded, null);
+  assert.equal(result.created, false); assert.equal(result.uncertain, true); assert.equal(f.state.methods.includes('createNodeBatch'), false);
+  assert.equal(f.state.recordings.length, 1); await assert.rejects(f.run(), /manual.*review/i);
+});
+
+for (const status of ['complete', 'partial', 'not_needed']) test(`failed batch with ${status} cleanup cancels only its recording`, async t => {
+  const f = fixture(t); f.state.version = '3.8.8';
+  f.state.result = { created: false, verified: false, error: 'Injected failure', cleanup: { status, remainingNodeIds: status === 'partial' ? ['owned'] : [] } };
+  const result = await f.run(); assert.equal(result.created, false); assert.equal(result.undo.recorded, false); assert.equal(result.undo.cancelled, true);
+  assert.deepEqual(result.cleanup, f.state.result.cleanup);
+  assert.deepEqual(f.state.recordings, [{ method: 'begin-recording', target: 'parent' }, { method: 'cancel-recording', target: 'record-1' }]);
+});
+
+test('a lost write reply with an open recording never finalizes or cancels speculative history', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.transportError = true;
+  const result = await f.run(); assert.equal(result.uncertain, true); assert.equal(result.undo.recorded, null);
+  assert.equal(result.undo.recordingId, 'record-1'); assert.equal(result.cleanup.status, 'not_attempted');
+  assert.equal(f.state.recordings.length, 1); await assert.rejects(f.run(), /manual.*review/i);
+});
+
+test('a lost end reply preserves successful creation evidence but reports uncertain Undo', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state['end-recordingError'] = true;
+  const result = await f.run(); assert.equal(result.created, true); assert.equal(result.verified, true); assert.equal(result.needsSave, true);
+  assert.equal(result.uncertain, true); assert.equal(result.undo.recorded, null); assert.equal(result.phase, 'undo_finalize');
+  assert.equal(f.state.recordings.length, 2); await assert.rejects(f.run(), /manual.*review/i);
+});
+
+test('a lost cancel reply keeps the cleanup evidence and marks history uncertain', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state['cancel-recordingError'] = true;
+  f.state.result = { created: false, verified: false, error: 'Injected failure', cleanup: { status: 'complete', remainingNodeIds: [] } };
+  const result = await f.run(); assert.equal(result.created, false); assert.equal(result.cleanup.status, 'complete');
+  assert.equal(result.uncertain, true); assert.equal(result.undo.recorded, null); assert.match(result.error, /Injected failure/);
+  assert.equal(f.state.recordings.length, 2); await assert.rejects(f.run(), /manual.*review/i);
+});
+
+test('a changed scene after writing prevents finalization in the wrong editor context', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.driftAfterWrite = true;
+  const result = await f.run(); assert.equal(result.uncertain, true); assert.equal(result.undo.recorded, null);
+  assert.equal(f.state.recordings.length, 1); await assert.rejects(f.run(), /manual.*review/i);
+});
+
+test('asset preflight refusal does not start an Undo recording', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.assetRefs = [{ id: 'frame', type: 'cc.SpriteFrame' }]; f.state.missingAsset = true;
+  await assert.rejects(f.run()); assert.equal(f.state.recordings, undefined);
+});
+
+test('uncertain history is an MCP error even when the batch nodes were verified', async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state['end-recordingError'] = true;
+  await assert.rejects(f.registry.callToolDetailed('create_node_batch', f.args), error => {
+    assert.equal(error.toolEnvelope.ok, false); assert.equal(error.toolEnvelope.data.created, true);
+    assert.equal(error.toolEnvelope.data.undo.recorded, null); assert.equal(error.toolEnvelope.data.uncertain, true); return true;
+  });
+});
+
+for (const created of [true, false]) test(`unexpected finalization reply is uncertain for created=${created}`, async t => {
+  const f = fixture(t); f.state.version = '3.8.8'; f.state.finalizeResult = false;
+  f.state.result = { created, verified: created, cleanup: { status: 'not_needed' } };
+  const result = await f.run(); assert.equal(result.uncertain, true); assert.equal(result.created, created);
+  assert.equal(result.undo.recorded, null); await assert.rejects(f.run(), /manual.*review/i);
+});
+
+test('a known cancelled recording does not block the next explicit batch', async t => {
+  const f = fixture(t); f.state.version = '3.8.8';
+  f.state.result = { created: false, verified: false, cleanup: { status: 'complete' } };
+  assert.equal((await f.run()).undo.cancelled, true);
+  delete f.state.result;
+  const next = await f.run(); assert.equal(next.created, true); assert.equal(next.undo.recorded, true);
+  assert.equal(f.state.recordings.length, 4);
 });

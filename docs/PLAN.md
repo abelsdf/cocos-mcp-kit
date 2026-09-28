@@ -255,13 +255,15 @@ Gizmo/网格/图标/观察相机、剪贴板、预制体编辑模式、动画帧
 - [x] 设计并验证公开节点批次 DTO，区分节点/组件身份、资源引用、批次内部引用和批次外部引用；不直接暴露官方 CLI 或 Creator 内部 dump；首版结构见[节点批次 DTO](./NODE_BATCH_DTO.md)，正式只读入口见[验收记录](./verification/NODE_BATCH_DTO_2026-09-26.md)。
 - [x] 实现受限批次创建的预检、名称冲突、新身份映射、失败清理和恢复报告；只清理本次记录的新节点，跨资源写入不纳入首版事务承诺。契约见[节点批次 DTO](./NODE_BATCH_DTO.md)。
 - [x] 用纯逻辑夹具验证引用重映射、重复根、循环/断链、外部引用 clear/resolve 静态策略和故障注入；Creator 3.8.8 实测后开放受限 full 写入口，实际外部 resolve 仍拒绝。详见[批次创建验证](./verification/NODE_BATCH_CREATE_2026-09-28.md)。
-- [ ] 验证可靠的单次 Undo/redo 适配；当前返回 `supported:false, recorded:false`，不能将新节点失败清理视为原生 Undo 或跨资源事务。
+- [x] 验证 Creator 3.8.8 的受限单次 Undo/redo 适配：公开 begin/end/cancel 录制、独立批次历史、身份/引用恢复、失败保留原 redo；其他版本返回不支持，不确定记录阻止后续批次。详见[单次 Undo 验证](./verification/NODE_BATCH_UNDO_2026-09-28.md)。新节点清理与 Undo 分开报告，不宣称跨资源事务。
 
 交付：来源记录、capability schema、节点批次 DTO、恢复边界和测试设计。通过条件：这些设计不扩大首版功能承诺，也不要求官方 CLI 才能使用当前扩展。
 
 - FR-26 P0 只读部分新增 `get_backend_capabilities`（`core` 41、`full` 137）：直接报告当前扩展及 Creator/项目/平台身份、当前 profile 实际开放的工具分页、注解风险提示和未知引擎版本；官方 CLI 适配器固定为 `not_configured`，不探测安装、不触发 CLI，也不影响扩展后端。Creator 3.8.8 正式 MCP 入口返回 137 项，默认 50 项与续页 87 项无重漏，超限参数拒绝；项目名、UUID、Creator 版本和只读注解一致。新增 5 项测试，全量 1045 项通过、0 失败、0 跳过；版本仍为 0.1.0 Unreleased。FR-26 的 P1 CLI 接入与阶段 1.5 其他设计任务仍未完成。详见[能力报告验证](verification/BACKEND_CAPABILITIES_2026-09-26.md)。
 - FR-29 P0 首步新增 `validate_node_batch`（`core` 42、`full` 138）：采用本项目的公开 v1 DTO，只读核验局部节点/组件 ID、根与父子关系、循环/断链、JSON 字段及内部/资源/外部引用策略，并返回父先子的创建顺序与待处理引用。Creator 3.8.8 正式 MCP 入口确认只读注解、有效批次顺序以及重复根/外部引用拒绝；没有创建或修改场景。全量 1055 项测试通过、0 失败、0 跳过；版本仍为 0.1.0 Unreleased。真实组件与资源核对、名称冲突、写入恢复及 Undo 仍待后续验证。详见[节点批次 DTO 验证](verification/NODE_BATCH_DTO_2026-09-26.md)。
 - FR-29 P0 第二步（2026-09-28）新增 full-profile `create_node_batch`（`core` 42、`full` 139）：核对当前场景/父节点、同级名称、受限内置 UI 组件/属性和已导入项目 SpriteFrame，创建新身份、绑定引用并回读；失败仅尝试清理本批新节点，保留结构化失败/残留/通信不确定报告。Creator 3.8.8 正式入口通过 UI/普通节点、稳定 clear、故障清理、保存重开与完整重启验证，原 94 个资源文件哈希不变；Button 空 target 经实测会被引擎恢复，已改为写前拒绝。新增 52 项测试通过；全量 1107 项中 1104 通过、3 项既有 Skills 换行失败、0 跳过。无自动保存、外部 resolve、预制体/跨场景或 Undo 承诺；FR-29 整体和阶段 2 构建器尚未完成。详见[批次创建验证](verification/NODE_BATCH_CREATE_2026-09-28.md)。
+
+- FR-29 P0 第三步（2026-09-28）：`create_node_batch` 在 Creator 3.8.8 使用公开 begin/end/cancel 消息，为成功批次记录一次父节点范围 Undo；其他版本保留无 Undo 路径。正式入口验证两批分别撤销/重做、失败取消保留原 redo、原未保存编辑/传入引用不丢失、场景根多根批次和保存重开/完整重启，98 个原资源文件哈希不变。新增 18 项测试，定向 123 项全部通过；全量 1125 项中 1122 通过、3 项既有 Skills 失败。未知录制状态保留证据并阻止同项目后续批次，须人工核查并安全重启 Creator；无自动 Undo、保存或跨资源事务。工具数量仍为 core 42 / full 139；下一 P0 功能为阶段 2 JSON UI 构建器，外部 resolve/跨场景传输继续后置。详见[单次 Undo 验证](verification/NODE_BATCH_UNDO_2026-09-28.md)。
 
 ## 阶段 2：构建器与 UI 模板
 

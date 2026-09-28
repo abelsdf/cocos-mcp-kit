@@ -1,5 +1,7 @@
 # FR-29 受限批次创建与失败清理验证（2026-09-28）
 
+此页保留启用原生 Undo 前的创建/清理基线；同日后续新增的 Creator 3.8.8 单次 Undo 适配见[独立验收记录](NODE_BATCH_UNDO_2026-09-28.md)。
+
 ## 范围
 
 新增 full-profile `create_node_batch`，复用公开 v1 DTO；`core` 保持 42 项，`full` 为 139 项。实现显式场景/父节点核对、同级名称冲突、受限组件和属性预检、新身份映射、内部引用及项目 SpriteFrame 绑定、回读和新节点清理。完整契约见[节点批次 DTO](../NODE_BATCH_DTO.md)。版本仍为 0.1.0 Unreleased。

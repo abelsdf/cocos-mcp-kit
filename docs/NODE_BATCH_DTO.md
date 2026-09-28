@@ -51,12 +51,22 @@ DTO 限制：最多 128 个节点、每节点 16 个组件、256 条引用、256
 
 ## 返回与恢复边界
 
-成功返回 `created:true`、`verified:true`、局部 ID 到新 UUID 的 `identities`、`rootUuids` 及计数。`needsSave:true` 要求调用方另行保存和重开；不依赖 Creator dirty 标志代表已写盘。`undo:{supported:false,recorded:false}` 明确表示本适配不记录 Undo，不能用撤销代替恢复检查。
+成功返回 `created:true`、`verified:true`、局部 ID 到新 UUID 的 `identities`、`rootUuids` 及计数。`needsSave:true` 要求调用方另行保存和重开；不依赖 Creator dirty 标志代表已写盘。
+
+### 单次 Undo（仅 Creator 3.8.8）
+
+在编辑器进程确认 `Editor.App.version === "3.8.8"` 时，预检完成后通过公开 `scene:begin-recording(parentUuid)` 获取录制 ID；批次创建/回读成功后调用一次 `end-recording(id)`。返回 `undo:{supported:true,recorded:true,scope:"target_parent",recordingId:"…",cancelled:false}`。下一次正常 Undo 可以撤销本批，Redo 恢复相同节点/组件身份和引用。工具自身从不调用 Undo/redo、snapshot、自动保存或自动重试。`recordingId` 是当次原生录制句柄，不是跨会话凭据，也不提供任意跳过历史步骤的选择性撤销。
+
+其他 Creator 版本（包括版本未知）沿用已有创建/清理路径，返回 `supported:false, recorded:false, reason:"unverified_creator_version"`，不尝试未验证的录制 API。普通失败的节点清理结束后，仅取消本次已知句柄；成功取消返回 `recorded:false, cancelled:true`。取消历史记录不代替节点清理，也不能把部分清理解释为恢复完成。
+
+开始/结束/取消录制回复异常、写入回复丢失，或写完后活动场景不再匹配时，不猜测录制状态，不自动取消仍可能执行中的写入，不用原生 Undo 兜底。返回 `uncertain:true`、`undo.recorded:null`、`undo.requiresManualReview:true` 和已知的 `recordingId`，并在本扩展进程内阻止该项目继续批次写入。若节点已创建且回读成功，结束录制异常仍保留 `created:true, verified:true, needsSave:true` 的证据，但 MCP 外层为 `ok:false`；不会因历史状态不明而删除已创建节点。检查场景和未保存内容后安全重启 Creator；**只重载扩展可能清除本地阻止标记，但不能证明原生未决录制已关闭**。
+
+录制范围是目标父节点。调用期间应避免用户或其他工具/监听脚本同时修改该范围；既有 Layout、Label、Sprite 等自动计算也不能视为静止的手工属性。单次 Undo 不等于修改任意已有内容的全事务，Undo 栈持久化不在重启验收承诺中。
 
 写入或回读失败时，MCP 外层 `ok:false`，`data` 保留 `phase`、错误、新身份和 `cleanup`。清理逆序处理本批记录的节点，并等待销毁生效；只在父级仍匹配且无残留子节点时删除。节点被重新挂接或收养了已有子树时拒绝递归删除，保留 UUID、错误和 `requiresManualReview:true`。`cleanup.status` 为 `not_needed`、`complete` 或 `partial`，逐项结果可由 `cleanupOrder` 与 `remainingNodeIds` 核对。
 
 场景写调用丢失响应时返回 `uncertain:true`、`cleanup.status:"not_attempted"`，不重试、不猜测应删节点；空残留列表此时代表身份未知，**不是零残留证明**。先检查现场再决定后续操作。失败时 `needsSave:null`，不能将清理完成解释为原场景没有未保存内容。同一扩展进程的同项目并发批次请求会被拒绝。
 
-这不是跨资源全事务：不恢复旧节点/资源、场景切换、用户并发编辑或项目监听脚本造成的外部副作用。只承诺已记录新节点的限定清理范围；单次 Undo、剪切/跨场景粘贴和外部引用解析仍待实现与适配验证。
+这不是跨资源全事务：失败清理不恢复旧节点/资源、场景切换、用户并发编辑或项目监听脚本造成的外部副作用。只承诺已记录新节点的限定清理范围；剪切/跨场景粘贴和外部引用解析仍待实现与适配验证。
 
-纯逻辑、场景模拟和编辑器入口测试分别见 `test/node-batch-dto.test.js`、`test/node-batch-scene.test.js`、`test/node-batch-create.test.js`。Creator 3.8.8 的正式创建、故障注入、保存/重开和完整重启证据见[批次创建验证](verification/NODE_BATCH_CREATE_2026-09-28.md)。场景脚本采用[官方扩展 IPC](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/scene-script.html)传输 JSON 参数和结果，不跨进程传递 Cocos 原生对象；该 API 文档不构成 Undo 支持证据。
+纯逻辑、场景模拟和编辑器入口测试分别见 `test/node-batch-dto.test.js`、`test/node-batch-scene.test.js`、`test/node-batch-create.test.js`。Creator 3.8.8 的正式创建、故障注入、保存/重开和完整重启证据见[批次创建验证](verification/NODE_BATCH_CREATE_2026-09-28.md)；后续原生分组与不确定历史边界见[单次 Undo 验证](verification/NODE_BATCH_UNDO_2026-09-28.md)。场景脚本采用[官方扩展 IPC](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/scene-script.html)传输 JSON 参数和结果，不跨进程传递 Cocos 原生对象；具体录制消息取自 Creator 消息管理器的公开说明和示例，并另行实测，不从通用 IPC API 推断支持。
