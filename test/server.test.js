@@ -35,6 +35,48 @@ function createServer(toolRegistry = {}, config = {}, options = {}) {
   });
 }
 
+test('MCP resources expose bundled knowledge without calling scene APIs', async () => {
+  const { ResourceProvider } = require('../lib/resources');
+  const server = createServer();
+  server.resourceProvider = new ResourceProvider(() => ({ projectName: 'Test' }), {
+    call() { throw new Error('Knowledge must not query the scene'); },
+  });
+  const rpc = (method, params = {}) => server.handleRpcRequest({ jsonrpc: '2.0', id: 1, method, params });
+  const list = await rpc('resources/list');
+  assert.ok(list.result.resources.some(r => r.uri === 'cocos://knowledge/index'));
+  const templates = await rpc('resources/templates/list');
+  assert.ok(templates.result.resourceTemplates.some(r => r.uriTemplate === 'cocos://knowledge/component/{component}'));
+  const index = JSON.parse((await rpc('resources/read', { uri: 'cocos://knowledge/index' })).result.contents[0].text);
+  for (const item of index.topics) {
+    const topic = await rpc('resources/read', { uri: item.uri });
+    assert.equal(JSON.parse(topic.result.contents[0].text).topic.id, item.id);
+  }
+  const component = await rpc('resources/read', { uri: 'cocos://knowledge/component/Widget' });
+  assert.equal(JSON.parse(component.result.contents[0].text).component, 'cc.Widget');
+  const invalid = await rpc('resources/read', { uri: 'cocos://knowledge/topic/unknown' });
+  assert.equal(invalid.id, 1); assert.equal(invalid.error.code, -32602);
+});
+
+test('HTTP knowledge resource reads preserve errors and stay within the output budget', async () => {
+  const { ResourceProvider } = require('../lib/resources');
+  const server = createServer({}, { port: 0 });
+  server.resourceProvider = new ResourceProvider(() => ({ projectName: 'Test' }), {
+    call() { throw Error('Unexpected scene call'); },
+  });
+  await server.start();
+  try {
+    for (const suffix of ['index', 'topic/ui-transform', 'component/cc.Canvas', 'topic/%', 'topic/unknown']) {
+      const response = await httpJson(server.getPort(), {
+        jsonrpc: '2.0', id: 17, method: 'resources/read', params: { uri: 'cocos://knowledge/' + suffix },
+      });
+      assert.equal(response.statusCode, 200);
+      const payload = JSON.parse(response.body); assert.equal(payload.id, 17);
+      if (suffix === 'topic/%' || suffix === 'topic/unknown') assert.equal(payload.error.code, -32602);
+      else assert.ok(payload.result.contents[0].text.length < 6000);
+    }
+  } finally { await server.stop(); }
+});
+
 function httpJson(port, payload, headers = {}) {
   const body = payload === undefined ? '' : JSON.stringify(payload);
   return new Promise((resolve, reject) => {

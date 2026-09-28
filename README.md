@@ -19,6 +19,10 @@ The current target is Cocos Creator 3.8.x; the editor checks linked below were p
 
 Replace `PORT` with the port shown in the panel. The bridge requires Node.js 18 or newer. Use **Cocos MCP Kit > Tool Exposure** to select `core`, `full`, or a custom tool set. `core` is the default; `full` includes scene editing and component tools such as `list_available_component_types`. Select `full` for the editing workflow below. The [generated tool reference](./docs/TOOLS.md) shows each tool's profile and access type. Project settings are stored in `cocos-mcp-kit.config.json` at the Cocos project root.
 
+## Bundled UI knowledge
+
+Read `cocos://knowledge/index` through MCP Resources for a compact catalog, then request a topic such as `cocos://knowledge/topic/widget-layout` or component links through `cocos://knowledge/component/cc.Widget`. Six original Chinese summaries cover Creator 3.8.x UI concepts with official sources, review dates and project limitations. Queries are offline and read-only; they do not inspect a scene or prove runtime correctness. Requires a Resources-capable client. See the [knowledge contract](./docs/KNOWLEDGE.md).
+
 ## What it can do
 
 | Area | Current capabilities | Examples |

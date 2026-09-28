@@ -120,6 +120,10 @@ UI 预制体要求父节点已有 Canvas 祖先；关联父层级、Canvas 根�
 
 `delete_asset` 只接受精确 UUID、db URL 或文件路径，不猜测扩展名。它安全处理工程预制体，以及最大 64 MiB 的已导入 JSON、文本、图片或音频主资源。单次请求 asset-db 删除前，会核对可写且已导入的身份、真实源文件/元信息路径、未变化的字节与元信息，并通过原生接口检查主资源及导入子资源 UUID 的资源/脚本和当前场景引用。同一图片各子资源之间的内部引用不会阻断删除，外部引用会阻断；被引用的资源和正在编辑的预制体均被拒绝，不提供强制、级联或磁盘直删回退。只有 UUID/URL 记录、双向映射、源文件和 `.meta` 全部消失才报告成功；回查失败时删除可能已经发生，应先检查精确目标再重试。目录、子资源、场景、脚本、其他格式、运行时字符串/路径加载及原生查询之外的引用仍不支持。详见[预制体删除验收](./docs/verification/PREFAB_DELETE_2026-09-22.md)和[常规资源删除验收](./docs/verification/ASSET_DELETE_2026-09-26.md)。
 
+## 自有 UI 知识库
+
+MCP Resources 新增 `cocos://knowledge/index` 精简目录，可按 `cocos://knowledge/topic/widget-layout` 读取正文，或按 `cocos://knowledge/component/cc.Widget` 查询主题链接。六篇独立中文摘要涵盖尺寸/锚点、Canvas/Camera、布局、字体缓存、资源引用、事件和编辑态/运行态，附 Creator 3.8.x 官方来源与复核日期。查询离线、只读，不扫描工程或替代运行验证；需要客户端支持 Resources。详见[知识查询契约](./docs/KNOWLEDGE.md)。
+
 ## 开发与文档
 
 运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。

@@ -10,3 +10,4 @@ dist/
 build/
 .release-tmp/
 releases/
+.firecrawl/

@@ -6,6 +6,8 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ## [Unreleased]
 
+- Added versioned, offline UI knowledge through MCP Resources: a compact index, six original Chinese topics and exact component-to-topic links for Creator 3.8.x. Includes official sources, review dates, bounded output, explicit invalid-query errors and a separation between general guidance and project limitations. No scene inspection, repair, network fetch or new tool. See `docs/KNOWLEDGE.md`.
+
 ### Changed
 
 - Added full-profile read-only `get_ui_template` for original pause-menu, settings-dialog and result-dialog JSON. Supports text, dimensions, RGBA palettes and event parameters for an imported project controller; unbound buttons are disabled. Generates editable UI schema and reuses `build_ui`, with no second mutation path, bundled assets/scripts or game business logic. See `docs/UI_TEMPLATES.md`.
