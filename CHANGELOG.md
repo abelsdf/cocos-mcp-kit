@@ -6,6 +6,10 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- Added seven full-profile native reference-image tools for Creator 3.8: query the library/current binding, add, remove, select, clear the current binding, set position/independent scale/opacity, and refresh from the original local file. The adapter uses Creator's public `reference-image` channel, waits for settled native state, never imports or deletes the source image, and keeps effective visibility explicitly unobservable because Creator 3.8.8 does not publish its native Show checkbox. See `docs/REFERENCE_IMAGES.md` and `docs/verification/REFERENCE_IMAGES_2026-09-30.md`.
+
 ## [0.1.0] - 2026-09-30
 
 - First project-owned GitHub **Pre-release**, published only through `abelsdf/cocos-mcp-kit`. It is not a stable release; npm/MCP Registry publication and automatic updates remain disabled.
