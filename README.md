@@ -8,8 +8,16 @@ The current target is Cocos Creator 3.8.x; the editor checks linked below were p
 
 ## Quick start
 
-1. Copy the repository contents to `<Cocos project>/extensions/cocos-mcp-kit` so that `package.json` and `scene.js` are directly inside that folder.
-2. Open the project in Cocos Creator 3.8.x, or restart Creator if the extension was already installed.
+### Before installation
+
+- This repository is a Creator extension, not a game project. Use an existing Cocos project; start with a disposable test project and back up authored scenes/assets before editing.
+- The recorded editor acceptance uses **Windows / Creator 3.8.8**. Other 3.8.x versions and operating systems need their own checks. The local stdio bridge requires **Node.js 18+**; no npm runtime dependencies are bundled or need installation.
+- Version **0.1.0 remains Unreleased**. Source installation and scoped candidate-content/editor checks exist, but final packaged installation is still pending. The source repository is `abelsdf/cocos-mcp-kit`; there is no configured npm/Registry publication or default update source. Do not use an upstream installer or `npx` package as a substitute for this checkout.
+
+### Install into one project
+
+1. Prepare `<Cocos project>/extensions/cocos-mcp-kit`. From a clean source checkout, copy `package.json`, `browser.js`, `scene.js`, `bin/`, `lib/`, `panel/`, `i18n/`, and the documentation explicitly listed in `package.json.files`, including `LICENSE`. Do not copy the entire working directory: exclude `.git`, `AGENTS.md`, local configuration, caches, tests and test projects. For a local ZIP candidate, use its extracted `cocos-mcp-kit` folder; for an npm TGZ candidate, place the extracted `package` contents in the same extension directory. These are manual file layouts, not a claim of Creator extension-manager installation approval.
+2. Check that `package.json`, `browser.js`, `scene.js` and `LICENSE` are directly inside `extensions/cocos-mcp-kit`, not inside an extra `package/` or `cocos-mcp-kit/` layer. When replacing an installation, first save your work, close the target Creator project and keep a backup of its old extension outside `extensions/`; avoid merging old and new files. Then open the project in Creator. Do not run duplicate project/global copies of this extension for the same project.
 3. Open **Cocos MCP Kit > MCP Server**. Confirm that the server says **Running** and copy the URL shown in the panel. The default listener is local (`127.0.0.1`); its port is derived from the project path, so use the displayed URL rather than a fixed port.
 4. Select your client in the panel and choose **Configure** for its MCP entry. **Configure + Skills** also installs the optional project skills. If your client needs stdio instead of a direct HTTP MCP URL, run the bundled bridge from the Cocos project root:
 
@@ -18,6 +26,16 @@ The current target is Cocos Creator 3.8.x; the editor checks linked below were p
    ```
 
 Replace `PORT` with the port shown in the panel. The bridge requires Node.js 18 or newer. Use **Cocos MCP Kit > Tool Exposure** to select `core`, `full`, or a custom tool set. `core` is the default; `full` includes scene editing and component tools such as `list_available_component_types`. Select `full` for the editing workflow below. The [generated tool reference](./docs/TOOLS.md) shows each tool's profile and access type. Project settings are stored in `cocos-mcp-kit.config.json` at the Cocos project root.
+
+### Confirm the connection
+
+Reconnect the MCP client after configuration or tool-profile changes. Before any write, call `get_project_info` and verify the returned project path/name and Creator version against the intended project. `get_tool_catalog` reports tool exposure; the default catalog currently has **43 core / 144 full** tools, while custom filters can change the visible set. A running process or a health response alone does not prove that the client is connected to the intended scene.
+
+For a manually configured stdio client, use command `node` and arguments containing the **absolute path** to `bin/cocos-mcp-kit.js`, `--url`, and the panel's URL. The relative command above assumes the Cocos project root as its working directory. The bridge does not launch Creator or discover the project port; without an explicit URL it falls back to port 8765, which may be the wrong endpoint. Running `node extensions/cocos-mcp-kit/bin/cocos-mcp-kit.js --help` checks CLI availability only, not MCP connectivity. A bridge waiting quietly for client input is normal.
+
+Project-derived ports and client entry names depend on the project path. After moving/copying a project, or changing its endpoint, configure that project's client entry again and recheck its identity. Old configurations without `portMode` can retain a fixed port. Resolve a temporary fallback-port warning before writing client configuration. Configuration conflicts should be reviewed, not fixed by deleting other projects' entries. **Configure + Skills** writes optional project files; plain **Configure** does not install skills. See [project workflows](./docs/PROJECT_WORKFLOWS.md).
+
+Keep the service local and connect only trusted clients. **`core` is not read-only**: it includes stateful and script-execution tools. Tool filtering and JavaScript safety checks are not an OS sandbox or an authorization boundary; do not expose the editor service to an untrusted network.
 
 ## Bundled UI knowledge
 
@@ -34,7 +52,7 @@ For explicit UI nodes, full-profile `validate_ui` checks UITransform, project de
 | Backend capability report | Read the active Creator extension identity, project and platform, current tool exposure, and risk hints. The optional official CLI adapter is reported as unconfigured; exposure does not prove runtime success. | `get_backend_capabilities`, `get_tool_catalog` |
 | Node batches | Read-only DTO preflight, plus full-profile bounded creation, reference verification and scoped failure cleanup. Creator 3.8.8 records one parent-scoped Undo; other versions report unsupported. No automatic save or Undo/redo execution; see the [write contract](./docs/NODE_BATCH_DTO.md). | `validate_node_batch`, `create_node_batch` |
 | JSON UI builder | Create nested UI under an explicit Canvas/UI parent, with scripts and ordered Button events. `create_scene(mode="ui")` provides a separate Canvas/Camera scene entry with guarded switching; unsaved content is never automatically saved/discarded. Scoped node cleanup/Undo does not roll back scene assets or external script effects. No visual guarantee. See [schema and example](./docs/UI_BUILDER.md). | `build_ui`, `create_scene`, `open_scene` |
-| Game UI templates | Read-only, editable pause/settings/result UI JSON with text, size, colors and project-script event data. Build through `build_ui`; unbound buttons are disabled. No bundled art, game logic or automatic saving. See [template contract](./docs/UI_TEMPLATES.md). | `get_ui_template` |
+| Game UI templates | Read-only, editable pause/settings/result UI JSON with text, size, colors and project-script event data. Build through `build_ui`; unbound buttons start disabled with a gray background and light-gray text. No bundled art, game logic or automatic saving. See [template contract](./docs/UI_TEMPLATES.md). | `get_ui_template` |
 | UI viewport context | Read project design resolution, the nearest Canvas and associated camera, local/world/Canvas bounds and orthographic edit-camera pixel clipping. UI building and common modifications attach this report; unknown contexts remain explicit. Not Scene observer, Game View or device visibility. See [scope and coordinates](./docs/UI_VIEWPORT.md). | `get_ui_viewport` |
 | Project and assets | Read the active project's public name, UUID, paths, and Creator version; inspect scenes and exact asset metadata/data; resolve asset UUIDs, canonical URLs and real source paths; check asset-db readiness; safely create or save JSON/text assets, import bounded external files or folders, copy, move, refresh, or reimport supported assets; and inspect dependencies, logs, and script diagnostics. | `get_project_info`, `inspect_asset`, `query_asset_uuid`, `query_asset_url`, `query_asset_path`, `check_asset_ready`, `create_asset`, `save_asset`, `import_asset`, `import_folder`, `copy_asset`, `move_asset`, `refresh_asset`, `reimport_asset`, `list_assets` |
 | Scene graph | Create and inspect nodes; move, reorder, duplicate, transform, or batch-edit ordinary scene nodes. | `find_nodes`, `move_node`, `reorder_node`, `batch_modify_nodes` |
@@ -46,6 +64,17 @@ For explicit UI nodes, full-profile `validate_ui` checks UITransform, project de
 These are examples, not the complete catalog. Some entries come from the Funplay base; newer tools have separate Creator verification records under [docs/verification](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification). The tool profile controls what an MCP client can see, and read-only, mutating, and stateful tools are marked in the [tool reference](./docs/TOOLS.md).
 
 ## A safe editing workflow
+
+### Build and check a first UI
+
+1. Verify the project identity, select `full`, and open a saved scene in ordinary Scene edit mode. A fresh unsaved default scene must first be saved or replaced manually in Creator; guarded tools do not discard it. For a new Canvas/Camera scene, follow the explicit `create_scene(mode="ui")` entry in the [UI builder guide](./docs/UI_BUILDER.md), including its `expectedSceneUuid` and `needsSave` handling.
+2. Import a project-owned white image and resolve its actual **SpriteFrame subasset**, not just the image UUID. For working buttons, prepare an imported/registered project script with the intended callback method; the extension does not create game logic.
+3. Call `get_ui_template` with `pause_menu`, `settings_dialog` or `result_dialog`, then inspect its returned `ui`. Supply the current scene asset UUID and Canvas/UI parent node UUID to `build_ui`. If a newly created scene has been opened successfully, these are its returned `info.uuid` and `ui.parentUuid`. These two kinds of UUID are not interchangeable. See the [template example](./docs/UI_TEMPLATES.md).
+4. Inspect the build result and actual nodes before repeating a write. Same-name roots are rejected, not updated. Unbound actions use static gray styling; manually enabling them also requires restoring Sprite/Label colors. This does not migrate old scenes or implement runtime state transitions.
+5. Run `verify_ui` in edit mode with the scene UUID and **all node UUIDs to check**, not just the root: it does not recursively validate descendants. Save explicitly, reopen the saved scene, and recheck assets, scripts and event references. Resolve any unsaved-content warning before switching scenes.
+6. Start embedded Game View separately when needed, physically click the buttons and inspect the rendered result. Use `verify_ui(screenshot="game")` only for preview evidence; preview structure is `not_checked`. A clipped image is partial evidence: adjust the visible Game View scale/layout before taking a complete screenshot. The [verification guide](./docs/UI_VERIFICATION.md) explains provenance and result fields. Do not infer business behavior from a test callback alone.
+
+### Edit existing nodes
 
 1. Inspect the target with `get_scene_info`, `find_nodes`, or `list_components`. Prefer a node UUID or a unique path; ambiguous names are rejected, and multiple selectors must agree.
 2. For component work, call `list_available_component_types` or `inspect_component` before editing. The type catalog marks missing and non-Component classes; `attachable` means a registered Component subclass was found, not that every node will accept it.
@@ -128,9 +157,28 @@ UI prefabs require an existing Canvas ancestor. Linked parent hierarchies, Canva
 
 `delete_asset` requires an exact UUID, db URL, or file path; it does not guess extensions. It safely handles project prefabs and imported JSON, text, image, or audio main assets up to 64 MiB. Before one asset-db deletion request it verifies writable imported identity, real source/metadata paths, unchanged bytes and metadata, and native asset/script plus active-scene references for the main UUID and imported subasset UUIDs. Internal links among subassets of the same image do not block deletion; external references do. Referenced assets and currently edited prefabs are rejected, with no force/cascade or filesystem fallback. Success requires UUID/URL records, both mappings, the source, and `.meta` to be absent. A verification failure may occur after deletion, so inspect the exact asset before retrying. Folder, subasset, scene, script, other-format, dynamic string/path loading, and references outside native queries remain unsupported. See the [prefab verification](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_DELETE_2026-09-22.md) and [regular-asset verification](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_DELETE_2026-09-26.md).
 
+## Troubleshooting
+
+| Symptom | First checks |
+| --- | --- |
+| Menu missing or extension fails to load | Check the exact folder depth and package name, avoid duplicate installations, restart the intended Creator project and inspect its console errors. |
+| Connection refused or wrong project | Keep Creator and its MCP service running; copy the current panel URL, verify the selected client entry and `get_project_info`. Resolve port collisions/fallbacks before configuring clients; do not assume 8765 or another project's URL. |
+| A browser GET returns 405 | Long-lived GET/SSE streams are not supported. Use a compatible HTTP MCP client or the bundled stdio bridge. `/health` is a read-only liveness check, not a scene or client acceptance test. |
+| Builder/template/verification tool missing | Check `full` and any custom tool/category filters in Tool Exposure, then reconnect the client. `core` is intentionally smaller, not read-only. |
+| Switch refused or resource/callback rejected | Review `needsSave`, unsaved serialized changes and the exact active scene; verify imported SpriteFrame/script identities and registered methods. Never bypass the guard or blindly repeat an uncertain write. |
+| Screenshot fails, is cropped, or a button does nothing | Show the intended non-minimized Scene/Game View. Check `region.clipped`, the correct runtime mode and source; for a gray button, inspect its event binding and disabled state. A captured image never means visual validation passed. |
+
+## Known limits and delivery status
+
+- Recorded persistence, UI clicks and screenshots cover specified Creator 3.8.8 samples, not all projects, text lengths, materials, aspect ratios or devices. Touch, other Creator versions/OSes and final package installation/update/uninstall remain unverified. [First-release evidence](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/FIRST_RELEASE_VISUAL_ACCEPTANCE_2026-09-30.md) and [disabled-style follow-up](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_DISABLED_STYLE_2026-09-30.md) state the tested scope.
+- UI templates are fixed-layout starter JSON. They do not implement pause/resume logic, audio preferences, rewards, navigation, modal input blocking or focus management. Custom colors/art and long text need visual review.
+- Batch cleanup covers newly created nodes, not arbitrary script effects or scene-asset creation. Single-Undo recording is verified only on Creator 3.8.8; specialized prefab operations retain their documented non-nested/property-only limits. Partial or uncertain results require inspection, not automatic retries.
+- The strict Scene/Game View screenshot workflow requires a visible matching Creator window. It does not capture an external browser/Simulator, prove runtime scene freshness, or provide automatic visual approval: `visualValidation` remains `not_run`. The optional official CLI backend is not configured.
+- Current packages are local candidates, not a public release. The [release workflow](./RELEASE_WORKFLOW.md) records the missing `zip` prerequisite in the current Windows validation environment and same-version overwrite risk in the final-package script. Content checks and a test-generated ZIP do not replace final packaging and installation acceptance; do not run `release:verify` over artifacts that must be preserved.
+
 ## Development and documentation
 
-Run `npm run check` for JavaScript syntax, `npm test` for the bundled tests, and `npm run docs:check` to verify the generated tool catalog. The [development plan](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/PLAN.md) distinguishes implemented tools from broader requirements still in progress; [verification reports](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification) record what was tested in Creator. This fork currently has no configured release update channel or package registry publication; install it locally.
+Run development commands from a **source checkout**, not the installed runtime package: `npm run check` for JavaScript syntax, `npm test` for tests, `npm run docs:check` for the generated catalog, `npm run release:check` for package/license guards, and `npm run pack:dry-run` for the npm file list. Tests and build scripts are intentionally not shipped in the runtime package. The [development plan](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/PLAN.md) distinguishes implemented tools from broader requirements still in progress; [verification reports](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification) record what was tested in Creator. This fork currently has no configured release update channel or package registry publication; install it locally.
 
 ## Attribution and license
 

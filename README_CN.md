@@ -8,8 +8,16 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 ## 快速开始
 
-1. 将本仓库内容复制到 `<Cocos 工程>/extensions/cocos-mcp-kit`，确保 `package.json` 和 `scene.js` 直接位于该目录下。
-2. 用 Cocos Creator 3.8.x 打开工程；若已安装过扩展，请重启 Creator。
+### 安装前确认
+
+- 本仓库是 Creator 扩展，不是游戏工程。需要已有的 Cocos 工程；建议先使用可丢弃的测试工程，编辑前备份场景和资源。
+- 现有编辑器验收环境为 **Windows / Creator 3.8.8**，其他 3.8.x 版本和操作系统需要另行验证。本地 stdio 桥接需要 **Node.js 18+**；没有需要额外安装的 npm 运行依赖。
+- 当前 **0.1.0 仍为 Unreleased**。已进行源码安装和限定范围的候选内容/编辑器检查，但最终安装包验收尚未完成。源码仓库为 `abelsdf/cocos-mcp-kit`；尚未配置 npm/Registry 发布及默认更新源。不要用上游安装器或 `npx` 下载包代替本仓库版本。
+
+### 安装到一个工程
+
+1. 准备 `<Cocos 工程>/extensions/cocos-mcp-kit`。从干净源码副本复制 `package.json`、`browser.js`、`scene.js`、`bin/`、`lib/`、`panel/`、`i18n/`，以及 `package.json.files` 明确列出的文档（包括 `LICENSE`）。不要复制整个工作目录，不带入 `.git`、`AGENTS.md`、本地配置、缓存、测试和测试工程。使用本地 ZIP 候选时取解压后的 `cocos-mcp-kit` 目录；使用 npm TGZ 候选时，将解压后的 `package` 内容放入同一扩展目录。这里说明的是手动文件布局，不表示 Creator 扩展管理器安装已获验收。
+2. 确认 `package.json`、`browser.js`、`scene.js` 和 `LICENSE` 直接位于 `extensions/cocos-mcp-kit`，没有额外嵌套一层 `package/` 或 `cocos-mcp-kit/`。替换旧安装前，先保存工作、关闭目标 Creator 工程，将旧扩展备份到 `extensions/` 之外，避免新旧文件混合，再打开工程。同一工程不要同时加载本扩展的工程级和全局副本。
 3. 打开 **Cocos MCP Kit > MCP 服务**，确认状态为 **运行中**，复制面板显示的地址。服务默认只监听本机 `127.0.0.1`；端口根据工程路径生成，请以面板地址为准。
 4. 在面板中选择客户端并点击 **配置**，写入其 MCP 连接信息。**配置 + Skills** 还会安装可选的工程 Skills。如果客户端需要 stdio 而非直接连接 HTTP MCP 地址，可在 Cocos 工程根目录运行随附桥接程序：
 
@@ -18,6 +26,16 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
    ```
 
 请将 `PORT` 换成面板显示的端口。桥接程序需要 Node.js 18 或更高版本。通过 **Cocos MCP Kit > 工具开放范围** 选择 `core`、`full` 或自定义工具集。默认是 `core`；`full` 包含场景编辑和 `list_available_component_types` 等组件工具。执行下文的编辑流程前，请切换到 `full`。[工具清单](./docs/TOOLS.md)标明每项工具所属配置和操作类型。工程设置保存在工程根目录的 `cocos-mcp-kit.config.json`。
+
+### 确认连接正确
+
+写入配置或切换工具配置后，重新连接 MCP 客户端。任何修改前，先调用 `get_project_info`，核对返回的工程路径、名称和 Creator 版本是否属于目标工程。`get_tool_catalog` 用于检查工具开放状态；当前默认目录为 **core 43 / full 144** 项，自定义过滤会改变实际可见数量。进程启动或健康检查成功，不代表客户端已经连接到正确场景。
+
+手动配置 stdio 客户端时，命令填 `node`，参数包含 `bin/cocos-mcp-kit.js` 的**绝对路径**、`--url` 和面板地址。上面的相对路径命令仅适用于工作目录为 Cocos 工程根目录的情况。桥接程序不会启动 Creator，也不会自动发现工程端口；省略地址会退回 8765，可能连错服务。`node extensions/cocos-mcp-kit/bin/cocos-mcp-kit.js --help` 只检查命令是否可用，不验证 MCP 连接。桥接进程等待客户端输入时没有持续输出是正常现象。
+
+项目独立端口和客户端条目名均与工程路径有关。移动/复制工程或更改服务地址后，应重新配置该工程的客户端条目并核对身份。旧配置没有 `portMode` 时可能保留固定端口；出现临时备用端口提示时，先解决端口状态，再写入客户端配置。配置冲突应先检查，不要删除其他工程的条目来绕过。**配置 + Skills** 会写入可选的工程文件；普通**配置**不安装 Skills。详见[工程工作流](./docs/PROJECT_WORKFLOWS.md)。
+
+保持服务仅供本机可信客户端使用。**`core` 不是只读配置**，其中也有有状态和脚本执行工具；工具过滤与 JavaScript 安全检查不是操作系统沙箱或授权隔离，不要将编辑器服务暴露到不可信网络。
 
 ## 当前能力
 
@@ -30,7 +48,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 | 后端能力报告 | 只读查询当前 Creator 扩展、工程与平台、工具开放状态及风险提示。可选官方 CLI 适配器明确标为未配置；工具开放不代表运行验收通过。 | `get_backend_capabilities`、`get_tool_catalog` |
 | 节点批次 | DTO 只读预检，以及 full 配置下受限创建、引用核对和失败清理。Creator 3.8.8 成功批次记录一次父节点范围的 Undo，其他版本不承诺；不自动保存或执行撤销/重做，见[写入契约](./docs/NODE_BATCH_DTO.md)。 | `validate_node_batch`, `create_node_batch` |
 | JSON UI 构建 | 在明确 Canvas/UI 父节点下构建含脚本及有序按钮事件的 UI；`create_scene(mode="ui")` 提供独立 Canvas/Camera 场景入口与切换保护，不自动保存或丢弃未保存内容。节点清理/Undo 不回滚场景资产及脚本外部副作用，不承诺画面可见，见[格式与示例](./docs/UI_BUILDER.md)。 | `build_ui`、`create_scene`、`open_scene` |
-| 游戏 UI 模板 | 只读生成暂停/设置/结果界面的可编辑 JSON，支持文案、尺寸、颜色和工程脚本事件参数，交由 `build_ui` 构建。未绑定按钮默认禁用，不附带素材、游戏逻辑或自动保存，见[模板契约](./docs/UI_TEMPLATES.md)。 | `get_ui_template` |
+| 游戏 UI 模板 | 只读生成暂停/设置/结果界面的可编辑 JSON，支持文案、尺寸、颜色和工程脚本事件参数，交由 `build_ui` 构建。未绑定按钮初始为禁用、灰底浅灰文字，不附带素材、游戏逻辑或自动保存，见[模板契约](./docs/UI_TEMPLATES.md)。 | `get_ui_template` |
 | UI 视口上下文 | 只读返回项目设计分辨率、最近 Canvas/关联相机、局部/世界/Canvas 边界及正交相机编辑态像素裁剪。构建与常用修改自动附加报告，无法计算时明确降级；不代表 Scene 观察窗口、Game View 或设备可见性，见[范围与坐标](./docs/UI_VIEWPORT.md)。 | `get_ui_viewport` |
 | 工程与资源 | 读取当前工程的公开名称、UUID、路径及 Creator 版本；查询场景、精确资源元数据/数据、资源 UUID、规范 URL、真实源路径及 asset-db 就绪状态；安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`query_asset_uuid`、`query_asset_url`、`query_asset_path`、`check_asset_ready`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
@@ -42,6 +60,17 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 上表仅列举主要能力，完整接口见[工具清单](./docs/TOOLS.md)。部分工具来自 Funplay 底座；新增功能的 Creator 实测记录位于 [docs/verification](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification)。工具配置决定客户端可见范围，工具清单也区分只读、修改和有状态操作。
 
 ## 推荐操作流程
+
+### 搭建并验收第一个 UI
+
+1. 核对工程身份，选择 `full`，在普通 Scene 编辑模式打开已保存的场景。首次启动的未保存默认场景，需先在 Creator 中手动保存或打开其他场景；受保护工具不会替你丢弃它。需要新 Canvas/Camera 场景时，按 [UI 构建指南](./docs/UI_BUILDER.md)显式使用 `create_scene(mode="ui")`，处理 `expectedSceneUuid` 和 `needsSave`。
+2. 导入工程自有的白色图片，核实实际 **SpriteFrame 子资源**，不要只填图片主资源 UUID。需要按钮响应时，准备已导入、已注册且具有目标回调方法的工程脚本；扩展不会生成游戏逻辑。
+3. 使用 `pause_menu`、`settings_dialog` 或 `result_dialog` 调用 `get_ui_template`，检查返回的 `ui`，再向 `build_ui` 提供当前场景资源 UUID 和 Canvas/UI 父节点 UUID。若新建场景已成功打开，两者分别取创建结果的 `info.uuid` 和 `ui.parentUuid`，不要混用。参数示例见[模板指南](./docs/UI_TEMPLATES.md)。
+4. 检查构建结果和实际节点后再决定下一次修改。同名根节点会拒绝，而非自动更新。未绑定动作使用静态灰色外观；后续手动启用还需恢复 Sprite/Label 颜色，不会自动迁移旧场景或实现运行时状态过渡。
+5. 在编辑态调用 `verify_ui`，明确传入场景 UUID 和**所有待检查节点 UUID**，不能只给根节点：检查不会递归覆盖后代。显式保存、重新打开后，再核对资源、脚本与事件引用；切换场景前先处理未保存内容提示。
+6. 需要运行画面时，另行启动内嵌 Game View，真实点击按钮并观察结果。预览中 `verify_ui(screenshot="game")` 仅提供截图证据，结构仍为 `not_checked`。裁剪截图只是局部证据，应调整 Game View 可见缩放/布局后重拍。来源和结果字段见[验证指南](./docs/UI_VERIFICATION.md)；测试回调触发不等于真实业务行为通过。
+
+### 编辑已有节点
 
 1. 先用 `get_scene_info`、`find_nodes` 或 `list_components` 检查目标。优先使用节点 UUID 或唯一层级路径；重名会报歧义，同时提供多个定位条件时必须指向同一节点。
 2. 修改组件前，用 `list_available_component_types` 或 `inspect_component` 核对类型和字段。类型目录会标记缺失类和非组件类；`attachable` 只表示找到已注册的 Component 子类，不保证任意节点都能挂载。
@@ -128,9 +157,28 @@ UI 预制体要求父节点已有 Canvas 祖先；关联父层级、Canvas 根�
 
 MCP Resources 新增 `cocos://knowledge/index` 精简目录，可按 `cocos://knowledge/topic/widget-layout` 读取正文，或按 `cocos://knowledge/component/cc.Widget` 查询主题链接。六篇独立中文摘要涵盖尺寸/锚点、Canvas/Camera、布局、字体缓存、资源引用、事件和编辑态/运行态，附 Creator 3.8.x 官方来源与复核日期。查询离线、只读，不扫描工程或替代运行验证；需要客户端支持 Resources。详见[知识查询契约](./docs/KNOWLEDGE.md)。
 
+## 常见问题
+
+| 现象 | 优先检查 |
+| --- | --- |
+| 找不到菜单或扩展加载失败 | 核对扩展目录层级、包名及重复安装，重启目标 Creator 工程并查看控制台错误。 |
+| 连接被拒绝或连错工程 | 保持 Creator 和 MCP 服务运行，使用当前面板地址，核对客户端条目和 `get_project_info`。先解决端口冲突/备用端口问题，不要默认使用 8765 或另一个工程的地址。 |
+| 浏览器 GET 返回 405 | 不支持 GET/SSE 长连接；使用兼容的 HTTP MCP 客户端或随附 stdio 桥接。`/health` 仅检查服务存活，不是场景或客户端验收。 |
+| 缺少构建、模板或验证工具 | 检查工具开放范围中的 `full` 与自定义工具/分类过滤，再重新连接客户端。`core` 数量较少，但并非只读。 |
+| 拒绝切换场景、资源或回调报错 | 检查 `needsSave`、未保存序列化内容和准确活动场景；核对已导入 SpriteFrame/脚本身份及已注册方法，不绕过保护或盲目重试结果不明的写入。 |
+| 截图失败/不完整，或按钮无反应 | 显示目标非最小化 Scene/Game View，核对 `region.clipped`、运行模式与来源；灰色按钮需检查事件绑定和禁用状态。截图成功从不代表视觉验收通过。 |
+
+## 已知限制与交付状态
+
+- 已记录的持久化、UI 点击和截图仅覆盖指定 Creator 3.8.8 样例，不代表所有工程、文案、素材、宽高比或设备。触摸、其他 Creator/系统及最终包安装、更新、卸载仍未验证。[首版视觉证据](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/FIRST_RELEASE_VISUAL_ACCEPTANCE_2026-09-30.md)和[禁用外观补验](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_DISABLED_STYLE_2026-09-30.md)明确了范围。
+- UI 模板是固定布局的起始 JSON，不实现暂停/恢复、音频偏好、奖励、导航、弹窗输入拦截或焦点管理。自定义配色、素材和长文本仍需视觉检查。
+- 批次清理仅覆盖本次新节点，不回滚任意脚本副作用或场景资源创建。单次 Undo 记录仅在 Creator 3.8.8 验证；预制体专项仍受文档中的非嵌套/纯属性边界限制。部分完成或结果不明时先检查，不自动重试。
+- 严格的 Scene/Game View 截图流程要求可见且匹配的 Creator 窗口，不捕获外部浏览器/Simulator、不证明运行场景新鲜度，也不自动判定视觉通过，`visualValidation` 始终为 `not_run`。可选官方 CLI 后端尚未配置。
+- 当前包仅为本地候选，不是正式发布。[发布流程](./RELEASE_WORKFLOW.md)已记录当前 Windows 验收环境缺少 `zip` 及最终打包脚本覆盖同版本目录的风险。内容审查和测试工具生成的 ZIP 不能替代最终打包/安装验收；已有产物需保留时，不要直接运行 `release:verify`。
+
 ## 开发与文档
 
-运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。
+开发命令应在**源码副本**中运行，而不是安装后的运行包：`npm run check` 检查 JavaScript 语法，`npm test` 运行测试，`npm run docs:check` 核对生成工具清单，`npm run release:check` 核对入包和许可保护，`npm run pack:dry-run` 查看 npm 入包文件。运行包有意不携带测试和构建脚本。[开发计划](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。
 
 ## 致谢与许可
 
