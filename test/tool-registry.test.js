@@ -149,7 +149,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 151);
+  assert.equal(tools.length, 154);
   assert.equal(tools.find(tool => tool.name === 'verify_ui').annotations.destructiveHint, false);
   assert.equal(tools.find(tool => tool.name === 'validate_ui').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.readOnlyHint, true);
@@ -196,6 +196,11 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.find((tool) => tool.name === 'add_reference_image').annotations.destructiveHint, true);
   assert.equal(tools.find((tool) => tool.name === 'remove_reference_image').annotations.destructiveHint, true);
   assert.equal(tools.some((tool) => tool.name === 'set_reference_image_visibility'), false);
+  assert.equal(tools.some((tool) => tool.name === 'get_scene_view_state'), true);
+  assert.equal(tools.find((tool) => tool.name === 'get_scene_view_state').annotations.readOnlyHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'set_scene_view_state').annotations.destructiveHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'align_selected_nodes_with_scene_view').annotations.destructiveHint, true);
+  assert.equal(createRegistry('full').listToolCatalog().find((tool) => tool.name === 'get_scene_view_state').category, 'scene-view');
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_selection'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_sprite_frame'), true);

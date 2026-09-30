@@ -22,7 +22,7 @@
 | 资源与预制体 | 资源解析、子资产、引用检查、实例构建可沿用Funplay候选。 | 资产导入/保存和链接实例须核验原生消息；嵌套实例不能任意删除/改父级，revert也不是所有字段复原。[预制体](https://docs.cocos.com/creator/3.8/manual/zh/asset/prefab.html) |
 | 构建器/模板/验证 | 自有JSON构建、分阶段绑定、规则检查、参数化模板。 | 模板和知识正文独立编写；结构规则不能判断所有遮挡/美观或游戏逻辑。 |
 | 文字排版 | Label/RichText文字、字体、对齐、换行、缓存，支持模式下的描边与阴影。 | 位图字体/CHAR缓存限制，RichText使用独立标记和组件规则；字体文件另核查许可。[Label](https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/label.html)、[RichText](https://docs.cocos.com/creator/3.8/manual/zh/ui-system/components/editor/richtext.html) |
-| 视图与参考图 | 游戏/UI边界可计算；自有参考面板可设置位置、缩放、透明度和切换。 | Gizmo、网格、图标和原生观察相机的自动化消息尚未确认；自有参考面板不是原生Scene叠加。[场景编辑器](https://docs.cocos.com/creator/3.8/manual/zh/editor/scene/) |
+| 视图与参考图 | 游戏/UI边界可计算；Creator 3.8.8 原生参考图，以及 Gizmo/轴心/坐标、2D/3D、网格、IconGizmo 的公开状态消息已适配。 | Gizmo view mode 仅查询；聚焦和反向观察相机对齐缺少公开结果回读。参考图实际像素可见性不可观测，不以消息成功冒充视觉通过。[场景编辑器](https://docs.cocos.com/creator/3.8/manual/zh/editor/scene/) |
 | 配置与日志 | Profile已确认键的CRUD；项目/编辑器信息、选择、编辑器日志、自有服务状态。 | 不能从通用Profile API推断完整原生设置目录；不能把编辑器日志当浏览器控制台。[Profile](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/profile.html)、[Logger](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/api/logger.html) |
 | 普通动画 | 创建轨道/路径、关键帧增删移动/复制、间距、插值/切线、事件、状态、播放以及自有预设。 | 外部导入ExoticAnimation不是普通可编辑轨道；动画编辑器模式与.anim保存还需核验。[曲线](https://docs.cocos.com/creator/3.8/manual/zh/animation/use-animation-curve.html)、[AnimationClip](https://docs.cocos.com/creator/3.8/api/zh/class/AnimationClip) |
 | Spine | 资源/动画/皮肤查询，设置动画/皮肤、公开属性、合法资源绑定及socket。 | 内置runtime、资源版本、缓存模式影响能力；不包含完整骨骼创作工具。[Spine](https://docs.cocos.com/creator/3.8/manual/zh/editor/components/spine.html) |

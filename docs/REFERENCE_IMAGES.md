@@ -20,12 +20,12 @@ These tools use Creator's native Scene overlay. The image is not copied into the
 2. Call `get_reference_images` and confirm `current.sceneUuid`. The response reports `visibility.is2D`, but does not claim that pixels are visible.
 3. Add an absolute local PNG/JPG/JPEG or select an item already in the native library.
 4. Change only the required parameters, then query again. All numeric values must be finite; opacity is inclusive 0–100.
-5. Use Creator's **Reference Image** panel to control its Show checkbox and visually inspect the Scene view. Use `refresh_reference_image` after changing the source file on disk.
+5. In a visible Creator session, open **Reference Image** and visually inspect the Scene overlay. Creator 3.8.8's panel exposes add/delete, offset, scale and opacity but no independent Show control. Hidden/minimized-window capture is rejected rather than treated as visual evidence. Use `refresh_reference_image` after changing the source file on disk.
 6. Use `clear_reference_image_binding` to detach the current scene while keeping the library, or `remove_reference_image` to remove a record and all native bindings. Neither operation deletes the original file.
 
 ## Boundaries
 
-- Creator 3.8.8's public reference-image messages expose library/binding/parameter/refresh operations, but do not expose the native panel's Show checkbox. Therefore `visibility.effectiveVisible` is deliberately `null` and `visibility.observable` is `false`; there is no `set_reference_image_visibility` tool.
+- Creator 3.8.8's public reference-image messages and native panel expose no independent visibility state. Therefore `visibility.effectiveVisible` is deliberately `null` and `visibility.observable` is `false`; there is no `set_reference_image_visibility` tool.
 - `visibility.eligible` only means the Scene view is in 2D mode, a non-missing image is bound, and the public state is otherwise suitable. It is not screenshot or pixel evidence.
 - Add/select require an existing local file. Remove accepts a missing file's existing library record so stale entries can be cleaned up.
 - Creator updates its native reference-image state asynchronously. Mutating tools poll for a bounded settled state and fail rather than treating the initial message return as proof.

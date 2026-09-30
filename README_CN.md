@@ -29,7 +29,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 ### 确认连接正确
 
-写入配置或切换工具配置后，重新连接 MCP 客户端。任何修改前，先调用 `get_project_info`，核对返回的工程路径、名称和 Creator 版本是否属于目标工程。`get_tool_catalog` 用于检查工具开放状态；当前默认目录为 **core 43 / full 151** 项，自定义过滤会改变实际可见数量。进程启动或健康检查成功，不代表客户端已经连接到正确场景。
+写入配置或切换工具配置后，重新连接 MCP 客户端。任何修改前，先调用 `get_project_info`，核对返回的工程路径、名称和 Creator 版本是否属于目标工程。`get_tool_catalog` 用于检查工具开放状态；当前默认目录为 **core 43 / full 154** 项，自定义过滤会改变实际可见数量。进程启动或健康检查成功，不代表客户端已经连接到正确场景。
 
 手动配置 stdio 客户端时，命令填 `node`，参数包含 `bin/cocos-mcp-kit.js` 的**绝对路径**、`--url` 和面板地址。上面的相对路径命令仅适用于工作目录为 Cocos 工程根目录的情况。桥接程序不会启动 Creator，也不会自动发现工程端口；省略地址会退回 8765，可能连错服务。`node extensions/cocos-mcp-kit/bin/cocos-mcp-kit.js --help` 只检查命令是否可用，不验证 MCP 连接。桥接进程等待客户端输入时没有持续输出是正常现象。
 
@@ -50,7 +50,8 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 | JSON UI 构建 | 在明确 Canvas/UI 父节点下构建含脚本及有序按钮事件的 UI；`create_scene(mode="ui")` 提供独立 Canvas/Camera 场景入口与切换保护，不自动保存或丢弃未保存内容。节点清理/Undo 不回滚场景资产及脚本外部副作用，不承诺画面可见，见[格式与示例](./docs/UI_BUILDER.md)。 | `build_ui`、`create_scene`、`open_scene` |
 | 游戏 UI 模板 | 只读生成暂停/设置/结果界面的可编辑 JSON，支持文案、尺寸、颜色和工程脚本事件参数，交由 `build_ui` 构建。未绑定按钮初始为禁用、灰底浅灰文字，不附带素材、游戏逻辑或自动保存，见[模板契约](./docs/UI_TEMPLATES.md)。 | `get_ui_template` |
 | UI 视口上下文 | 只读返回项目设计分辨率、最近 Canvas/关联相机、局部/世界/Canvas 边界及正交相机编辑态像素裁剪。构建与常用修改自动附加报告，无法计算时明确降级；不代表 Scene 观察窗口、Game View 或设备可见性，见[范围与坐标](./docs/UI_VIEWPORT.md)。 | `get_ui_viewport` |
-| 原生参考图 | 使用 Creator 3.8 原生图库、场景/预制体绑定、2D 偏移、独立缩放、透明度和刷新，不导入源文件，也不创建场景节点。Creator 3.8.8 未公开“显示”复选框的读写消息，因此该项保留为原生面板手动操作，见[范围与流程](./docs/REFERENCE_IMAGES.md)。 | `get_reference_images`、`add_reference_image`、`set_reference_image_parameters`、`refresh_reference_image` |
+| 原生参考图 | 使用 Creator 3.8 原生图库、场景/预制体绑定、2D 偏移、独立缩放、透明度和刷新，不导入源文件，也不创建场景节点。Creator 3.8.8 未公开实际可见性状态，因此可见编辑器观察仍需单独进行，见[范围与流程](./docs/REFERENCE_IMAGES.md)。 | `get_reference_images`、`add_reference_image`、`set_reference_image_parameters`、`refresh_reference_image` |
+| 原生 Scene 视图 | 查询并设置已验证的 Gizmo、轴心/坐标系、2D/3D、网格和 IconGizmo 状态，所有写入均原生回读；将 Scene 观察视角应用到已选节点会修改场景。反向对齐与聚焦因观察相机结果不可公开回读而不开放，见[范围与流程](./docs/SCENE_VIEW.md)。 | `get_scene_view_state`、`set_scene_view_state`、`align_selected_nodes_with_scene_view` |
 | 工程与资源 | 读取当前工程的公开名称、UUID、路径及 Creator 版本；查询场景、精确资源元数据/数据、资源 UUID、规范 URL、真实源路径及 asset-db 就绪状态；安全创建或保存 JSON/文本资源、导入有界的外部文件或目录、复制、移动、刷新或重导入受支持资源，并检查引用、日志和脚本诊断。 | `get_project_info`、`inspect_asset`、`query_asset_uuid`、`query_asset_url`、`query_asset_path`、`check_asset_ready`、`create_asset`、`save_asset`、`import_asset`、`import_folder`、`copy_asset`、`move_asset`、`refresh_asset`、`reimport_asset`、`list_assets` |
 | 场景层级 | 创建与检查节点；移动、排序、复制、变换或批量修改普通场景节点。 | `find_nodes`、`move_node`、`reorder_node`、`batch_modify_nodes` |
 | 组件与脚本 | 查询已注册类型；挂载、移除、列出、检查组件并修改支持的字段。 | `list_available_component_types`、`attach_script_component`、`list_components`、`set_component_property` |
