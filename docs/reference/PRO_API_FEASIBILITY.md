@@ -202,7 +202,7 @@ Funplay 有候选 asset-db 请求；在线扩展 API 索引未给出全部资源
 
 ### cocos_view（32项）
 
-手册描述 GUI 操作，尚未确认对应原生自动化消息；查询与修改要核对真实场景视图，不是游戏相机。
+手册描述 GUI 操作；查询与修改必须核对真实场景视图，不是游戏相机。2026-09-30 后续实测已确认 OP-117—OP-131 的公开查询/设置消息，并由 `get_scene_view_state` / `set_scene_view_state` 覆盖；OP-133 的“观察视角应用到已选节点”由 `align_selected_nodes_with_scene_view` 覆盖且已验证变换、dirty 与 Undo。OP-123 仍只有查询，OP-132/OP-134 缺少公开观察相机回读，OP-136 未实现。下表的 A/B/C/D 保留 2026-09-12 原始分析分类，当前运行证据以[验证记录](../verification/SCENE_VIEW_MESSAGES_2026-09-30.md)为准。
 
 | ID | action/topic | 判断 | 需求/优先级 | Funplay候选入口 | 独立实现路线与待验证点 | 依据 |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -42,6 +42,8 @@ const PACKAGE_INCLUDES = [
   'docs/KNOWLEDGE.md',
   'docs/NODE_BATCH_DTO.md',
   'docs/PROJECT_WORKFLOWS.md',
+  'docs/REFERENCE_IMAGES.md',
+  'docs/SCENE_VIEW.md',
   'docs/SOURCES_AND_LICENSES.md',
   'docs/TOOLS.md',
   'docs/UI_BUILDER.md',

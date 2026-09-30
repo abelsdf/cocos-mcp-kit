@@ -6,6 +6,11 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- Added three full-profile native Scene-view tools for Creator 3.8: query Gizmo/pivot/coordinate/view-mode, 2D/3D, grid and IconGizmo state; set the seven writable fields with native readback and partial-failure rollback; and apply the current Scene observer view to selected nodes with before/after transform evidence. Focus and observer-view alignment remain unexposed because Creator publishes no observer-camera result query. See `docs/SCENE_VIEW.md` and `docs/verification/SCENE_VIEW_MESSAGES_2026-09-30.md`.
+- Added seven full-profile native reference-image tools for Creator 3.8: query the library/current binding, add, remove, select, clear the current binding, set position/independent scale/opacity, and refresh from the original local file. The adapter uses Creator's public `reference-image` channel, waits for settled native state, never imports or deletes the source image, and keeps effective visibility explicitly unobservable because Creator 3.8.8 publishes no independent visibility state. See `docs/REFERENCE_IMAGES.md` and `docs/verification/REFERENCE_IMAGES_2026-09-30.md`.
+
 ## [0.1.0] - 2026-09-30
 
 - First project-owned GitHub **Pre-release**, published only through `abelsdf/cocos-mcp-kit`. It is not a stable release; npm/MCP Registry publication and automatic updates remain disabled.

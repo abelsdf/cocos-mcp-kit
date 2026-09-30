@@ -37,6 +37,23 @@ test('DTO v1 accepts additive local position and strict UI context opt-in', () =
   assert.ok(validateNodeBatch(batch).issues.some(i => i.code === 'INVALID_UI_MODE'));
 });
 
+test('DTO v1 accepts bounded node transforms, active state and component enabled state', () => {
+  const batch = validBatch();
+  Object.assign(batch.nodes[0], {
+    active: false,
+    position: { x: 1, y: 2, z: 3 },
+    rotation: { x: 0, y: 0, z: 0, w: 1 },
+    scale: { x: 2, y: 3, z: 4 },
+  });
+  batch.nodes[0].components[0].enabled = false;
+  assert.equal(validateNodeBatch(batch).valid, true);
+  batch.nodes[0].rotation.w = Number.NaN;
+  assert.ok(validateNodeBatch(batch).issues.some(i => i.code === 'INVALID_ROTATION'));
+  batch.nodes[0].rotation.w = 1;
+  batch.nodes[0].components[0].enabled = 'false';
+  assert.ok(validateNodeBatch(batch).issues.some(i => i.code === 'INVALID_COMPONENT_ENABLED'));
+});
+
 test('DTO adds script UUIDs and ordered local Button events without turning them into field references', () => {
   const batch = validBatch(); batch.nodes[0].components.push({ id: 'button', type: 'cc.Button' });
   batch.nodes[1].components.push({ id: 'controller', type: 'script', scriptUuid: '12345678-1234-1234-1234-123456789abc' });

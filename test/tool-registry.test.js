@@ -149,7 +149,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 144);
+  assert.equal(tools.length, 156);
   assert.equal(tools.find(tool => tool.name === 'verify_ui').annotations.destructiveHint, false);
   assert.equal(tools.find(tool => tool.name === 'validate_ui').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.readOnlyHint, true);
@@ -157,6 +157,8 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.readOnlyHint, false);
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.destructiveHint, true);
   assert.equal(tools.find(tool => tool.name === 'create_node_batch').annotations.destructiveHint, true);
+  assert.equal(tools.find(tool => tool.name === 'copy_nodes_between_scenes').annotations.destructiveHint, true);
+  assert.equal(tools.find(tool => tool.name === 'finalize_cross_scene_cut').annotations.destructiveHint, true);
   assert.equal(tools.some((tool) => tool.name === 'check_asset_ready'), true);
   assert.equal(tools.some((tool) => tool.name === 'query_asset_path'), true);
   assert.equal(tools.find((tool) => tool.name === 'query_asset_path').annotations.readOnlyHint, true);
@@ -190,6 +192,17 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.some((tool) => tool.name === 'set_preview_mode'), true);
   assert.equal(tools.some((tool) => tool.name === 'create_scene'), true);
   assert.equal(tools.some((tool) => tool.name === 'broadcast_editor_message'), true);
+  assert.equal(tools.some((tool) => tool.name === 'get_reference_images'), true);
+  assert.equal(createRegistry('full').listToolCatalog().find((tool) => tool.name === 'get_reference_images').category, 'reference-images');
+  assert.equal(tools.find((tool) => tool.name === 'get_reference_images').annotations.readOnlyHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'add_reference_image').annotations.destructiveHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'remove_reference_image').annotations.destructiveHint, true);
+  assert.equal(tools.some((tool) => tool.name === 'set_reference_image_visibility'), false);
+  assert.equal(tools.some((tool) => tool.name === 'get_scene_view_state'), true);
+  assert.equal(tools.find((tool) => tool.name === 'get_scene_view_state').annotations.readOnlyHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'set_scene_view_state').annotations.destructiveHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'align_selected_nodes_with_scene_view').annotations.destructiveHint, true);
+  assert.equal(createRegistry('full').listToolCatalog().find((tool) => tool.name === 'get_scene_view_state').category, 'scene-view');
   assert.equal(tools.some((tool) => tool.name === 'get_editor_state'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_selection'), true);
   assert.equal(tools.some((tool) => tool.name === 'set_sprite_frame'), true);
