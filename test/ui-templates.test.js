@@ -29,6 +29,11 @@ for (const template of Object.keys(actions)) {
     const before = JSON.stringify(input), result = getUITemplate(input), dto = compileUI(result.ui), root = result.ui.roots[0];
     assert.equal(JSON.stringify(input), before); assert.equal(root.name, 'CustomPanel'); assert.deepEqual(root.size, input.size);
     assert.deepEqual(root.sprite.color, input.colors.panel);
+    for (const action of actions[template]) {
+      const button = root.children.find(n => n.id === action);
+      assert.deepEqual(button.sprite.color, input.colors.button);
+      assert.deepEqual(button.children[0].label.color, input.colors.text);
+    }
     assert.equal(root.children.find(n => n.id === 'title').label.text, '自定义标题');
     assert.equal(root.children.find(n => n.id === actions[template][0]).children[0].label.text, '执行');
     assert.deepEqual(dto.events.map(e => e.customEventData), actions[template]); assert.ok(result.actions.every(a => a.bound));
@@ -42,7 +47,40 @@ for (const template of Object.keys(actions)) {
       assert.ok(Math.abs(p.y) + child.size.height / 2 <= n.size.height / 2); visit(child);
     } }; visit(root);
   });
+  test(`${template} renders unbound actions with muted colors without changing labels or bindings`, () => {
+    const bound = actions[template][0];
+    const result = getUITemplate({ ...options(template), controller: { scriptUuid, bindings: { [bound]: { handler: 'onAction' } } } });
+    const root = result.ui.roots[0], allDisabled = getUITemplate(options(template)).ui.roots[0];
+    for (const action of actions[template]) {
+      const button = root.children.find(n => n.id === action);
+      assert.deepEqual(button.sprite.color, action === bound ? { r: 54, g: 104, b: 190, a: 255 } : { r: 75, g: 85, b: 99, a: 255 });
+      assert.deepEqual(button.children[0].label.color, action === bound ? { r: 255, g: 255, b: 255, a: 255 } : { r: 203, g: 213, b: 225, a: 255 });
+      const disabled = allDisabled.children.find(n => n.id === action);
+      assert.deepEqual(disabled.sprite.color, { r: 75, g: 85, b: 99, a: 255 });
+      assert.equal(button.children[0].label.text, disabled.children[0].label.text);
+      assert.equal(button.button.interactable, action === bound);
+    }
+    assert.deepEqual(result.ui.events.map(e => e.button), [bound]);
+    const dto = compileUI(result.ui);
+    const disabled = dto.nodes.find(n => n.id === actions[template][1]);
+    assert.deepEqual(disabled.components.find(c => c.type === 'cc.Sprite').properties.color, { r: 75, g: 85, b: 99, a: 255 });
+  });
 }
+
+test('disabled styling preserves supplied opacity and owns each button and caption color', () => {
+  const input = { ...options('settings_dialog'), colors: { button: { r: 80, g: 150, b: 20, a: 128 }, text: { r: 10, g: 30, b: 40, a: 180 } },
+    controller: { scriptUuid, bindings: { music: { handler: 'onAction' } } } };
+  const original = JSON.stringify(input), result = getUITemplate(input), root = result.ui.roots[0];
+  const sound = root.children.find(n => n.id === 'sound'), close = root.children.find(n => n.id === 'close');
+  assert.deepEqual(sound.sprite.color, { r: 75, g: 85, b: 99, a: 128 });
+  assert.deepEqual(sound.children[0].label.color, { r: 203, g: 213, b: 225, a: 180 });
+  assert.deepEqual(root.children.find(n => n.id === 'music').sprite.color, input.colors.button);
+  assert.deepEqual(root.children.find(n => n.id === 'title').label.color, input.colors.text);
+  const before = getUITemplate(input);
+  sound.sprite.color.r = 0; sound.children[0].label.color.r = 0;
+  assert.equal(close.sprite.color.r, 75); assert.equal(close.children[0].label.color.r, 203);
+  assert.deepEqual(getUITemplate(input), before); assert.equal(JSON.stringify(input), original);
+});
 
 test('partial event binding enables only the explicit action and defaults data to action ID', () => {
   const result = getUITemplate({ ...options('pause_menu'), controller: { scriptUuid, bindings: { resume: { handler: 'onResume' } } } });
