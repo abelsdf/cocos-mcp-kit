@@ -25,7 +25,7 @@
 - 打开只请求一次，核验目标身份、两次稳定实时内容及新旧源文件未变。`verified=true` 指这些检查通过，**不等于实时内容已经写入磁盘**：Creator 初始化或脚本可能使实时内容变化；`contentMatchesSource=false` 或目标已标脏时返回 `needsSave=true`，调用方应审阅后显式 `save_current_scene`。再次切换仍须通过严格的未保存检查。
 - 若创建成功、切换前原场景变化，拒绝切换但保留新资源；若原生打开结果不明，不重试、不自动返回、不删除资源。错误包含已创建目标；先检查现场，不能盲目重复创建。节点 Undo 不跨场景撤销资源创建，脚本加载副作用也不回滚。
 
-打开核验后，用返回的 `info.uuid` 作为 `build_ui.sceneUuid`、`ui.parentUuid` 作为 `parentUuid`（`ui.cameraUuid` 为相机节点 UUID）。仅创建时这些 ID 是待打开资产内的节点身份，不能直接对当前旧场景调用 `build_ui`。完成构建后显式保存，再切换重开核验引用。详见[新场景验证记录](verification/SCENE_ENTRY_2026-09-28.md)。
+打开核验后，用返回的 `info.uuid` 作为 `build_ui.sceneUuid`、`ui.parentUuid` 作为 `parentUuid`（`ui.cameraUuid` 为相机节点 UUID）。仅创建时这些 ID 是待打开资产内的节点身份，不能直接对当前旧场景调用 `build_ui`。完成构建后显式保存，再切换重开核验引用。详见[新场景验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/SCENE_ENTRY_2026-09-28.md)。
 
 ## 调用示例
 
@@ -115,6 +115,6 @@ Canvas 的相机关联用于屏幕对齐，并不单独证明该相机会渲染�
 
 **自定义脚本是项目代码，不是沙箱。** 构造函数、编辑态生命周期或销毁回调可能修改旧节点、资源或外部状态；`cleanup.status:"complete"` 仅代表本批新节点已清除，Undo 也不承诺恢复这些副作用。工具风险注解保守设置 `destructiveHint:true`。仅在确认脚本行为适合该工程后使用；带副作用脚本失败后应人工核查现场。
 
-返回成功并不代表已写盘。调用方应显式保存，再重开核对属性/引用。真实验证结果、故障注入和未验证边界见[2026-09-28 验证记录](verification/UI_BUILDER_2026-09-28.md)。
+返回成功并不代表已写盘。调用方应显式保存，再重开核对属性/引用。真实验证结果、故障注入和未验证边界见[2026-09-28 验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_BUILDER_2026-09-28.md)。
 
-脚本/事件扩展的保存、Undo、失败清理、完整重启及程序化事件派发证据见[脚本与事件验证](verification/UI_BUILDER_EVENTS_2026-09-28.md)。事件结构依据 [Cocos Button 官方说明](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/editor/button.html)，生命周期/依赖边界依据[装饰器说明](https://docs.cocos.com/creator/3.8/manual/en/scripting/decorator.html)；这不等于真实鼠标点击或 Game View 视觉验收。
+脚本/事件扩展的保存、Undo、失败清理、完整重启及程序化事件派发证据见[脚本与事件验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_BUILDER_EVENTS_2026-09-28.md)。事件结构依据 [Cocos Button 官方说明](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/editor/button.html)，生命周期/依赖边界依据[装饰器说明](https://docs.cocos.com/creator/3.8/manual/en/scripting/decorator.html)；这不等于真实鼠标点击或 Game View 视觉验收。

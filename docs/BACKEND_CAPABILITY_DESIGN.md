@@ -1,6 +1,6 @@
 # 首版只读后端能力报告设计
 
-范围：FR-26 的 P0 架构部分。当前只报告运行中的 Cocos MCP Kit 扩展及其 MCP 工具开放状态；官方 CLI 适配器尚未配置，不探测可执行文件、不调用 CLI，也不把公开仓库中的候选能力列为本扩展已实现。来源与首版边界见 [官方 CLI 能力对照](./OFFICIAL_CLI_ANALYSIS.md)。
+范围：FR-26 的 P0 架构部分。当前只报告运行中的 Cocos MCP Kit 扩展及其 MCP 工具开放状态；官方 CLI 适配器尚未配置，不探测可执行文件、不调用 CLI，也不把公开仓库中的候选能力列为本扩展已实现。来源与首版边界见 [官方 CLI 能力对照](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/OFFICIAL_CLI_ANALYSIS.md)。
 
 新增 core-profile 只读 `get_backend_capabilities`，不接收项目路径。返回固定 schema 版本、活动后端、项目与平台身份、后端状态，以及当前 profile 下实际开放的工具分页。工具项只提供 ID、分类、只读和破坏性注解提示；注解是风险线索，不是调用成功或 Creator 持久化证明。`get_tool_catalog` 仍提供完整工具目录与禁用状态。
 

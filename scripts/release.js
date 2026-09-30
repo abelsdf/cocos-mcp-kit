@@ -38,10 +38,22 @@ const PACKAGE_INCLUDES = [
   'package.json',
   'README.md',
   'README_CN.md',
-  'docs',
+  'docs/BACKEND_CAPABILITY_DESIGN.md',
+  'docs/KNOWLEDGE.md',
+  'docs/NODE_BATCH_DTO.md',
+  'docs/PROJECT_WORKFLOWS.md',
+  'docs/SOURCES_AND_LICENSES.md',
+  'docs/TOOLS.md',
+  'docs/UI_BUILDER.md',
+  'docs/UI_TEMPLATES.md',
+  'docs/UI_VALIDATION.md',
+  'docs/UI_VERIFICATION.md',
+  'docs/UI_VIEWPORT.md',
   'CHANGELOG.md',
   'CONTRIBUTING.md',
   'LICENSE',
+  'RELEASE_WORKFLOW.md',
+  'RELEASE_CHECKLIST.md',
   'bin',
   'browser.js',
   'scene.js',
@@ -79,11 +91,20 @@ const FORBIDDEN_ARCHIVE_SEGMENTS = new Set([
   'releases',
   '.release-tmp',
   'scripts',
-  'test'
+  'test',
+  'test-support',
+  '.agents',
+  '.codex',
+  '.claude',
+  '.firecrawl',
+  'cocos-mcp-server-main',
+  'cocos-mcp-v1.8.1-all'
 ]);
 
 const FORBIDDEN_NAMES = new Set([
-  '.DS_Store'
+  '.DS_Store',
+  'AGENTS.md',
+  '.npmrc'
 ]);
 
 const FORBIDDEN_CONTENT_PATTERNS = [
@@ -158,6 +179,12 @@ function checkRelease(options = {}) {
     errors.push('package.json name must be cocos-mcp-kit.');
   }
 
+  if (packageJson.license !== 'MIT') errors.push('package.json license must be MIT.');
+  if (!Array.isArray(packageJson.files) || packageJson.files.some(p => typeof p !== 'string') ||
+      JSON.stringify(['package.json', ...packageJson.files.map(p => p.replace(/\/$/, ''))].sort()) !== JSON.stringify([...PACKAGE_INCLUDES].sort())) {
+    errors.push('package.json files must match the extension ZIP include list.');
+  }
+
   if (!Number.isInteger(packageJson.package_version) || packageJson.package_version <= 0) {
     errors.push('package.json package_version must be a positive integer.');
   }
@@ -204,6 +231,15 @@ function checkRelease(options = {}) {
   }
 
   throwErrors(errors);
+
+  validateLicense(fs.readFileSync(path.join(ROOT, 'LICENSE'), 'utf8'));
+  const packageFiles = PACKAGE_INCLUDES.flatMap(relative => {
+    const fullPath = path.join(ROOT, relative), stat = fs.lstatSync(fullPath);
+    if (stat.isSymbolicLink()) throw new Error(`Package symlinks are not allowed: ${relative}`);
+    return stat.isDirectory() ? collectFiles(fullPath) : [fullPath];
+  });
+  validateArchivePaths(packageFiles.map(p => `${PACKAGE_DIR_NAME}/${path.relative(ROOT, p).split(path.sep).join('/')}`));
+  validateArchiveContent(packageFiles);
 
   return {
     packageJson,
@@ -457,13 +493,50 @@ function validateArchivePaths(paths) {
       bad.push(`${archivePath} (contains unsafe relative path segments)`);
       continue;
     }
-    if (parts.some((part) => FORBIDDEN_ARCHIVE_SEGMENTS.has(part) || FORBIDDEN_NAMES.has(part))) {
+    if (parts.some((part) => FORBIDDEN_ARCHIVE_SEGMENTS.has(part) || FORBIDDEN_NAMES.has(part) || /^\.env(?:\.|$)/.test(part))) {
       bad.push(`${archivePath} (contains forbidden release content)`);
+      continue;
+    }
+    const relative = normalized.slice(prefix.length), isDirectory = normalized.endsWith('/');
+    if (relative === '') continue;
+    const allowed = PACKAGE_INCLUDES.some(include => relative === include ||
+      ['bin', 'lib', 'panel', 'i18n'].includes(include) && relative.startsWith(`${include}/`) && (isDirectory || relative.endsWith('.js')) ||
+      isDirectory && `${include}/`.startsWith(relative));
+    if (!allowed) {
+      bad.push(`${archivePath} (outside runtime/user-documentation include list)`);
     }
   }
 
   if (bad.length > 0) {
     throw new Error(`Release archive contains invalid paths:\n- ${bad.join('\n- ')}`);
+  }
+}
+
+function validateLicense(text) {
+  // Preserve the complete upstream block; additional notices may be appended.
+  const required = `MIT License
+
+Copyright (c) 2026 Funplay
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`;
+  if (!String(text).replace(/\s+/g, ' ').trim().includes(required.replace(/\s+/g, ' ').trim())) {
+    throw new Error('LICENSE must preserve the complete Funplay MIT copyright, permission and disclaimer.');
   }
 }
 
@@ -536,6 +609,8 @@ function collectFiles(directory) {
       files.push(...collectFiles(fullPath));
     } else if (entry.isFile()) {
       files.push(fullPath);
+    } else {
+      throw new Error(`Package links or special files are not allowed: ${fullPath}`);
     }
   }
   return files;
@@ -637,9 +712,13 @@ function printUsage() {
   node scripts/release.js package [--version <version>] [--strict-tag]`);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
 }
+
+module.exports = { PACKAGE_INCLUDES, validateLicense, validateArchivePaths };

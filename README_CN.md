@@ -4,7 +4,7 @@
 
 Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容的客户端查询工程、操作场景与资源，并在编辑器中核对结果。项目基于 [Funplay MCP for Cocos 0.6.3](https://github.com/FunplayAI/funplay-cocos-mcp)，使用独立的包名、扩展名和配置标识。
 
-当前面向 Cocos Creator 3.8.x；下文引用的实际编辑器验收使用 **3.8.8**。工具已开放不代表所有工作流或 Creator 版本都通过验收。准确范围见[工具清单](./docs/TOOLS.md)、[开发计划](./docs/PLAN.md)、[需求文档](./docs/REQUIREMENTS.md)和[官方 Cocos CLI 能力对照](./docs/OFFICIAL_CLI_ANALYSIS.md)。
+当前面向 Cocos Creator 3.8.x；下文引用的实际编辑器验收使用 **3.8.8**。工具已开放不代表所有工作流或 Creator 版本都通过验收。准确范围见[工具清单](./docs/TOOLS.md)、[开发计划](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/PLAN.md)、[需求文档](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/REQUIREMENTS.md)和[官方 Cocos CLI 能力对照](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/OFFICIAL_CLI_ANALYSIS.md)。
 
 ## 快速开始
 
@@ -23,7 +23,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 `full` 配置新增 `verify_ui`：有界等待、编辑态结构检查、按需返回严格定位的 Scene/Game View PNG 与独立元数据。preview 模式明确结构“未检查”，截图成功不等于视觉通过；目标缺失或歧义时报错，不回退到其他窗口，Game View 仅截可见区域时标记裁剪。详见[流程与截图边界](./docs/UI_VERIFICATION.md)。
 
-`full` 配置新增只读 `validate_ui`，检查明确 UI 节点的 UITransform、设计范围越界、Sprite/Label 资源及序列化 Button 事件，支持按规则或节点排除。数据不可用或结果截断时明确报告未完成；不自动修复、保存、触发回调或证明视觉正确，Widget/Animation 共存只提示潜在冲突。详见[规则契约](./docs/UI_VALIDATION.md)与 [Creator 3.8.8 验证](./docs/verification/UI_VALIDATION_2026-09-28.md)。
+`full` 配置新增只读 `validate_ui`，检查明确 UI 节点的 UITransform、设计范围越界、Sprite/Label 资源及序列化 Button 事件，支持按规则或节点排除。数据不可用或结果截断时明确报告未完成；不自动修复、保存、触发回调或证明视觉正确，Widget/Animation 共存只提示潜在冲突。详见[规则契约](./docs/UI_VALIDATION.md)与 [Creator 3.8.8 验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_VALIDATION_2026-09-28.md)。
 
 | 领域 | 已提供的能力 | 示例工具 |
 |---|---|---|
@@ -39,7 +39,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 | 预制体 | 查询与创建预制体资源、检查引用，并在支持时通过编辑器消息处理关联实例。 | `create_prefab_from_node`、`inspect_prefab_instance`、`apply_prefab_instance` |
 | 预览与证据 | 控制受支持的预览模式、获取编辑器或预览图像、检查运行和构建状态。 | `run_project_preview`、`capture_preview_screenshot`、`validate_scene` |
 
-上表仅列举主要能力，完整接口见[工具清单](./docs/TOOLS.md)。部分工具来自 Funplay 底座；新增功能的 Creator 实测记录位于 [docs/verification](./docs/verification)。工具配置决定客户端可见范围，工具清单也区分只读、修改和有状态操作。
+上表仅列举主要能力，完整接口见[工具清单](./docs/TOOLS.md)。部分工具来自 Funplay 底座；新增功能的 Creator 实测记录位于 [docs/verification](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification)。工具配置决定客户端可见范围，工具清单也区分只读、修改和有状态操作。
 
 ## 推荐操作流程
 
@@ -66,23 +66,23 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 `reimport_asset` 是仅在 `full` 配置开放的已有资源重导入入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。它仅发送一次 `asset-db:reimport-asset`，并要求至少一个 `library` 导入产物实际重新生成且稳定，同时核对源字节、主/子资源 UUID 与嵌套 importer 设置未变化。目录、子资源、场景、预制体、脚本、其他格式和符号链接源路径均拒绝。若原生调用返回但导入产物未更新，会报告验收失败，且不会自动重复导入。
 
-`import_asset` 是仅在 `full` 配置开放的单文件新建入口，支持最大 64 MiB 的外部 JSON、UTF-8 文本、图片和音频。`source` 填本机绝对路径，`target` 填工程 `assets/` 已有目录下的新路径且扩展名相同；可选 `expectedSha256` 用于拒绝过期源文件。它只调用一次 `asset-db:import-asset`，随后核对导入字节、新 UUID、磁盘与数据库元信息、子资源身份、`library` 产物、数据库就绪及等待后的第二次读取。已有目标、外部 `.meta`、符号链接源路径、不支持格式和 Cocos 序列化资源均被拒绝；原生结果不确定时不自动重试。详见[Creator 3.8.8 验证记录](./docs/verification/ASSET_IMPORT_2026-09-26.md)。
+`import_asset` 是仅在 `full` 配置开放的单文件新建入口，支持最大 64 MiB 的外部 JSON、UTF-8 文本、图片和音频。`source` 填本机绝对路径，`target` 填工程 `assets/` 已有目录下的新路径且扩展名相同；可选 `expectedSha256` 用于拒绝过期源文件。它只调用一次 `asset-db:import-asset`，随后核对导入字节、新 UUID、磁盘与数据库元信息、子资源身份、`library` 产物、数据库就绪及等待后的第二次读取。已有目标、外部 `.meta`、符号链接源路径、不支持格式和 Cocos 序列化资源均被拒绝；原生结果不确定时不自动重试。详见[Creator 3.8.8 验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_IMPORT_2026-09-26.md)。
 
-`import_folder` 是仅在 `full` 配置开放的外部目录导入入口，在工程 `assets/` 的已有父目录下新建一个目录。源目录最多包含 64 个受支持文件、16 个目录、4 层子目录，合计不超过 64 MiB。它会在单次原生导入前拒绝 `.meta`、符号链接、不支持格式和目标冲突；成功前核对目录树、文件字节、不同的目录/文件/子资源 UUID、元信息、`library` 产物以及稳定的 asset-db 查询。部分导入或原生结果不确定时保留现场供显式检查，不自动重试或删除。详见[验证记录](./docs/verification/ASSET_IMPORT_FOLDER_2026-09-26.md)。
+`import_folder` 是仅在 `full` 配置开放的外部目录导入入口，在工程 `assets/` 的已有父目录下新建一个目录。源目录最多包含 64 个受支持文件、16 个目录、4 层子目录，合计不超过 64 MiB。它会在单次原生导入前拒绝 `.meta`、符号链接、不支持格式和目标冲突；成功前核对目录树、文件字节、不同的目录/文件/子资源 UUID、元信息、`library` 产物以及稳定的 asset-db 查询。部分导入或原生结果不确定时保留现场供显式检查，不自动重试或删除。详见[验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_IMPORT_FOLDER_2026-09-26.md)。
 
-`refresh_asset` 是仅在 `full` 配置开放的精确文件刷新入口，支持工程 `assets/` 中最大 64 MiB 的单个 JSON、文本、图片或音频文件。传入 `db://assets/` URL 或文件路径，只发送一次 `asset-db:refresh-asset`，随后核对源字节未变、元数据、主/子资源身份、`library` 产物、数据库就绪和等待后的稳定读取。数据库尚未登记的文件可以获得新身份；若 Creator 原本已认为资源是最新状态，工具只证明刷新后的资源一致，不宣称 `library` 必然重新生成。根目录和目录目标会被拒绝，精确刷新失败时也不会扩大到整个工程。若必须证明实际重新生成导入产物，应使用 `reimport_asset`。详见 [Creator 3.8.8 验证记录](./docs/verification/ASSET_REFRESH_2026-09-26.md)。
+`refresh_asset` 是仅在 `full` 配置开放的精确文件刷新入口，支持工程 `assets/` 中最大 64 MiB 的单个 JSON、文本、图片或音频文件。传入 `db://assets/` URL 或文件路径，只发送一次 `asset-db:refresh-asset`，随后核对源字节未变、元数据、主/子资源身份、`library` 产物、数据库就绪和等待后的稳定读取。数据库尚未登记的文件可以获得新身份；若 Creator 原本已认为资源是最新状态，工具只证明刷新后的资源一致，不宣称 `library` 必然重新生成。根目录和目录目标会被拒绝，精确刷新失败时也不会扩大到整个工程。若必须证明实际重新生成导入产物，应使用 `reimport_asset`。详见 [Creator 3.8.8 验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_REFRESH_2026-09-26.md)。
 
 `check_asset_ready` 是 `full` 配置中的只读状态探测。未指定目标时，要求两次稳定的 `asset-db:query-ready` 返回；指定精确 UUID 或 `db://assets` / `db://internal` URL 时，还要求资源已导入且非无效状态、UUID 与 URL 查询一致，并在第二次读取中保持稳定。默认轮询预算为 1.5 秒（`waitMs` 最大 10 秒），每次原生查询另有 3 秒上限；零等待只返回未经确认的单次观察。数据库忙、资源缺失、导入中、身份不一致、查询超时或未确认时均不返回 `ready: true`。该结果只证明 asset-db 查询状态，不证明导入队列已清空、源字节未变或构建产物已完成。
 
-`query_asset_path` 是 `full` 配置下的只读精确定位工具，支持 UUID、db URL、工程内 `assets/` 相对路径及工程资源目录内的绝对路径。它会交叉核对资源身份和原生路径映射。对于导入子资源，`source.path` 是所属主资源的真实文件；`nativeMapping.path` 可能带有 Creator 的 `@子资源` 别名，并标记 `isPhysicalSource: false`，不能当作可直接读写的源文件。资源缺失、未导入、身份不一致或源文件不存在时返回不完整状态，不会打开或修改资源。详见 [Creator 3.8.8 验证记录](./docs/verification/ASSET_PATH_2026-09-26.md)。
+`query_asset_path` 是 `full` 配置下的只读精确定位工具，支持 UUID、db URL、工程内 `assets/` 相对路径及工程资源目录内的绝对路径。它会交叉核对资源身份和原生路径映射。对于导入子资源，`source.path` 是所属主资源的真实文件；`nativeMapping.path` 可能带有 Creator 的 `@子资源` 别名，并标记 `isPhysicalSource: false`，不能当作可直接读写的源文件。资源缺失、未导入、身份不一致或源文件不存在时返回不完整状态，不会打开或修改资源。详见 [Creator 3.8.8 验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_PATH_2026-09-26.md)。
 
-`query_asset_uuid` 是 `full` 配置下的只读精确 UUID 查询，支持资源 UUID、db URL、工程内 `assets/` 相对路径及资源目录内的绝对路径。它会核对资源记录、Creator 原生 URL 到 UUID 的映射，以及导入子资源与主资源的关系。由于原生 `query-uuid` 不直接解析相对路径，工具会先转换为 db URL；只有全部身份校验通过时才填充顶层 `uuid`，缺失或不一致时为 `null`。详见 [Creator 3.8.8 验证记录](./docs/verification/ASSET_UUID_2026-09-26.md)。
+`query_asset_uuid` 是 `full` 配置下的只读精确 UUID 查询，支持资源 UUID、db URL、工程内 `assets/` 相对路径及资源目录内的绝对路径。它会核对资源记录、Creator 原生 URL 到 UUID 的映射，以及导入子资源与主资源的关系。由于原生 `query-uuid` 不直接解析相对路径，工具会先转换为 db URL；只有全部身份校验通过时才填充顶层 `uuid`，缺失或不一致时为 `null`。详见 [Creator 3.8.8 验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_UUID_2026-09-26.md)。
 
-`query_asset_url` 是 `full` 配置下对相同精确目标的只读规范 URL 查询。顶层 `url` 是已导入资源记录中的规范 URL，`nativeMapping.url` 单独展示 Creator 原生 UUID 到 URL 的结果。图片子资源的原生结果可能是 `@` 别名，而规范 URL 为 `/texture`；只有两种形式均映射到同一个 UUID 才返回可用的顶层 URL。缺失、未导入或身份不一致时返回 `url: null`。详见[验证记录](./docs/verification/ASSET_URL_2026-09-26.md)。
+`query_asset_url` 是 `full` 配置下对相同精确目标的只读规范 URL 查询。顶层 `url` 是已导入资源记录中的规范 URL，`nativeMapping.url` 单独展示 Creator 原生 UUID 到 URL 的结果。图片子资源的原生结果可能是 `@` 别名，而规范 URL 为 `/texture`；只有两种形式均映射到同一个 UUID 才返回可用的顶层 URL。缺失、未导入或身份不一致时返回 `url: null`。详见[验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_URL_2026-09-26.md)。
 
 `copy_asset` 是仅在 `full` 配置开放的安全复制入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同的受支持扩展名，且父目录已存在于 `assets/`。工具只调用一次 `asset-db:copy-asset`，拒绝任何目标源文件、`.meta` 或 asset-db 身份冲突，并核对字节一致、importer 设置、全新的主资源 UUID、图片子资源 UUID、源资源未变化、数据库就绪及等待后的第二次读取。它不复制目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式，也不会覆盖或在原生复制结果不确定时自动重试。
 
-`move_asset` 是对应的 `full` 安全移动/重命名入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同扩展名，父目录须已存在于 `assets/`；工具拒绝仅修改大小写以及任何源文件、`.meta` 或 asset-db 目标冲突，并且只调用一次 `asset-db:move-asset`。成功前必须确认旧源文件和 `.meta` 已消失，同时目标字节、importer 设置、主 UUID、图片子资源 UUID、导入状态和等待后的第二次读取全部一致。依赖主/子 UUID 的引用会保持有效；字符串或路径引用不会被发现或改写。它不移动目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式；原生结果不确定时必须先检查两个精确路径再决定是否重试。详见 [Creator 3.8.8 验收](./docs/verification/ASSET_MOVE_2026-09-26.md)。
+`move_asset` 是对应的 `full` 安全移动/重命名入口，支持最大 64 MiB 的已导入 JSON、文本、图片和音频主资源。目标必须使用相同扩展名，父目录须已存在于 `assets/`；工具拒绝仅修改大小写以及任何源文件、`.meta` 或 asset-db 目标冲突，并且只调用一次 `asset-db:move-asset`。成功前必须确认旧源文件和 `.meta` 已消失，同时目标字节、importer 设置、主 UUID、图片子资源 UUID、导入状态和等待后的第二次读取全部一致。依赖主/子 UUID 的引用会保持有效；字符串或路径引用不会被发现或改写。它不移动目录、导入子资源、场景、预制体、脚本、元数据文件或其他格式；原生结果不确定时必须先检查两个精确路径再决定是否重试。详见 [Creator 3.8.8 验收](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_MOVE_2026-09-26.md)。
 
 `list_assets` 默认只搜索工程资源，按 URL 稳定排序后返回有界分页，不再直接输出无界 asset-db 结果。可组合使用 `name` 的 `contains`、`prefix`、`exact` 模式、精确 `ccType` 和 `assets` 目录。`IconPair` 这样的无扩展名精确名称可以匹配 `IconPair.prefab`；若精确名称命中多个资源，`selection.candidates` 会保留各候选的 UUID、URL、类型及主/子资源身份，调用方必须明确选择。带名称筛选的结果还会报告同名分组。设置 `includeSubassets: false` 可排除导入生成的 SpriteFrame/纹理；只有明确需要编辑器内置资源时才使用 `scope: "all"`。
 
@@ -92,7 +92,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 组件类型目录单次最多检查 256 个项目脚本和 32 个指定类名。脚本显示 `no-component-registration` 时，也可能只是正常的工具模块，不能直接认定为编译失败。`list_components` 默认只展示项目脚本的 CCClass 声明字段；设置 `includeRuntimeFields: true` 可额外查看运行字段，但不能据此断定它们公开或持久化。
 
-关联预制体实例的修改规则因工具而异。普通节点移动、复制、组件增删及属性赋值会拒绝关联预制体层级；预制体实例应用/还原和 Button 点击事件覆盖使用单独的编辑器流程。依赖持久化结果前，请核对相应[工具说明](./docs/TOOLS.md)和[验收记录](./docs/verification)。
+关联预制体实例的修改规则因工具而异。普通节点移动、复制、组件增删及属性赋值会拒绝关联预制体层级；预制体实例应用/还原和 Button 点击事件覆盖使用单独的编辑器流程。依赖持久化结果前，请核对相应[工具说明](./docs/TOOLS.md)和[验收记录](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification)。
 
 使用 `bind_button_click_event` 时，目标节点必须恰好有一个匹配组件，处理方法须由该组件提供，不能是引擎生命周期方法。`customEventData` 是最长 1024 字符的原样字符串。绑定或解绑前先列出已有事件；重复绑定会报告重复，不会再增加一条。`batch_bind_button_click_events` 一次按顺序处理最多 50 条绑定，可选择遇错停止或继续并逐项返回结果；后续失败不会整体撤销先前成功项。
 
@@ -106,23 +106,23 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 `create_prefab_instance` 与 `instantiate_prefab` 现在使用同一原生编辑器流程：只创建一次，核对实例根、资源与实例身份，再赋值并校验父节点本地 `position`。可用 `parentUuid` 精确指定父节点；同时提供 `parentPath` 时二者必须一致。省略名称/位置时使用预制体根节点默认值。活动场景须已保存并导入；调用后仍需显式 `save_current_scene`，`needsSave: true` 不代表已持久化。
 
-UI 预制体要求父节点已有 Canvas 祖先；关联父层级、Canvas 根、启用的根 Widget 或父 Layout 暂不支持，避免不受支持的嵌套和自动布局覆盖。原生创建结果不明时不会回退到运行态重复创建；验证失败只尝试清理能确认属于本次创建范围的节点，结果不明须先检查层级再重试。详见 [Creator 3.8.8 实例化验收与限制](./docs/verification/PREFAB_INSTANTIATE_2026-09-22.md)。
+UI 预制体要求父节点已有 Canvas 祖先；关联父层级、Canvas 根、启用的根 Widget 或父 Layout 暂不支持，避免不受支持的嵌套和自动布局覆盖。原生创建结果不明时不会回退到运行态重复创建；验证失败只尝试清理能确认属于本次创建范围的节点，结果不明须先检查层级再重试。详见 [Creator 3.8.8 实例化验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_INSTANTIATE_2026-09-22.md)。
 
-`unlink_prefab_instance` 通过原生编辑器消息解除已保存场景中明确选中的独立实例根关联，核对节点/组件身份、层级、变换和关联元信息清除，不修改源预制体；调用后须显式保存场景。关联祖先与含嵌套预制体的子树被拒绝：Creator 3.8.8 对照实验中，解除外层关联并保存后，有效的跨实例组件引用会丢失。`verified: true` 仅表示结构校验通过，不是全部组件属性审计；结果不明时不自动重试或重新关联。详见[解除关联验收与限制](./docs/verification/PREFAB_UNLINK_2026-09-22.md)。
+`unlink_prefab_instance` 通过原生编辑器消息解除已保存场景中明确选中的独立实例根关联，核对节点/组件身份、层级、变换和关联元信息清除，不修改源预制体；调用后须显式保存场景。关联祖先与含嵌套预制体的子树被拒绝：Creator 3.8.8 对照实验中，解除外层关联并保存后，有效的跨实例组件引用会丢失。`verified: true` 仅表示结构校验通过，不是全部组件属性审计；结果不明时不自动重试或重新关联。详见[解除关联验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_UNLINK_2026-09-22.md)。
 
-`apply_prefab_instance` 会立即将属性修改写回源预制体并影响同源实例；丢弃场景不会撤销这次资源写入。要求明确选择已保存场景中的非嵌套实例根，节点/组件结构不变，且没有指向实例外部场景节点/组件的引用。工具比对原生序列化预览与导入后的源文件，再核对实例身份；之后仍须显式保存场景。原生 `result` 即使写入成功也可能为 `false`，不能将它当作最终状态。结果不明不自动重试或回滚。详见[应用实例修改验收与限制](./docs/verification/PREFAB_APPLY_2026-09-22.md)。
+`apply_prefab_instance` 会立即将属性修改写回源预制体并影响同源实例；丢弃场景不会撤销这次资源写入。要求明确选择已保存场景中的非嵌套实例根，节点/组件结构不变，且没有指向实例外部场景节点/组件的引用。工具比对原生序列化预览与导入后的源文件，再核对实例身份；之后仍须显式保存场景。原生 `result` 即使写入成功也可能为 `false`，不能将它当作最终状态。结果不明不自动重试或回滚。详见[应用实例修改验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_APPLY_2026-09-22.md)。
 
-`revert_prefab_instance` 通过一次原生 `restore-prefab` 丢弃已保存场景中明确选中的非嵌套实例属性覆盖。根名称、位置和旋转保留，缩放、其他节点属性及组件数据还原为源值；两次核对序列化数据、运行身份和源文件/元信息未变，之后仍须显式保存场景。拒绝结构变更、指向实例外部场景节点/组件的引用及不可核验序列化。结果不明不自动重试或回滚。详见[还原实例修改验收与限制](./docs/verification/PREFAB_REVERT_2026-09-22.md)。
+`revert_prefab_instance` 通过一次原生 `restore-prefab` 丢弃已保存场景中明确选中的非嵌套实例属性覆盖。根名称、位置和旋转保留，缩放、其他节点属性及组件数据还原为源值；两次核对序列化数据、运行身份和源文件/元信息未变，之后仍须显式保存场景。拒绝结构变更、指向实例外部场景节点/组件的引用及不可核验序列化。结果不明不自动重试或回滚。详见[还原实例修改验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_REVERT_2026-09-22.md)。
 
-`enter_prefab_edit_mode`（`full` 配置）从单个干净且已保存的场景进入明确指定的非嵌套工程预制体原生编辑模式。即使脏标记为 false，也会比较实时序列化与磁盘；核验实际编辑模式、预制体根身份和源资源/原场景文件未变，并返回供受保护保存使用的 `sourceHash`。同一干净预制体重复调用只核验、不重载；拒绝脏状态、多场景及正在编辑其他预制体，不自动保存、丢弃或退出。通用 `open_asset` 不具备这些专项保护。详见[进入编辑模式验收与限制](./docs/verification/PREFAB_EDIT_ENTER_2026-09-22.md)。
+`enter_prefab_edit_mode`（`full` 配置）从单个干净且已保存的场景进入明确指定的非嵌套工程预制体原生编辑模式。即使脏标记为 false，也会比较实时序列化与磁盘；核验实际编辑模式、预制体根身份和源资源/原场景文件未变，并返回供受保护保存使用的 `sourceHash`。同一干净预制体重复调用只核验、不重载；拒绝脏状态、多场景及正在编辑其他预制体，不自动保存、丢弃或退出。通用 `open_asset` 不具备这些专项保护。详见[进入编辑模式验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_EDIT_ENTER_2026-09-22.md)。
 
-`save_prefab_edit_mode`（`full` 配置）使用明确的当前 `prefabUuid`，并将进入/上次核验保存返回的 `sourceHash` 作为 `expectedSourceHash` 传入，保存非嵌套预制体的纯属性修改。拒绝源文件冲突、结构变更、向外场景引用及未保存的原场景。保存会立即写回资源并影响同源实例，丢弃场景不能撤销资源写入；即使 dirty 为 false 也比较内容，并有界等待目标资源重新导入，两次核对源文件、编辑现场与原场景。后续保存须使用新返回的哈希；干净且内容不变的重复调用不请求原生保存。冲突或结果不明时先检查并协调修改，不应直接换哈希重试。不会自动退出、重试写入、回滚或保存原场景，`needsSave: false` 仅指预制体。通用 `save_current_scene` 不具备这些专项保护。详见[保存编辑验收与限制](./docs/verification/PREFAB_EDIT_SAVE_2026-09-22.md)。
+`save_prefab_edit_mode`（`full` 配置）使用明确的当前 `prefabUuid`，并将进入/上次核验保存返回的 `sourceHash` 作为 `expectedSourceHash` 传入，保存非嵌套预制体的纯属性修改。拒绝源文件冲突、结构变更、向外场景引用及未保存的原场景。保存会立即写回资源并影响同源实例，丢弃场景不能撤销资源写入；即使 dirty 为 false 也比较内容，并有界等待目标资源重新导入，两次核对源文件、编辑现场与原场景。后续保存须使用新返回的哈希；干净且内容不变的重复调用不请求原生保存。冲突或结果不明时先检查并协调修改，不应直接换哈希重试。不会自动退出、重试写入、回滚或保存原场景，`needsSave: false` 仅指预制体。通用 `save_current_scene` 不具备这些专项保护。详见[保存编辑验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_EDIT_SAVE_2026-09-22.md)。
 
-`exit_prefab_edit_mode`（`full` 配置）通过一次原生 `close-scene` 退出已保存且内容一致的非嵌套预制体。明确传入 `prefabUuid`，以及首次进入或核验保存返回的 `previousScene.uuid` 作为 `returnSceneUuid`；预制体脏状态、dirty=false 但序列化仍有修改、原场景不匹配、嵌套和不可核验引用均在关闭前拒绝。两次核验返回场景及源资源/原场景文件未变；在匹配且通过核验的场景重复调用不会关闭该场景。已保存的预制体更新可能让返回场景变脏，应检查 `needsSave` 并按需显式保存场景。不会自动保存、丢弃、重试、重开或回滚，保存与退出保持独立。详见[退出编辑验收与限制](./docs/verification/PREFAB_EDIT_EXIT_2026-09-22.md)。
+`exit_prefab_edit_mode`（`full` 配置）通过一次原生 `close-scene` 退出已保存且内容一致的非嵌套预制体。明确传入 `prefabUuid`，以及首次进入或核验保存返回的 `previousScene.uuid` 作为 `returnSceneUuid`；预制体脏状态、dirty=false 但序列化仍有修改、原场景不匹配、嵌套和不可核验引用均在关闭前拒绝。两次核验返回场景及源资源/原场景文件未变；在匹配且通过核验的场景重复调用不会关闭该场景。已保存的预制体更新可能让返回场景变脏，应检查 `needsSave` 并按需显式保存场景。不会自动保存、丢弃、重试、重开或回滚，保存与退出保持独立。详见[退出编辑验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_EDIT_EXIT_2026-09-22.md)。
 
-`test_prefab_edit_mode`（`full` 配置）只接受明确的 `prefabUuid`，只读检查编辑上下文、源资源/引用和保留原场景；仅当目标已经打开时比较编辑内容。未打开的目标不会被打开（`editing: null`、`complete: false`），每项返回 `passed/failed/not_checked`。`readChecksPassed` 表示没有读取检查失败，`complete` 表示全部读取检查通过，均不是进入/保存/退出的许可或实测证明；读取通过仍可报告未保存差异，包括 dirty=false 的修改。`observationsStable` 为复查成功/失败的 true/false，前提不足时为 null，不是事务保证；外层 `ok` 仅表示报告已生成。`mutationTests` 始终为 `not_run`，不自动打开、保存、关闭、记录快照、创建或丢弃，也不返回可替换保存令牌的新源哈希。详见[编辑态诊断验收与限制](./docs/verification/PREFAB_EDIT_TEST_2026-09-22.md)。
+`test_prefab_edit_mode`（`full` 配置）只接受明确的 `prefabUuid`，只读检查编辑上下文、源资源/引用和保留原场景；仅当目标已经打开时比较编辑内容。未打开的目标不会被打开（`editing: null`、`complete: false`），每项返回 `passed/failed/not_checked`。`readChecksPassed` 表示没有读取检查失败，`complete` 表示全部读取检查通过，均不是进入/保存/退出的许可或实测证明；读取通过仍可报告未保存差异，包括 dirty=false 的修改。`observationsStable` 为复查成功/失败的 true/false，前提不足时为 null，不是事务保证；外层 `ok` 仅表示报告已生成。`mutationTests` 始终为 `not_run`，不自动打开、保存、关闭、记录快照、创建或丢弃，也不返回可替换保存令牌的新源哈希。详见[编辑态诊断验收与限制](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_EDIT_TEST_2026-09-22.md)。
 
-`delete_asset` 只接受精确 UUID、db URL 或文件路径，不猜测扩展名。它安全处理工程预制体，以及最大 64 MiB 的已导入 JSON、文本、图片或音频主资源。单次请求 asset-db 删除前，会核对可写且已导入的身份、真实源文件/元信息路径、未变化的字节与元信息，并通过原生接口检查主资源及导入子资源 UUID 的资源/脚本和当前场景引用。同一图片各子资源之间的内部引用不会阻断删除，外部引用会阻断；被引用的资源和正在编辑的预制体均被拒绝，不提供强制、级联或磁盘直删回退。只有 UUID/URL 记录、双向映射、源文件和 `.meta` 全部消失才报告成功；回查失败时删除可能已经发生，应先检查精确目标再重试。目录、子资源、场景、脚本、其他格式、运行时字符串/路径加载及原生查询之外的引用仍不支持。详见[预制体删除验收](./docs/verification/PREFAB_DELETE_2026-09-22.md)和[常规资源删除验收](./docs/verification/ASSET_DELETE_2026-09-26.md)。
+`delete_asset` 只接受精确 UUID、db URL 或文件路径，不猜测扩展名。它安全处理工程预制体，以及最大 64 MiB 的已导入 JSON、文本、图片或音频主资源。单次请求 asset-db 删除前，会核对可写且已导入的身份、真实源文件/元信息路径、未变化的字节与元信息，并通过原生接口检查主资源及导入子资源 UUID 的资源/脚本和当前场景引用。同一图片各子资源之间的内部引用不会阻断删除，外部引用会阻断；被引用的资源和正在编辑的预制体均被拒绝，不提供强制、级联或磁盘直删回退。只有 UUID/URL 记录、双向映射、源文件和 `.meta` 全部消失才报告成功；回查失败时删除可能已经发生，应先检查精确目标再重试。目录、子资源、场景、脚本、其他格式、运行时字符串/路径加载及原生查询之外的引用仍不支持。详见[预制体删除验收](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/PREFAB_DELETE_2026-09-22.md)和[常规资源删除验收](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/ASSET_DELETE_2026-09-26.md)。
 
 ## 自有 UI 知识库
 
@@ -130,8 +130,8 @@ MCP Resources 新增 `cocos://knowledge/index` 精简目录，可按 `cocos://kn
 
 ## 开发与文档
 
-运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](./docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](./docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。
+运行 `npm run check` 检查 JavaScript 语法，`npm test` 运行现有测试，`npm run docs:check` 核对生成的工具清单。[开发计划](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/PLAN.md)区分已实现工具与仍在推进的整体需求；[验收记录](https://github.com/abelsdf/cocos-mcp-kit/tree/main/docs/verification)列出 Creator 实测范围。本分支尚未配置发布更新渠道或包注册表发布，目前采用本地安装。
 
 ## 致谢与许可
 
-感谢 [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) 的作者和贡献者以 MIT 许可证开放底座代码。[LICENSE](./LICENSE) 保留了 `Copyright (c) 2026 Funplay`、完整 MIT 条款及免责声明。Cocos MCP Kit 是独立分支，并非 Funplay 官方版本。贡献及代码来源约束见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+感谢 [Funplay MCP for Cocos](https://github.com/FunplayAI/funplay-cocos-mcp) 的作者和贡献者以 MIT 许可证开放底座代码。[LICENSE](./LICENSE) 保留了 `Copyright (c) 2026 Funplay`、完整 MIT 条款及免责声明。Cocos MCP Kit 是独立分支，并非 Funplay 官方版本。贡献约束见 [CONTRIBUTING.md](./CONTRIBUTING.md)，随包内容边界见[来源与许可说明](./docs/SOURCES_AND_LICENSES.md)。开发分析和验收记录保留在源码仓库，不随安装包分发。

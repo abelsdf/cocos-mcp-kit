@@ -49,4 +49,4 @@
 
 这些状态不检查子节点合并边界、Mask、遮挡、透明度、文字字形、事件点击、自动布局下一帧或运行时脚本变化，也不证明像素真的绘制出来。Scene 观察窗口和实际运行预览的可见范围尚未接入；不要用本报告替代截图/运行验收。查询是当次编辑态快照，不与并发用户/脚本操作组成事务。
 
-API 依据：[项目配置读取](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/profile.html)、[多分辨率适配](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/engine/multi-resolution.html)、[Camera](https://docs.cocos.com/creator/3.8/api/en/class/Camera)，并核对本机 3.8.8 公开类型声明。实际数据与保存/重启证据见[验证记录](verification/UI_VIEWPORT_2026-09-28.md)。
+API 依据：[项目配置读取](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/profile.html)、[多分辨率适配](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/engine/multi-resolution.html)、[Camera](https://docs.cocos.com/creator/3.8/api/en/class/Camera)，并核对本机 3.8.8 公开类型声明。实际数据与保存/重启证据见[验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_VIEWPORT_2026-09-28.md)。

@@ -76,4 +76,4 @@ MCP `structuredContent.data` 保存报告，`content` 中另有 PNG image block�
 
 视觉模型和 API 凭据由客户端提供，本扩展不调用云端视觉服务，也不上传截图；所有返回的 `visualValidation` 都为 `not_run`。客户端应将其自行观察的结果另写为文字或独立报告，不改写工具的结构结论。
 
-实测及已知限制见 [FR-11 验证记录](verification/UI_VERIFICATION_2026-09-28.md)。
+实测及已知限制见 [FR-11 验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_VERIFICATION_2026-09-28.md)。

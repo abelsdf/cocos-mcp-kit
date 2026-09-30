@@ -6,5 +6,5 @@
 - [ ] Re-enable update and registry metadata only after those channels exist.
 - [ ] Run `npm run check`, `npm test`, `npm run docs:check`, and `npm run pack:dry-run`.
 - [ ] Install the candidate package in a clean Cocos Creator project and validate save, reopen, assets, prefabs, and client connectivity.
-- [ ] Check that [LICENSE](./LICENSE), attribution, and all third-party notices are included.
-- [ ] Review packaged files for private paths, credentials, test artifacts, and references to upstream publication channels.
+- [x] Check that [LICENSE](./LICENSE), attribution, and all third-party notices are included (2026-09-30 candidate-content audit; see [source record](./docs/SOURCES_AND_LICENSES.md), recheck for each final package).
+- [x] Review packaged files for private paths, credentials, test artifacts, and references to upstream publication channels (2026-09-30 candidate-content audit; development/reference/verification material excluded, no upstream update source; recheck after package changes).

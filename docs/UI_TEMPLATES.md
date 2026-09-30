@@ -73,4 +73,4 @@ build_ui({ sceneUuid: <当前场景资源 UUID>,
 - 将相同根名称再次交给同一父节点下的 `build_ui`，会在预检拒绝，不自动重复、更新、覆盖或改名。明确选择不同根名才表示新建第二份；不同模板的局部 ID 可相同，不要直接拼接成同一批 DTO。
 - 构建后仍可使用 Inspector、组件/节点工具编辑，然后显式保存。创建失败的清理仅限本次新节点；脚本外部副作用与跨资源操作不回滚。
 - 固定边距/按钮高度，文案采用受限高度 Label；超长文案可能换行/裁切，不承诺所有尺寸、语言和素材的视觉适配。需要真正查看运行画面和命中测试，不能以 `viewport=inside` 当作视觉或点击证明。
-- Creator 3.8.8 已验证三个模板的构建、事件引用、保存重开、编辑与完整重启，见[验证记录](verification/UI_TEMPLATES_2026-09-28.md)。后续补齐[真实鼠标与完整 Game View 视觉验收](verification/FIRST_RELEASE_VISUAL_ACCEPTANCE_2026-09-30.md)，以及[禁用外观修复验证](verification/UI_DISABLED_STYLE_2026-09-30.md)；触摸、真机、所有自定义素材和尺寸仍未验证。
+- Creator 3.8.8 已验证三个模板的构建、事件引用、保存重开、编辑与完整重启，见[验证记录](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_TEMPLATES_2026-09-28.md)。后续补齐[真实鼠标与完整 Game View 视觉验收](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/FIRST_RELEASE_VISUAL_ACCEPTANCE_2026-09-30.md)，以及[禁用外观修复验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_DISABLED_STYLE_2026-09-30.md)；触摸、真机、所有自定义素材和尺寸仍未验证。

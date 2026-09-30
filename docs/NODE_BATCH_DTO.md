@@ -57,7 +57,7 @@ v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有
 
 顶层可选 `events`（最多 50 条）：`[{"buttonComponentId":"button","targetComponentId":"controller","handler":"onContinue","customEventData":"resume"}]`。两端必须是同批已声明的 Button 与 script 组件 ID；有序绑定，完全重复拒绝，customEventData 默认空串且最多 1024 字符。复用原按钮事件方法校验，拒绝缺失方法、getter、实例箭头函数字段和引擎/生命周期方法。全部组件创建后使用公开 EventHandler 绑定，激活后核对 target、注册组件名、方法、字符串与顺序；构建器本身不调用事件，项目脚本自行调用不受此保证约束。
 
-返回 `eventCount`；含脚本的场景执行报告同时标记 `scriptEffects:"not_audited"`。脚本构造、编辑态生命周期及销毁回调不在全事务保证内，可能影响旧内容或外部状态。清理完成只证明本批节点清除，未知影响需人工审查；工具风险注解为 destructiveHint=true。原无脚本/无事件 DTO 调用保持兼容。实测见[脚本与事件验证](verification/UI_BUILDER_EVENTS_2026-09-28.md)。
+返回 `eventCount`；含脚本的场景执行报告同时标记 `scriptEffects:"not_audited"`。脚本构造、编辑态生命周期及销毁回调不在全事务保证内，可能影响旧内容或外部状态。清理完成只证明本批节点清除，未知影响需人工审查；工具风险注解为 destructiveHint=true。原无脚本/无事件 DTO 调用保持兼容。实测见[脚本与事件验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_BUILDER_EVENTS_2026-09-28.md)。
 
 ## 返回与恢复边界
 
@@ -79,4 +79,4 @@ v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有
 
 这不是跨资源全事务：失败清理不恢复旧节点/资源、场景切换、用户并发编辑或项目监听脚本造成的外部副作用。只承诺已记录新节点的限定清理范围；剪切/跨场景粘贴和外部引用解析仍待实现与适配验证。
 
-纯逻辑、场景模拟和编辑器入口测试分别见 `test/node-batch-dto.test.js`、`test/node-batch-scene.test.js`、`test/node-batch-create.test.js`。Creator 3.8.8 的正式创建、故障注入、保存/重开和完整重启证据见[批次创建验证](verification/NODE_BATCH_CREATE_2026-09-28.md)；后续原生分组与不确定历史边界见[单次 Undo 验证](verification/NODE_BATCH_UNDO_2026-09-28.md)。场景脚本采用[官方扩展 IPC](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/scene-script.html)传输 JSON 参数和结果，不跨进程传递 Cocos 原生对象；具体录制消息取自 Creator 消息管理器的公开说明和示例，并另行实测，不从通用 IPC API 推断支持。
+纯逻辑、场景模拟和编辑器入口测试分别见 `test/node-batch-dto.test.js`、`test/node-batch-scene.test.js`、`test/node-batch-create.test.js`。Creator 3.8.8 的正式创建、故障注入、保存/重开和完整重启证据见[批次创建验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/NODE_BATCH_CREATE_2026-09-28.md)；后续原生分组与不确定历史边界见[单次 Undo 验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/NODE_BATCH_UNDO_2026-09-28.md)。场景脚本采用[官方扩展 IPC](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/scene-script.html)传输 JSON 参数和结果，不跨进程传递 Cocos 原生对象；具体录制消息取自 Creator 消息管理器的公开说明和示例，并另行实测，不从通用 IPC API 推断支持。
