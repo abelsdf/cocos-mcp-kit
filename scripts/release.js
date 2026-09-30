@@ -245,69 +245,84 @@ function checkRelease(options = {}) {
     packageJson,
     version,
     tag,
-    changelogNotes: extractChangelogNotes(changelog, version),
+    changelogNotes: extractChangelogNotes(changelog, 'Unreleased') || extractChangelogNotes(changelog, version),
+    gitTag: gitTagExists(tag) ? tag : null,
     gitCommit: gitText(['rev-parse', 'HEAD']).trim(),
     gitDirty: gitText(['status', '--porcelain']).trim() !== ''
   };
 }
 
 function packageRelease(context) {
-  ensureCommand('zip');
+  const windows = process.platform === 'win32';
+  ensureCommand(windows ? 'tar.exe' : 'zip', windows ? ['--version'] : ['-v']);
+  if (!windows) ensureCommand('unzip', ['-v']);
 
-  const releaseDir = path.join(RELEASES_DIR, context.version);
-  const stagingRoot = path.join(TEMP_DIR, PACKAGE_DIR_NAME);
+  const versionDir = path.join(RELEASES_DIR, context.version);
+  for (const directory of [RELEASES_DIR, versionDir, TEMP_DIR]) {
+    fs.mkdirSync(directory, { recursive: true });
+    if (fs.lstatSync(directory).isSymbolicLink()) throw new Error(`Package output links are not allowed: ${directory}`);
+  }
+  const releaseDir = fs.mkdtempSync(path.join(versionDir, 'candidate-'));
+  const stagingDir = fs.mkdtempSync(path.join(TEMP_DIR, 'candidate-'));
+  const stagingRoot = path.join(stagingDir, PACKAGE_DIR_NAME);
   const zipName = `${ZIP_PREFIX}.v${context.version}.zip`;
   const zipPath = path.join(releaseDir, zipName);
 
-  fs.rmSync(releaseDir, { recursive: true, force: true });
-  fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-  fs.mkdirSync(releaseDir, { recursive: true });
-  fs.mkdirSync(stagingRoot, { recursive: true });
+  try {
+    fs.mkdirSync(stagingRoot, { recursive: true });
 
-  for (const relative of PACKAGE_INCLUDES) {
-    copyIntoPackage(relative, stagingRoot);
+    for (const relative of PACKAGE_INCLUDES) {
+      copyIntoPackage(relative, stagingRoot);
+    }
+
+    const stagedFiles = collectFiles(stagingRoot)
+      .map((filePath) => path.relative(stagingDir, filePath).split(path.sep).join('/'));
+    validateArchivePaths(stagedFiles);
+    validateArchiveContent(collectFiles(stagingRoot));
+
+    if (windows) run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', stagingDir, PACKAGE_DIR_NAME]);
+    else run('zip', ['-qr', zipPath, PACKAGE_DIR_NAME], { cwd: stagingDir });
+    validateZipListing(zipPath, stagedFiles);
+
+    const zipSha256 = sha256File(zipPath);
+    const zipSize = fs.statSync(zipPath).size;
+    const manifest = buildManifest(context, {
+      zipName,
+      zipSha256,
+      zipSize,
+      fileCount: stagedFiles.length
+    });
+
+    const manifestPath = path.join(releaseDir, 'release-manifest.json');
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const readmePath = path.join(releaseDir, 'README.md');
+    fs.writeFileSync(readmePath, buildReleaseReadme(context, manifest));
+
+    const releaseNotesPath = path.join(releaseDir, 'RELEASE_NOTES.md');
+    fs.writeFileSync(releaseNotesPath, buildReleaseNotes(context, manifest));
+
+    const checksums = [
+      checksumLine(zipPath, zipName),
+      checksumLine(manifestPath, 'release-manifest.json'),
+      checksumLine(releaseNotesPath, 'RELEASE_NOTES.md'),
+      checksumLine(readmePath, 'README.md')
+    ].join('');
+    fs.writeFileSync(path.join(releaseDir, 'SHA256SUMS.txt'), checksums);
+
+    return {
+      releaseDir,
+      zipName
+    };
+  } catch (error) {
+    throw new Error(`${error.message}\nIncomplete candidate retained at: ${releaseDir}`);
+  } finally {
+    // Delete only this invocation's staging directory, never a version or shared root.
+    if (path.dirname(stagingDir) !== TEMP_DIR || fs.lstatSync(TEMP_DIR).isSymbolicLink()) {
+      throw new Error(`Refusing unsafe staging cleanup: ${stagingDir}`);
+    }
+    fs.rmSync(stagingDir, { recursive: true, force: true });
   }
-
-  const stagedFiles = collectFiles(stagingRoot)
-    .map((filePath) => path.relative(TEMP_DIR, filePath).split(path.sep).join('/'));
-  validateArchivePaths(stagedFiles);
-  validateArchiveContent(collectFiles(stagingRoot));
-
-  run('zip', ['-qr', zipPath, PACKAGE_DIR_NAME], { cwd: TEMP_DIR });
-  validateZipListing(zipPath);
-
-  const zipSha256 = sha256File(zipPath);
-  const zipSize = fs.statSync(zipPath).size;
-  const manifest = buildManifest(context, {
-    zipName,
-    zipSha256,
-    zipSize,
-    fileCount: stagedFiles.length
-  });
-
-  const manifestPath = path.join(releaseDir, 'release-manifest.json');
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-
-  const readmePath = path.join(releaseDir, 'README.md');
-  fs.writeFileSync(readmePath, buildReleaseReadme(context, manifest));
-
-  const releaseNotesPath = path.join(releaseDir, 'RELEASE_NOTES.md');
-  fs.writeFileSync(releaseNotesPath, buildGitHubReleaseNotes(context, manifest));
-
-  const checksums = [
-    checksumLine(zipPath, zipName),
-    checksumLine(manifestPath, 'release-manifest.json'),
-    checksumLine(releaseNotesPath, 'RELEASE_NOTES.md'),
-    checksumLine(readmePath, 'README.md')
-  ].join('');
-  fs.writeFileSync(path.join(releaseDir, 'SHA256SUMS.txt'), checksums);
-
-  fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-
-  return {
-    releaseDir,
-    zipName
-  };
 }
 
 function copyIntoPackage(relative, stagingRoot) {
@@ -330,10 +345,11 @@ function copyIntoPackage(relative, stagingRoot) {
 function buildManifest(context, artifact) {
   return {
     version: context.version,
+    distribution: 'local-candidate',
     generatedAt: new Date().toISOString(),
     repository: REPOSITORY_URL ? { url: REPOSITORY_URL, source: 'github' } : null,
     git: {
-      tag: context.tag,
+      tag: context.gitTag,
       commit: context.gitCommit,
       dirty: context.gitDirty
     },
@@ -361,7 +377,7 @@ function buildReleaseReadme(context, manifest) {
   const zip = manifest.artifacts.extensionZip;
   return `# Cocos MCP Kit ${context.tag}
 
-This folder contains the generated release artifacts for Cocos MCP Kit ${context.tag}.
+This folder contains local candidate artifacts for Cocos MCP Kit ${context.tag}. No public publication or update channel is enabled. The manifest records the source commit and whether the workspace was dirty; a candidate is not a tagged release.
 
 ## Artifacts
 
@@ -372,7 +388,7 @@ This folder contains the generated release artifacts for Cocos MCP Kit ${context
 ## Install
 
 1. Unzip \`${zip.file}\`.
-2. Move the extracted \`${PACKAGE_DIR_NAME}\` folder into your Cocos project \`extensions/\` directory.
+2. Close the target Creator project. Back up any old extension outside \`extensions/\`, then place the complete extracted folder at \`<Cocos project>/extensions/${PACKAGE_DIR_NAME}\` without merging old files.
 3. Restart Cocos Creator or reload extensions.
 4. Open \`Cocos MCP Kit > MCP Server\`.
 
@@ -381,101 +397,37 @@ This folder contains the generated release artifacts for Cocos MCP Kit ${context
 \`\`\`bash
 shasum -a 256 -c SHA256SUMS.txt
 \`\`\`
+
+On Windows, use \`Get-FileHash -Algorithm SHA256 <artifact>\` and compare each result with \`SHA256SUMS.txt\`.
 `;
 }
 
-function buildGitHubReleaseNotes(context, manifest) {
-  const sections = parseChangelogSections(context.changelogNotes);
-  const rendered = [];
-  const used = new Set();
-  const order = [
-    ['Added', 'Added'],
-    ['Optimized', 'Optimized'],
-    ['Changed', 'Changed'],
-    ['Fixed', 'Fixed'],
-    ['Security', 'Security'],
-    ['Deprecated', 'Deprecated'],
-    ['Removed', 'Removed']
-  ];
-
-  for (const [sourceHeading, displayHeading] of order) {
-    const section = sections.find((item) => item.heading.toLowerCase() === sourceHeading.toLowerCase());
-    if (!section) {
-      continue;
-    }
-    used.add(section.heading);
-    rendered.push(`## ${displayHeading}`, '', ...section.lines, '');
-  }
-
-  for (const section of sections) {
-    if (used.has(section.heading)) {
-      continue;
-    }
-    rendered.push(`## ${section.heading}`, '', ...section.lines, '');
-  }
-
+function buildReleaseNotes(context, manifest) {
   const zip = manifest.artifacts.extensionZip;
   return [
-    `# Cocos MCP Kit ${context.tag}`,
+    `# Cocos MCP Kit ${context.tag} local candidate`,
     '',
-    ...rendered,
+    context.changelogNotes,
+    '',
     '## Release Assets',
     '',
     `- \`${zip.file}\` - Cocos Creator extension package.`,
     '- `release-manifest.json` - Machine-readable release metadata.',
     '- `SHA256SUMS.txt` - SHA-256 checksums for release artifacts.',
     '',
-    '## Publish Channels',
+    '## Distribution',
     '',
-    '- GitHub Release: Cocos Creator extension zip package.',
-    `- npm: \`${context.packageJson.name}@${context.version}\`.`,
+    'Local candidate only. No public publication, npm/Registry upload or update channel is enabled.',
     '',
     '## Verify',
     '',
     '```bash',
     'shasum -a 256 -c SHA256SUMS.txt',
     '```',
+    '',
+    'Windows: compare `Get-FileHash -Algorithm SHA256 <artifact>` with each entry in `SHA256SUMS.txt`.',
     ''
   ].join('\n');
-}
-
-function parseChangelogSections(notes) {
-  const sections = [];
-  let current = null;
-
-  for (const line of String(notes || '').split(/\r?\n/)) {
-    const heading = /^###\s+(.+?)\s*$/.exec(line);
-    if (heading) {
-      current = {
-        heading: heading[1].trim(),
-        lines: []
-      };
-      sections.push(current);
-      continue;
-    }
-
-    if (current) {
-      current.lines.push(line);
-    }
-  }
-
-  return sections
-    .map((section) => ({
-      heading: section.heading,
-      lines: trimBlankLines(section.lines)
-    }))
-    .filter((section) => section.lines.length > 0);
-}
-
-function trimBlankLines(lines) {
-  const trimmed = lines.slice();
-  while (trimmed.length && !trimmed[0].trim()) {
-    trimmed.shift();
-  }
-  while (trimmed.length && !trimmed[trimmed.length - 1].trim()) {
-    trimmed.pop();
-  }
-  return trimmed;
 }
 
 function validateArchivePaths(paths) {
@@ -540,26 +492,18 @@ SOFTWARE.`;
   }
 }
 
-function validateZipListing(zipPath) {
-  const result = childProcess.spawnSync('unzip', ['-Z1', zipPath], {
-    cwd: ROOT,
-    encoding: 'utf8'
-  });
-
-  if (result.error && result.error.code === 'ENOENT') {
-    console.warn('Warning: unzip is not available; skipped zip listing validation.');
-    return;
-  }
-
-  if (result.status !== 0) {
-    throw new Error(`Failed to inspect ${zipPath}:\n${result.stderr || result.stdout}`);
-  }
-
-  const listing = result.stdout
+function validateZipListing(zipPath, expectedFiles) {
+  const listing = (process.platform === 'win32'
+    ? run('tar.exe', ['-tf', zipPath])
+    : run('unzip', ['-Z1', zipPath]))
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
   validateArchivePaths(listing);
+  const actualFiles = listing.filter(p => !p.endsWith('/')).sort();
+  if (JSON.stringify(actualFiles) !== JSON.stringify([...expectedFiles].sort())) {
+    throw new Error('Release archive file listing does not match staged files.');
+  }
 }
 
 function validateArchiveContent(filePaths) {
@@ -617,7 +561,7 @@ function collectFiles(directory) {
 }
 
 function extractChangelogNotes(changelog, version) {
-  const heading = new RegExp(`^## \\[${escapeRegExp(version)}\\] - \\d{4}-\\d{2}-\\d{2}\\s*$`, 'm');
+  const heading = new RegExp(`^## \\[${escapeRegExp(version)}\\]${version === 'Unreleased' ? '' : ' - \\d{4}-\\d{2}-\\d{2}'}[ \\t]*$`, 'm');
   const match = heading.exec(changelog);
   if (!match) {
     return '';
@@ -632,15 +576,8 @@ function firstMeaningfulLine(text) {
   const line = text
     .split(/\r?\n/)
     .map((value) => value.trim())
-    .find((value) => value && !value.startsWith('###') && !value.startsWith('-'));
-  if (line) {
-    return line;
-  }
-  const bullet = text
-    .split(/\r?\n/)
-    .map((value) => value.trim())
-    .find((value) => value.startsWith('- '));
-  return bullet ? bullet.slice(2) : '';
+    .find((value) => value && !value.startsWith('#'));
+  return line ? line.replace(/^- /, '') : '';
 }
 
 function checksumLine(filePath, displayName) {
@@ -651,10 +588,10 @@ function sha256File(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
-function ensureCommand(name) {
-  const result = childProcess.spawnSync(name, ['-v'], { encoding: 'utf8' });
-  if (result.error && result.error.code === 'ENOENT') {
-    throw new Error(`Required command not found: ${name}`);
+function ensureCommand(name, args) {
+  const result = childProcess.spawnSync(name, args, { encoding: 'utf8' });
+  if (result.error || result.status !== 0) {
+    throw new Error(`Required command unavailable: ${name}: ${result.error?.message || result.stderr || result.stdout}`);
   }
 }
 

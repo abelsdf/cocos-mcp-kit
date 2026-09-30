@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
 const test = require('node:test');
 const { PACKAGE_INCLUDES, validateLicense, validateArchivePaths } = require('../scripts/release');
 const root = path.resolve(__dirname, '..');
@@ -86,4 +87,86 @@ for (const [name, mutate, error] of [
   const dir = fixture(t); mutate(dir); const result = check(dir);
   assert.notEqual(result.status, 0); assert.match(result.stderr, error);
   assert.equal(fs.existsSync(path.join(dir, 'releases')), false);
+});
+
+const hash = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const files = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(path.join(dir, e.name)) : [path.join(dir, e.name)]);
+function packageCandidate(dir, env = process.env) {
+  return spawnSync(process.execPath, [path.join(dir, 'scripts/release.js'), 'package'], { cwd: dir, encoding: 'utf8', env });
+}
+
+test('production packaging preserves earlier artifacts and extracts exactly the staged bytes', t => {
+  const dir = fixture(t), oldDir = path.join(dir, 'releases/0.1.0');
+  fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n- New current work.\n\nUpstream history notice.\n\n## [0.1.0] - 2026-09-30\n\nHistorical notes.\n');
+  fs.mkdirSync(oldDir, { recursive: true });
+  fs.writeFileSync(path.join(oldDir, 'previous.zip'), 'preserve me');
+  fs.mkdirSync(path.join(dir, '.release-tmp'));
+  fs.writeFileSync(path.join(dir, '.release-tmp/previous.txt'), 'preserve staging');
+  const preserved = {};
+  for (let i = 0; i < 2; i++) {
+    const result = packageCandidate(dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = /Release package ready: (.+)/.exec(result.stdout);
+    assert.ok(output, result.stdout);
+    const releaseDir = path.resolve(dir, output[1].trim());
+    assert.equal(path.dirname(releaseDir), oldDir);
+    const manifest = JSON.parse(fs.readFileSync(path.join(releaseDir, 'release-manifest.json')));
+    assert.equal(manifest.distribution, 'local-candidate');
+    assert.equal(manifest.notes, 'New current work.');
+    assert.equal(manifest.repository, null);
+    assert.equal(manifest.git.tag, null);
+    assert.equal(manifest.artifacts.extensionZip.githubDownloadUrl, null);
+    assert.equal(manifest.artifacts.extensionZip.sha256, hash(path.join(releaseDir, manifest.artifacts.extensionZip.file)));
+    for (const line of fs.readFileSync(path.join(releaseDir, 'SHA256SUMS.txt'), 'utf8').trim().split(/\r?\n/)) {
+      const [sum, name] = line.split('  ');
+      assert.equal(hash(path.join(releaseDir, name)), sum);
+    }
+    const notes = fs.readFileSync(path.join(releaseDir, 'RELEASE_NOTES.md'), 'utf8');
+    assert.match(notes, /No public publication/);
+    assert.match(notes, /New current work/);
+    assert.doesNotMatch(notes, /Historical notes/);
+    const unpack = path.join(dir, `unpack-${i}`);
+    fs.mkdirSync(unpack);
+    const archive = path.join(releaseDir, manifest.artifacts.extensionZip.file);
+    const extract = process.platform === 'win32'
+      ? spawnSync('tar.exe', ['-xf', archive, '-C', unpack], { encoding: 'utf8' })
+      : spawnSync('unzip', ['-q', archive, '-d', unpack], { encoding: 'utf8' });
+    assert.equal(extract.status, 0, extract.stderr);
+    const extracted = files(path.join(unpack, 'cocos-mcp-kit'));
+    assert.equal(extracted.length, manifest.artifacts.extensionZip.fileCount);
+    for (const p of extracted) assert.equal(hash(p), hash(path.join(dir, path.relative(path.join(unpack, 'cocos-mcp-kit'), p))));
+    validateLicense(fs.readFileSync(path.join(unpack, 'cocos-mcp-kit/LICENSE'), 'utf8'));
+    for (const [p, sum] of Object.entries(preserved)) assert.equal(hash(p), sum);
+    for (const p of files(releaseDir)) preserved[p] = hash(p);
+  }
+  assert.equal(fs.readFileSync(path.join(oldDir, 'previous.zip'), 'utf8'), 'preserve me');
+  assert.deepEqual(fs.readdirSync(path.join(dir, '.release-tmp')), ['previous.txt']);
+});
+
+test('missing archive tools refuse packaging without touching earlier artifacts', t => {
+  const dir = fixture(t), releaseDir = path.join(dir, 'releases/0.1.0');
+  fs.mkdirSync(releaseDir, { recursive: true });
+  fs.writeFileSync(path.join(releaseDir, 'previous.zip'), 'preserve me');
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.toLowerCase() === 'path') env[key] = path.join(dir, 'empty-path');
+  const result = packageCandidate(dir, env);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Required command/);
+  assert.deepEqual(fs.readdirSync(releaseDir), ['previous.zip']);
+  assert.equal(fs.existsSync(path.join(dir, '.release-tmp')), false);
+});
+
+for (const [name, response, error] of [
+  ['missing packaged file', { status: 0, stdout: 'cocos-mcp-kit/LICENSE\n' }, /listing does not match/],
+  ['unsafe archived path', { status: 0, stdout: 'cocos-mcp-kit/../escape.js\n' }, /invalid paths/],
+  ['inspection failure', { status: 1, stderr: 'controlled listing failure' }, /controlled listing failure/],
+]) test(`production packaging refuses ${name} instead of skipping inspection`, t => {
+  const dir = fixture(t), preload = path.join(dir, 'preload.js');
+  fs.writeFileSync(preload, `const cp=require('node:child_process'), original=cp.spawnSync;cp.spawnSync=(name,args,opts)=>args.includes('-tf')||args.includes('-Z1')?${JSON.stringify(response)}:original(name,args,opts);`);
+  const result = spawnSync(process.execPath, ['--require', preload, path.join(dir, 'scripts/release.js'), 'package'], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, error);
+  assert.match(result.stderr, /Incomplete candidate retained/);
+  assert.equal(files(path.join(dir, 'releases')).some(p => p.endsWith('release-manifest.json')), false);
+  assert.deepEqual(fs.readdirSync(path.join(dir, '.release-tmp')), []);
 });

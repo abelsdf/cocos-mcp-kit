@@ -12,7 +12,7 @@ The current target is Cocos Creator 3.8.x; the editor checks linked below were p
 
 - This repository is a Creator extension, not a game project. Use an existing Cocos project; start with a disposable test project and back up authored scenes/assets before editing.
 - The recorded editor acceptance uses **Windows / Creator 3.8.8**. Other 3.8.x versions and operating systems need their own checks. The local stdio bridge requires **Node.js 18+**; no npm runtime dependencies are bundled or need installation.
-- Version **0.1.0 remains Unreleased**. Source installation and scoped candidate-content/editor checks exist, but final packaged installation is still pending. The source repository is `abelsdf/cocos-mcp-kit`; there is no configured npm/Registry publication or default update source. Do not use an upstream installer or `npx` package as a substitute for this checkout.
+- Version **0.1.0 remains Unreleased**. A production-script local ZIP candidate has bounded manual-installation evidence on Windows / Creator 3.8.8; it is not a public release or extension-manager installer approval. The source repository is `abelsdf/cocos-mcp-kit`; there is no configured npm/Registry publication or default update source. Do not use an upstream installer or `npx` package as a substitute for this checkout.
 
 ### Install into one project
 
@@ -170,11 +170,11 @@ UI prefabs require an existing Canvas ancestor. Linked parent hierarchies, Canva
 
 ## Known limits and delivery status
 
-- Recorded persistence, UI clicks and screenshots cover specified Creator 3.8.8 samples, not all projects, text lengths, materials, aspect ratios or devices. Touch, other Creator versions/OSes and final package installation/update/uninstall remain unverified. [First-release evidence](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/FIRST_RELEASE_VISUAL_ACCEPTANCE_2026-09-30.md) and [disabled-style follow-up](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_DISABLED_STYLE_2026-09-30.md) state the tested scope.
+- Recorded persistence, UI clicks and screenshots cover specified Creator 3.8.8 samples, not all projects, text lengths, materials, aspect ratios or devices. Touch, other Creator versions/OSes, the extension-manager installer, updates and uninstall remain unverified. [First-release evidence](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/FIRST_RELEASE_VISUAL_ACCEPTANCE_2026-09-30.md) and [disabled-style follow-up](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/UI_DISABLED_STYLE_2026-09-30.md) state the tested scope; previous physical-click evidence is not a new-package click retest.
 - UI templates are fixed-layout starter JSON. They do not implement pause/resume logic, audio preferences, rewards, navigation, modal input blocking or focus management. Custom colors/art and long text need visual review.
 - Batch cleanup covers newly created nodes, not arbitrary script effects or scene-asset creation. Single-Undo recording is verified only on Creator 3.8.8; specialized prefab operations retain their documented non-nested/property-only limits. Partial or uncertain results require inspection, not automatic retries.
 - The strict Scene/Game View screenshot workflow requires a visible matching Creator window. It does not capture an external browser/Simulator, prove runtime scene freshness, or provide automatic visual approval: `visualValidation` remains `not_run`. The optional official CLI backend is not configured.
-- Current packages are local candidates, not a public release. The [release workflow](./RELEASE_WORKFLOW.md) records the missing `zip` prerequisite in the current Windows validation environment and same-version overwrite risk in the final-package script. Content checks and a test-generated ZIP do not replace final packaging and installation acceptance; do not run `release:verify` over artifacts that must be preserved.
+- Current packages are local candidates, not a public release. In a source checkout, `npm run release:package` uses Windows `tar.exe` or non-Windows `zip`/`unzip`, requires archive-list verification and writes a new `releases/<version>/candidate-<unique>/` without replacing earlier artifacts. Verify `SHA256SUMS.txt` before manual installation. See the [release workflow](./RELEASE_WORKFLOW.md) and [Windows local-install evidence](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/LOCAL_PACKAGE_INSTALL_2026-09-30.md); non-Windows packaging is not runtime-verified.
 
 ## Development and documentation
 
