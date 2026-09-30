@@ -65,9 +65,75 @@ function fixture(t) {
   fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [0.1.0] - 2026-09-30\n\nFixture.\n');
   return dir;
 }
-function check(dir) {
-  return spawnSync(process.execPath, [path.join(dir, 'scripts/release.js'), 'check'], { cwd: dir, encoding: 'utf8' });
+function check(dir, args = []) {
+  return spawnSync(process.execPath, [path.join(dir, 'scripts/release.js'), 'check', ...args], { cwd: dir, encoding: 'utf8' });
 }
+
+function git(dir, ...args) {
+  const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function taggedFixture(t) {
+  const dir = fixture(t);
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'releases/\n.release-tmp/\n');
+  fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n- Future work.\n\n## [0.1.0] - 2026-09-30\n\n- Tagged release notes.\n');
+  git(dir, 'init');
+  git(dir, 'config', 'user.name', 'Release test');
+  git(dir, 'config', 'user.email', 'release-test@example.invalid');
+  git(dir, 'remote', 'add', 'origin', 'git@github.com:abelsdf/cocos-mcp-kit.git');
+  git(dir, 'add', '.');
+  git(dir, 'commit', '-m', 'fixture');
+  git(dir, 'tag', '-a', 'v0.1.0', '-m', 'fixture pre-release');
+  return dir;
+}
+
+for (const [name, mutate, error] of [
+  ['missing tag', dir => git(dir, 'tag', '-d', 'v0.1.0'), /Git tag v0.1.0 does not exist/],
+  ['dirty source', dir => fs.appendFileSync(path.join(dir, 'README.md'), 'changed\n'), /clean working tree/],
+  ['tag on another commit', dir => { fs.appendFileSync(path.join(dir, 'README.md'), 'changed\n'); git(dir, 'add', '.'); git(dir, 'commit', '-m', 'later'); }, /must point to HEAD/],
+  ['wrong publication repository', dir => git(dir, 'remote', 'set-url', 'origin', 'https://github.com/example/other.git'), /origin to be abelsdf\/cocos-mcp-kit/],
+]) test(`GitHub pre-release refuses ${name} before creating artifacts`, t => {
+  const dir = taggedFixture(t); mutate(dir);
+  const result = check(dir, ['--github-prerelease']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, error);
+  assert.equal(fs.existsSync(path.join(dir, 'releases')), false);
+});
+
+test('GitHub pre-release refuses a non-Git source directory', t => {
+  const dir = fixture(t), result = check(dir, ['--github-prerelease']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Git checkout with a source commit/);
+  assert.equal(fs.existsSync(path.join(dir, 'releases')), false);
+});
+
+test('GitHub pre-release package records the owned repository and exact clean annotated tag', t => {
+  const dir = taggedFixture(t);
+  const result = spawnSync(process.execPath, [path.join(dir, 'scripts/release.js'), 'package', '--github-prerelease'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const output = /Release package ready: (.+)/.exec(result.stdout);
+  assert.ok(output, result.stdout);
+  const releaseDir = path.resolve(dir, output[1].trim());
+  const manifest = JSON.parse(fs.readFileSync(path.join(releaseDir, 'release-manifest.json')));
+  assert.equal(manifest.distribution, 'github-prerelease');
+  assert.equal(manifest.repository.url, 'https://github.com/abelsdf/cocos-mcp-kit');
+  assert.deepEqual(manifest.git, { tag: 'v0.1.0', commit: git(dir, 'rev-parse', 'HEAD'), dirty: false });
+  assert.equal(manifest.notes, 'Tagged release notes.');
+  assert.equal(manifest.artifacts.extensionZip.githubDownloadUrl, 'https://github.com/abelsdf/cocos-mcp-kit/releases/download/v0.1.0/CocosMcpKit.v0.1.0.zip');
+  const notes = fs.readFileSync(path.join(releaseDir, 'RELEASE_NOTES.md'), 'utf8');
+  assert.match(notes, /Pre-release/);
+  assert.match(notes, /Tagged release notes/);
+  assert.doesNotMatch(notes, /Future work|local candidate|No public publication/);
+  assert.match(notes, /automatic updates remain disabled/);
+  assert.match(fs.readFileSync(path.join(releaseDir, 'README.md'), 'utf8'), /clean, tagged source commit/);
+  for (const line of fs.readFileSync(path.join(releaseDir, 'SHA256SUMS.txt'), 'utf8').trim().split(/\r?\n/)) {
+    const [sum, name] = line.split('  ');
+    assert.equal(hash(path.join(releaseDir, name)), sum);
+  }
+  assert.equal(git(dir, 'status', '--porcelain'), '');
+});
 
 test('release check passes a complete isolated package without creating release artifacts', t => {
   const dir = fixture(t), result = check(dir);

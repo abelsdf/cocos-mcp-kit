@@ -23,4 +23,4 @@ Cocos MCP Kit 是独立的开源分支，不是 Funplay、VberAI 或 Cocos 的�
 
 `release:check` 检查两份清单一致、完整上游 MIT 文本、入包路径及现有敏感内容规则。此检查不证明任意新增代码的来源，也不能替代人工第三方审查。新增代码、资源、依赖或新的入包文件类型前，应重新核对来源、许可证、商用和再分发条件。
 
-源码远程为 `abelsdf/cocos-mcp-kit`；这不等于已有发布渠道。当前 `private:true`，默认自动更新源为空，npm/MCP Registry 发布及上游全局安装来源仍未启用。
+源码与 GitHub 预发布渠道均为 `abelsdf/cocos-mcp-kit`；预发布包只通过本项目 Release 手动分发，不代表稳定版或自动更新已启用。当前 `private:true`，默认自动更新源为空，npm/MCP Registry 发布及上游全局安装来源仍未启用。

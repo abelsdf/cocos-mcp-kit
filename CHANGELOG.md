@@ -6,6 +6,16 @@ This project follows a simple changelog format inspired by [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-30
+
+- First project-owned GitHub **Pre-release**, published only through `abelsdf/cocos-mcp-kit`. It is not a stable release; npm/MCP Registry publication and automatic updates remain disabled.
+- Provides 144 full-profile tools (43 core), local stdio bridging, project-isolated configuration and optional project Skills, scene/component/asset operations, and offline UI knowledge.
+- Adds validated node batches, JSON UI construction, editable pause/settings/result templates with clearly disabled unbound buttons, viewport context, structural UI validation and source-tagged screenshots. Game logic and assets remain project-owned; screenshot success is not an automatic visual verdict.
+- Windows ZIP packaging retains older candidates, verifies exact archive contents and the complete Funplay MIT license, and produces checksums and source metadata. Explicit `--github-prerelease` packaging requires the owned repository, a clean worktree and `v0.1.0` pointing to HEAD; default packaging remains a local candidate and never publishes.
+- Recorded editor acceptance is limited to Windows / Creator 3.8.8, including isolated manual installation, stdio connectivity, save/reopen/restart and separate real-click/visual samples. Extension-manager ZIP installation, updates/uninstall, exhaustive prefab/device coverage and other OS/Creator versions remain unverified. See the source repository's `docs/verification` records for exact dates and scope.
+
+## Cocos MCP Kit development record before 0.1.0
+
 - Made production local ZIP packaging work with Windows tar.exe, require archive inspection and exact staged file listings, preserve prior candidates in unique directories and clean only owned staging. Candidate metadata records actual tag/commit/dirty state and current Unreleased notes without suggesting npm/GitHub publication. Five new regressions cover repeated packaging, extracted bytes, missing tools and failed/unsafe/incomplete listings. See `docs/verification/LOCAL_PACKAGE_INSTALL_2026-09-30.md` for bounded manual installation and Creator 3.8.8 persistence evidence; public release, extension-manager installation and cross-platform acceptance remain separate.
 - Updated the bilingual installation and first-UI workflow documentation: explicit source/candidate layouts, local stdio endpoints and project identity checks, non-read-only core profile, troubleshooting, disabled-style behavior and current delivery limits. Development commands are source-checkout-only; final packaging/installation and public release remain separate pending work. No runtime behavior changed.
 - Restricted npm and extension ZIP contents to matching runtime/user-documentation lists, leaving commercial-interface references, development analyses and verification artifacts in the source repository. Added a bundled sources/license record and complete Funplay MIT validation; release checks now inspect selected files before staging and reject local instructions, environment files, restricted-source directories, unexpected file types and links. Existing credential heuristics are checked before packaging. See `docs/verification/PACKAGE_CONTENT_AUDIT_2026-09-30.md`; this is not final installation or public-release approval.

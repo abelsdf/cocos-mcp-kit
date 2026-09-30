@@ -1,6 +1,6 @@
 # Release workflow
 
-Cocos MCP Kit source is maintained in `abelsdf/cocos-mcp-kit`. No release/update source, npm publication, or MCP Registry namespace is configured yet. `package.json` is marked `private`, automatic update checks have no default source, and registry publishing is disabled. Do not publish artifacts using the upstream project's account, repository, Store page, or release channel.
+Cocos MCP Kit source and its manual GitHub Pre-release channel use `abelsdf/cocos-mcp-kit` exclusively. A GitHub pre-release is not stable-release approval and does not enable automatic updates, npm publication or MCP Registry publishing. `package.json` remains `private`, automatic update checks have no default source, and registry publishing is disabled. Do not publish artifacts using the upstream project's account, repository, Store page, or release channel.
 
 For a local test package, run `npm run check`, `npm test`, and `npm run pack:dry-run`. Test the extension in a clean Cocos Creator 3.8.x project, including save and reopen for edited scenes and assets.
 
@@ -14,4 +14,13 @@ Verify all four listed artifacts against `SHA256SUMS.txt`: on Windows compare `G
 
 The Windows local candidate has been checked by manual clean-directory installation in an isolated Creator 3.8.8 project, stdio connectivity and bounded UI save/reopen/full-restart checks; see the [local-package verification record](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/LOCAL_PACKAGE_INSTALL_2026-09-30.md). This does not validate the Creator extension-manager ZIP installer, automatic updates, uninstall, every prefab or another OS/version.
 
-Before public release, set the actual project-owned repository URL and release source, choose an available npm name and registry namespace if needed, review the release script and manifest output, then remove `private` only when publication is intended. Verify that the package contains [LICENSE](./LICENSE) and preserves the Funplay copyright notice.
+## Manual GitHub Pre-release
+
+1. Authenticate GitHub CLI and verify write/admin permission to `abelsdf/cocos-mcp-kit`. Check for an existing tag/release; do not replace published artifacts. Run the checks above and review known limitations, [LICENSE](./LICENSE) and third-party notices.
+2. Commit and push only the intended source/documentation changes to `main`. From a clean checkout, create an annotated `v<package.json version>` tag at that exact commit and push the tag to the same repository.
+3. Run `node scripts/release.js package --github-prerelease`. This explicit mode requires a source commit, clean worktree, matching tag at HEAD and the project-owned origin push URL. It records `github-prerelease`, that source commit/tag and the owned download URL, using the dated version notes instead of future Unreleased work. Default local packaging is unchanged; this command never uploads or publishes.
+4. Extract and compare every selected file with the tagged source, verify all checksums and the complete MIT license, and confirm runtime bytes match the recorded Creator acceptance sample. Documentation-only changes do not constitute a new physical-click or device test.
+5. Use GitHub CLI to create a **draft**, **pre-release**, with `--verify-tag` and `--latest=false`. Attach the ZIP, `release-manifest.json`, `SHA256SUMS.txt`, `RELEASE_NOTES.md` and `README.md`. Re-download draft assets into a new directory and compare all five hashes before publishing; never overwrite earlier local candidates.
+6. Publish the verified draft without changing its pre-release flag, then recheck its URL, tag/commit, public status, asset names/sizes/digests and downloaded bytes. Leave a failed or incomplete draft unpublished and report the blocker.
+
+For any future npm/Registry or automatic-update channel, choose and verify owned names/destinations separately and remove `private` only when npm publication is intended. GitHub Pre-release authorization does not authorize those channels or use of upstream sources.

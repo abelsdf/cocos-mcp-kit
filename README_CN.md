@@ -12,7 +12,7 @@ Cocos MCP Kit 是运行在 Cocos Creator 内的开源 MCP 扩展，方便兼容�
 
 - 本仓库是 Creator 扩展，不是游戏工程。需要已有的 Cocos 工程；建议先使用可丢弃的测试工程，编辑前备份场景和资源。
 - 现有编辑器验收环境为 **Windows / Creator 3.8.8**，其他 3.8.x 版本和操作系统需要另行验证。本地 stdio 桥接需要 **Node.js 18+**；没有需要额外安装的 npm 运行依赖。
-- 当前 **0.1.0 仍为 Unreleased**。正式脚本生成的本地 ZIP 候选已具备 Windows / Creator 3.8.8 限定样例的手动安装证据，不是对外发布或扩展管理器安装验收。源码仓库为 `abelsdf/cocos-mcp-kit`；尚未配置 npm/Registry 发布及默认更新源。不要用上游安装器或 `npx` 下载包代替本仓库版本。
+- **0.1.0 以 GitHub 预发布版（Pre-release）分发**，不是稳定正式版。请从[本项目 Release](https://github.com/abelsdf/cocos-mcp-kit/releases/tag/v0.1.0)下载 `CocosMcpKit.v0.1.0.zip` 和 `SHA256SUMS.txt`，核对校验和后安装。手动安装证据限于 Windows / Creator 3.8.8，扩展管理器安装仍未验收。npm/Registry 发布及默认自动更新保持关闭；不要用上游安装器或 `npx` 下载包代替。
 
 ### 安装到一个工程
 
@@ -174,7 +174,7 @@ MCP Resources 新增 `cocos://knowledge/index` 精简目录，可按 `cocos://kn
 - UI 模板是固定布局的起始 JSON，不实现暂停/恢复、音频偏好、奖励、导航、弹窗输入拦截或焦点管理。自定义配色、素材和长文本仍需视觉检查。
 - 批次清理仅覆盖本次新节点，不回滚任意脚本副作用或场景资源创建。单次 Undo 记录仅在 Creator 3.8.8 验证；预制体专项仍受文档中的非嵌套/纯属性边界限制。部分完成或结果不明时先检查，不自动重试。
 - 严格的 Scene/Game View 截图流程要求可见且匹配的 Creator 窗口，不捕获外部浏览器/Simulator、不证明运行场景新鲜度，也不自动判定视觉通过，`visualValidation` 始终为 `not_run`。可选官方 CLI 后端尚未配置。
-- 当前包仅为本地候选，不是正式发布。在源码副本中运行 `npm run release:package`：Windows 使用 `tar.exe`，非 Windows 需要 `zip`/`unzip`；必须通过归档清单核验，每次写入新的 `releases/<version>/candidate-<unique>/`，不覆盖旧产物。手动安装前核对 `SHA256SUMS.txt`。详见[发布流程](./RELEASE_WORKFLOW.md)和[Windows 本地安装证据](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/LOCAL_PACKAGE_INSTALL_2026-09-30.md)；非 Windows 打包尚未实机验证。
+- 默认 `npm run release:package` 仍生成本地候选；显式 `--github-prerelease` 打包要求干净源码及指向当前提交的版本标签，并记录本项目 GitHub 目的地，两种命令都不执行发布。Windows 使用 `tar.exe`；非 Windows 需要 `zip`/`unzip`，仍未实测。每次写入新的 `releases/<version>/candidate-<unique>/`，不覆盖旧产物。手动安装前核对 `SHA256SUMS.txt`。详见[发布流程](./RELEASE_WORKFLOW.md)和[Windows 本地安装证据](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/LOCAL_PACKAGE_INSTALL_2026-09-30.md)。
 
 ## 开发与文档
 

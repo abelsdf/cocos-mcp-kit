@@ -11,7 +11,7 @@ const PACKAGE_DIR_NAME = 'cocos-mcp-kit';
 const RELEASES_DIR = path.join(ROOT, 'releases');
 const TEMP_DIR = path.join(ROOT, '.release-tmp');
 const ZIP_PREFIX = 'CocosMcpKit';
-const REPOSITORY_URL = '';
+const REPOSITORY_URL = 'https://github.com/abelsdf/cocos-mcp-kit';
 
 const REQUIRED_REPO_FILES = [
   'package.json',
@@ -143,7 +143,8 @@ function main() {
 function parseOptions(args) {
   const options = {
     version: '',
-    strictTag: false
+    strictTag: false,
+    githubPrerelease: false
   };
 
   for (let i = 0; i < args.length; i += 1) {
@@ -153,6 +154,8 @@ function parseOptions(args) {
       i += 1;
     } else if (arg === '--strict-tag') {
       options.strictTag = true;
+    } else if (arg === '--github-prerelease') {
+      options.githubPrerelease = true;
     } else {
       throw new Error(`Unknown release option: ${arg}`);
     }
@@ -226,8 +229,23 @@ function checkRelease(options = {}) {
     }
   }
 
-  if (options.strictTag && !gitTagExists(tag)) {
+  const gitCommit = gitText(['rev-parse', 'HEAD']).trim();
+  const gitStatus = (options.githubPrerelease && gitCommit
+    ? run('git', ['status', '--porcelain']) : gitText(['status', '--porcelain'])).trim();
+  const gitTag = gitTagExists(tag) ? tag : null;
+  if ((options.strictTag || options.githubPrerelease) && !gitTag) {
     errors.push(`Git tag ${tag} does not exist. Create it before publishing.`);
+  }
+  if (options.githubPrerelease) {
+    if (!gitCommit) errors.push('GitHub pre-release requires a Git checkout with a source commit.');
+    if (gitStatus) errors.push('GitHub pre-release requires a clean working tree.');
+    if (gitTag && gitText(['rev-parse', `refs/tags/${tag}^{commit}`]).trim() !== gitCommit) {
+      errors.push(`Git tag ${tag} must point to HEAD for a GitHub pre-release.`);
+    }
+    const origin = gitText(['remote', 'get-url', '--push', 'origin']).trim();
+    if (!['git@github.com:abelsdf/cocos-mcp-kit.git', REPOSITORY_URL, `${REPOSITORY_URL}.git`].includes(origin)) {
+      errors.push('GitHub pre-release requires origin to be abelsdf/cocos-mcp-kit.');
+    }
   }
 
   throwErrors(errors);
@@ -245,10 +263,12 @@ function checkRelease(options = {}) {
     packageJson,
     version,
     tag,
-    changelogNotes: extractChangelogNotes(changelog, 'Unreleased') || extractChangelogNotes(changelog, version),
-    gitTag: gitTagExists(tag) ? tag : null,
-    gitCommit: gitText(['rev-parse', 'HEAD']).trim(),
-    gitDirty: gitText(['status', '--porcelain']).trim() !== ''
+    changelogNotes: options.githubPrerelease ? extractChangelogNotes(changelog, version) :
+      extractChangelogNotes(changelog, 'Unreleased') || extractChangelogNotes(changelog, version),
+    githubPrerelease: Boolean(options.githubPrerelease),
+    gitTag,
+    gitCommit,
+    gitDirty: gitStatus !== ''
   };
 }
 
@@ -345,9 +365,9 @@ function copyIntoPackage(relative, stagingRoot) {
 function buildManifest(context, artifact) {
   return {
     version: context.version,
-    distribution: 'local-candidate',
+    distribution: context.githubPrerelease ? 'github-prerelease' : 'local-candidate',
     generatedAt: new Date().toISOString(),
-    repository: REPOSITORY_URL ? { url: REPOSITORY_URL, source: 'github' } : null,
+    repository: context.githubPrerelease ? { url: REPOSITORY_URL, source: 'github' } : null,
     git: {
       tag: context.gitTag,
       commit: context.gitCommit,
@@ -366,7 +386,7 @@ function buildManifest(context, artifact) {
         sizeBytes: artifact.zipSize,
         fileCount: artifact.fileCount,
         installDirectory: 'extensions/cocos-mcp-kit',
-        githubDownloadUrl: REPOSITORY_URL ? `${REPOSITORY_URL}/releases/download/${context.tag}/${artifact.zipName}` : null
+        githubDownloadUrl: context.githubPrerelease ? `${REPOSITORY_URL}/releases/download/${context.tag}/${artifact.zipName}` : null
       }
     },
     notes: firstMeaningfulLine(context.changelogNotes)
@@ -375,15 +395,20 @@ function buildManifest(context, artifact) {
 
 function buildReleaseReadme(context, manifest) {
   const zip = manifest.artifacts.extensionZip;
+  const distribution = context.githubPrerelease
+    ? `Prepared for the project-owned GitHub pre-release at ${REPOSITORY_URL}/releases/tag/${context.tag}. The manifest records the clean, tagged source commit. This is not a stable release; npm/Registry publication and automatic updates remain disabled.`
+    : 'This folder contains local candidate artifacts. No publication is performed by this command. The manifest records the source commit and whether the workspace was dirty; a candidate is not a tagged release.';
   return `# Cocos MCP Kit ${context.tag}
 
-This folder contains local candidate artifacts for Cocos MCP Kit ${context.tag}. No public publication or update channel is enabled. The manifest records the source commit and whether the workspace was dirty; a candidate is not a tagged release.
+${distribution}
 
 ## Artifacts
 
 - \`${zip.file}\` - Cocos Creator extension package.
 - \`release-manifest.json\` - Machine-readable release metadata.
 - \`SHA256SUMS.txt\` - SHA-256 checksums for release artifacts.
+- \`RELEASE_NOTES.md\` - Version notes and distribution limits.
+- \`README.md\` - Installation and checksum instructions.
 
 ## Install
 
@@ -405,7 +430,7 @@ On Windows, use \`Get-FileHash -Algorithm SHA256 <artifact>\` and compare each r
 function buildReleaseNotes(context, manifest) {
   const zip = manifest.artifacts.extensionZip;
   return [
-    `# Cocos MCP Kit ${context.tag} local candidate`,
+    `# Cocos MCP Kit ${context.tag} ${context.githubPrerelease ? 'Pre-release' : 'local candidate'}`,
     '',
     context.changelogNotes,
     '',
@@ -414,10 +439,13 @@ function buildReleaseNotes(context, manifest) {
     `- \`${zip.file}\` - Cocos Creator extension package.`,
     '- `release-manifest.json` - Machine-readable release metadata.',
     '- `SHA256SUMS.txt` - SHA-256 checksums for release artifacts.',
+    '- `RELEASE_NOTES.md` and `README.md` - Version notes and installation instructions.',
     '',
     '## Distribution',
     '',
-    'Local candidate only. No public publication, npm/Registry upload or update channel is enabled.',
+    context.githubPrerelease
+      ? `GitHub Pre-release only: ${REPOSITORY_URL}/releases/tag/${context.tag}. Not a stable release. npm/Registry publication and automatic updates remain disabled. The ZIP includes the complete Funplay MIT license; see its LICENSE and docs/SOURCES_AND_LICENSES.md.`
+      : 'Local candidate only. No public publication, npm/Registry upload or update channel is enabled.',
     '',
     '## Verify',
     '',
@@ -645,8 +673,8 @@ function throwErrors(errors) {
 
 function printUsage() {
   console.error(`Usage:
-  node scripts/release.js check [--version <version>] [--strict-tag]
-  node scripts/release.js package [--version <version>] [--strict-tag]`);
+  node scripts/release.js check [--version <version>] [--strict-tag] [--github-prerelease]
+  node scripts/release.js package [--version <version>] [--strict-tag] [--github-prerelease]`);
 }
 
 if (require.main === module) {
