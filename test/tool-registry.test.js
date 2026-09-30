@@ -149,7 +149,7 @@ test('core profile exposes the documented focused tool set', () => {
 
 test('full profile exposes all built-in tools', () => {
   const tools = createRegistry('full').listTools();
-  assert.equal(tools.length, 154);
+  assert.equal(tools.length, 156);
   assert.equal(tools.find(tool => tool.name === 'verify_ui').annotations.destructiveHint, false);
   assert.equal(tools.find(tool => tool.name === 'validate_ui').annotations.readOnlyHint, true);
   assert.equal(tools.find(tool => tool.name === 'get_ui_template').annotations.readOnlyHint, true);
@@ -157,6 +157,8 @@ test('full profile exposes all built-in tools', () => {
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.readOnlyHint, false);
   assert.equal(tools.find(tool => tool.name === 'build_ui').annotations.destructiveHint, true);
   assert.equal(tools.find(tool => tool.name === 'create_node_batch').annotations.destructiveHint, true);
+  assert.equal(tools.find(tool => tool.name === 'copy_nodes_between_scenes').annotations.destructiveHint, true);
+  assert.equal(tools.find(tool => tool.name === 'finalize_cross_scene_cut').annotations.destructiveHint, true);
   assert.equal(tools.some((tool) => tool.name === 'check_asset_ready'), true);
   assert.equal(tools.some((tool) => tool.name === 'query_asset_path'), true);
   assert.equal(tools.find((tool) => tool.name === 'query_asset_path').annotations.readOnlyHint, true);

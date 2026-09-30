@@ -1,6 +1,6 @@
 # 节点批次 DTO、预检与受限创建 v1
 
-范围：FR-29 的 P0 批次与恢复基础，不是跨场景复制。此 DTO 由 Cocos MCP Kit 独立定义，不包含 Creator 序列化 dump 或官方 CLI 的私有对象。`validate_node_batch`（core/full）仅对声明式批次做静态预检，**不读取、创建、删除、保存或撤销场景内容**。`create_node_batch`（仅 full）在 Creator 中核对实际目标、组件和资源后，执行下述受限的新节点创建。面向用户的嵌套 JSON 由独立的 [UI 构建器](UI_BUILDER.md)编译，不与传输 DTO 混为一个 schema。
+范围：FR-29 的 P0 批次、恢复及受限跨场景传输。此 DTO 由 Cocos MCP Kit 独立定义，不包含 Creator 序列化 dump、原生剪贴板载荷或官方 CLI 的私有对象。`validate_node_batch`（core/full）仅对声明式批次做静态预检，**不读取、创建、删除、保存或撤销场景内容**。`create_node_batch`（仅 full）在 Creator 中核对实际目标、组件和资源后执行受限的新节点创建；`copy_nodes_between_scenes` 与 `finalize_cross_scene_cut`（仅 full）在更严格的干净场景和两阶段恢复边界内复用同一 DTO。面向用户的嵌套 JSON 由独立的 [UI 构建器](UI_BUILDER.md)编译，不与传输 DTO 混为一个 schema。
 
 ```json
 {
@@ -27,7 +27,7 @@
 
 DTO 限制：最多 128 个节点、每节点 16 个组件、256 条引用、256 KiB JSON 和 16 层层级。返回父先子的创建顺序、引用处理计划、问题代码与定位路径；不返回原始大段属性正文。输入字段与属性对象必须是可安全传输的 JSON 值，原型污染键被拒绝。静态 `valid: true` 不保证某个组件或属性被写入口支持。
 
-v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有限数的局部坐标；顶层 `ui:true` 启用构建器的严格 UI 上下文检查（只能为 true 或省略）。严格模式要求每节点 UITransform，Label 显式 CLAMP、Sprite 显式 CUSTOM，目标父节点 active/UITransform、最近 Canvas 启用且关联同场景有效屏幕相机，visibility 覆盖继承层；预检/资源加载后/写入后均检查。返回 `uiContext` 的 Canvas/Camera 身份，不计算屏幕边界；不加 `ui` 的原有批次继续遵循原兼容路径。
+v1 向后兼容增加可选节点字段 `active`、`position:{x,y,z}`、`rotation:{x,y,z,w}` 和 `scale:{x,y,z}`，以及组件字段 `enabled`；数值均须有限，旋转使用局部四元数。顶层 `ui:true` 启用构建器的严格 UI 上下文检查（只能为 true 或省略）。严格模式要求每节点 UITransform，Label 显式 CLAMP、Sprite 显式 CUSTOM，目标父节点 active/UITransform、最近 Canvas 启用且关联同场景有效屏幕相机，visibility 覆盖继承层；预检/资源加载后/写入后均检查。返回 `uiContext` 的 Canvas/Camera 身份，不计算屏幕边界；不加 `ui` 的原有批次继续遵循原兼容路径。
 
 ## 写入口与预检
 
@@ -39,7 +39,7 @@ v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有
 - 无组件的普通节点不要求 Canvas。带组件的节点必须有已有 Canvas 祖先，且显式声明一个 `cc.UITransform`。同节点不允许重复组件类型或同时存在 Label 与 Sprite。
 - 字面量先做类型校验；引用字段只能用 `references` 或字面量 `null`。内部节点/组件引用在创建后绑定真实对象；字段资源须是 asset-db 精确解析、类型匹配的已导入项目 SpriteFrame，保留真实子资源 UUID，不猜测后缀、不接受内置资源。脚本 UUID 另按 cc.Script 核验，不通过资源加载器执行脚本。加载失败发生在创建前。
 - `externalPolicy: "clear"` 只对 Sprite.spriteFrame / ProgressBar.barSprite 设为 `null`，不读取外部目标。Button.target 在激活时会被 Creator 自动设为自身，因此显式 null / external clear 写前拒绝，须使用内部节点引用或保留默认行为。`resolve` 的静态计划仍可生成，但实际解析绑定未实现，包含该动作的写入被拒绝。
-- 预检后再次核对编辑器、资源和父节点结构。节点先保持 inactive，依次创建组件、赋值、绑定，再激活并等待回读。新节点继承父 layer，可选 position 通过公开 setPosition 设置并回读；旋转/缩放使用默认值，不接收 active 或任意构造脚本。严格 UI 模式在渲染属性和引用绑定后再应用声明尺寸。
+- 预检后再次核对编辑器、资源和父节点结构。节点先保持 inactive，依次创建组件、赋值、绑定，再恢复声明的 active/enabled 并等待回读。新节点继承目标父 layer；局部 position、quaternion rotation 与 scale 分别通过公开 Node API 设置并回读。严格 UI 模式在渲染属性和引用绑定后再应用声明尺寸。
 
 | 组件 | 支持的属性/引用 |
 | --- | --- |
@@ -77,6 +77,16 @@ v1 向后兼容增加两个可选字段：节点 `position:{x,y,z}` 为三个有
 
 场景写调用丢失响应时返回 `uncertain:true`、`cleanup.status:"not_attempted"`，不重试、不猜测应删节点；空残留列表此时代表身份未知，**不是零残留证明**。先检查现场再决定后续操作。失败时 `needsSave:null`，不能将清理完成解释为原场景没有未保存内容。同一扩展进程的同项目并发批次请求会被拒绝。
 
-这不是跨资源全事务：失败清理不恢复旧节点/资源、场景切换、用户并发编辑或项目监听脚本造成的外部副作用。只承诺已记录新节点的限定清理范围；剪切/跨场景粘贴和外部引用解析仍待实现与适配验证。
+这不是跨资源全事务：失败清理不恢复旧节点/资源、用户并发编辑或项目监听脚本造成的外部副作用。只承诺已记录新节点的限定清理范围；外部引用 `resolve` 仍未实现。
+
+## 跨场景复制与两阶段剪切
+
+`copy_nodes_between_scenes` 只接受当前已保存、干净、单标签 general 场景中的 1—128 个同父根节点。它通过公开运行时对象读取普通节点子树，生成 DTO v1，使用安全场景切换进入另一个已导入可写场景，再调用同一 `create_node_batch` 创建和回读新身份。成功后目标保持 `needsSave:true`，源场景文件和节点均不修改；不读取 Creator 私有序列化格式，不操作系统或原生剪贴板，不自动保存、回滚或重试。
+
+首版导出范围严格等于 DTO 可声明子集：普通节点的 active/局部变换、受支持内置组件的 enabled 和上表字段，以及内部 Node/Component 与项目 SpriteFrame 引用。根按源同级顺序传输，子节点按原顺序创建；目标节点继承目标父 layer。关联预制体、DontSave 节点、项目脚本、Button clickEvents、未列出的组件/字段和外部 Button.target 均写前拒绝。`externalPolicy:"clear"` 只允许可空的受支持外部字段，并会明确丢弃该引用；默认 `reject`。返回 `fidelity:"node_batch_dto_v1_declared_fields"`，不能解释为任意组件的完整克隆。
+
+设置 `prepareCut:true` 仍只复制，并返回当前扩展进程内最多 32 个的 `transferId`。随后必须由调用方显式保存目标，再调用 `finalize_cross_scene_cut`：工具重新导出目标并逐项比对 DTO/父节点，安全切回源，确认源内容、根 UUID、父节点和外部反向引用均未变化，才在 Creator 3.8.8 通过 `begin-recording(sourceParentUuid)` 建立录制并删除源根，成功后 `end-recording`。源场景仍保持未保存，磁盘上的原源场景在用户显式保存前就是恢复副本，并同时返回一次原生 Undo。目标未保存、任一内容漂移、反向引用、新旧版本不符或录制建立失败时均不删除源。
+
+删除响应丢失或录制结束异常时，不自动取消、重试或猜测完成状态；同项目后续传输在本进程内隔离，要求检查源场景并安全重启 Creator。收到明确删除失败结果时才取消已知录制。`transferId` 不跨扩展重载或 Creator 重启持久化，也不是恢复凭据；原生剪贴板互通不在本实现范围。
 
 纯逻辑、场景模拟和编辑器入口测试分别见 `test/node-batch-dto.test.js`、`test/node-batch-scene.test.js`、`test/node-batch-create.test.js`。Creator 3.8.8 的正式创建、故障注入、保存/重开和完整重启证据见[批次创建验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/NODE_BATCH_CREATE_2026-09-28.md)；后续原生分组与不确定历史边界见[单次 Undo 验证](https://github.com/abelsdf/cocos-mcp-kit/blob/main/docs/verification/NODE_BATCH_UNDO_2026-09-28.md)。场景脚本采用[官方扩展 IPC](https://docs.cocos.com/creator/3.8/manual/en/editor/extension/scene-script.html)传输 JSON 参数和结果，不跨进程传递 Cocos 原生对象；具体录制消息取自 Creator 消息管理器的公开说明和示例，并另行实测，不从通用 IPC API 推断支持。
