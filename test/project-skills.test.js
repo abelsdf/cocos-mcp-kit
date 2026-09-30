@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -121,14 +122,15 @@ test('legacy official skill is updateable without being treated as user-modified
   assert.equal(result.state.backupCount, 1);
 });
 
-for (const managed of [true, false]) {
-  test(`UI skill v1 ${managed ? 'with' : 'without'} a manifest can upgrade to v2`, (t) => {
+for (const [managed, lineEnding] of [[true, 'LF'], [true, 'CRLF'], [false, 'LF'], [false, 'CRLF']]) {
+  test(`UI skill v1 ${managed ? 'with' : 'without'} a manifest and ${lineEnding} can upgrade to v2`, (t) => {
+    const original = UI_SKILL_V1_CONTENT.replace(/\r\n/g, '\n').replace(/\n/g, lineEnding === 'CRLF' ? '\r\n' : '\n');
     const projectPath = createProject(t);
     const options = { skillName: COCOS_UI_SKILL_NAME };
     const target = getSkillRelativePath(COCOS_UI_SKILL_NAME);
-    writeProjectInstruction(projectPath, { target, content: UI_SKILL_V1_CONTENT });
+    writeProjectInstruction(projectPath, { target, content: original });
     if (managed) {
-      writeManagedSkillManifest(projectPath, UI_SKILL_V1_CONTENT, {
+      writeManagedSkillManifest(projectPath, original, {
         ...options,
         templateVersion: 1,
         extensionVersion: '0.5.2',
@@ -145,20 +147,45 @@ for (const managed of [true, false]) {
     const preview = previewBuiltInProjectSkillUpdate(projectPath, options);
     assert.equal(preview.addedLines, 1);
     assert.equal(preview.removedLines, 1);
-    assert.equal(readProjectInstruction(projectPath, target).content, UI_SKILL_V1_CONTENT);
+    assert.equal(readProjectInstruction(projectPath, target).content, original);
 
     const result = updateBuiltInProjectSkill(projectPath, options);
     assert.equal(result.updated, true);
     assert.equal(result.state.status, 'current');
     assert.equal(result.state.installedTemplateVersion, 2);
     assert.equal(result.state.backupCount, 1);
-    assert.equal(readProjectInstruction(projectPath, result.backup.path).content, UI_SKILL_V1_CONTENT);
-    assert.equal(readProjectInstruction(projectPath, target).content, UI_SKILL_V1_CONTENT.replace(
+    assert.equal(readProjectInstruction(projectPath, result.backup.path).content, original);
+    assert.equal(readProjectInstruction(projectPath, target).content, original.replace(/\r\n/g, '\n').replace(
       'https://docs.cocos.com/creator/3.8/manual/en/ui-system/)',
       'https://docs.cocos.com/creator/3.8/manual/en/2d-object/ui-system/)'
     ));
   });
 }
+
+test('legacy workflow CRLF recognition preserves raw hashes and backup bytes', (t) => {
+  const projectPath = createProject(t);
+  const original = buildLegacyCocosMcpProjectSkillContent().replace(/\n/g, '\r\n');
+  writeProjectInstruction(projectPath, { target: getSkillRelativePath(), content: original });
+  const state = getCocosMcpProjectSkillState(projectPath);
+  assert.equal(state.status, 'update-available');
+  assert.equal(state.currentHash, crypto.createHash('sha256').update(original).digest('hex'));
+  const result = updateCocosMcpProjectSkill(projectPath);
+  assert.equal(result.state.status, 'current');
+  assert.equal(readProjectInstruction(projectPath, result.backup.path).content, original);
+});
+
+test('legacy UI CRLF recognition does not ignore spaces or local edits', (t) => {
+  const projectPath = createProject(t);
+  const options = { skillName: COCOS_UI_SKILL_NAME };
+  const target = getSkillRelativePath(COCOS_UI_SKILL_NAME);
+  const original = UI_SKILL_V1_CONTENT.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+  const modified = original.replace('description:', 'description: ');
+  assert.notEqual(modified, original);
+  writeProjectInstruction(projectPath, { target, content: modified });
+  assert.equal(getBuiltInProjectSkillState(projectPath, options).status, 'modified');
+  assert.throws(() => updateBuiltInProjectSkill(projectPath, options), /local modifications/);
+  assert.equal(readProjectInstruction(projectPath, target).content, modified);
+});
 
 test('UI skill v1 with local changes is protected during the v2 update', (t) => {
   const projectPath = createProject(t);

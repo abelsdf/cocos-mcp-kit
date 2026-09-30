@@ -43,22 +43,25 @@ test('Kimi uses the nearest Git root, including .git files used by worktrees', (
   assert.equal(getProjectSkillsState(child, { clientId: 'kimi' }).projectPath, root);
 });
 
-test('legacy Codex UI v1 migrates with a backup and preserves the original file', (t) => {
-  const root = project(t);
-  const legacy = path.join(root, '.codex', 'skills', COCOS_UI_SKILL_NAME, 'SKILL.md');
-  fs.mkdirSync(path.dirname(legacy), { recursive: true });
-  const original = fs.readFileSync(path.join(__dirname, 'fixtures/cocos-ui-skill-v1.md'), 'utf8');
-  fs.writeFileSync(legacy, original);
-  const options = { clientId: 'codex', skillName: COCOS_UI_SKILL_NAME };
-  const state = getBuiltInProjectSkillState(root, options);
-  assert.equal(state.status, 'update-available');
-  assert.ok(state.legacyPath);
-  const result = updateBuiltInProjectSkill(root, options);
-  assert.equal(result.state.status, 'current');
-  assert.equal(fs.readFileSync(legacy, 'utf8'), original);
-  assert.equal(fs.readFileSync(path.join(root, result.backup.path), 'utf8'), original);
-  assert.equal(fs.readFileSync(path.join(root, result.write.path), 'utf8'), buildCocosUiProjectSkillContent());
-});
+for (const lineEnding of ['LF', 'CRLF']) {
+  test(`legacy Codex UI v1 with ${lineEnding} migrates with a backup and preserves the original file`, (t) => {
+    const root = project(t);
+    const legacy = path.join(root, '.codex', 'skills', COCOS_UI_SKILL_NAME, 'SKILL.md');
+    fs.mkdirSync(path.dirname(legacy), { recursive: true });
+    const original = fs.readFileSync(path.join(__dirname, 'fixtures/cocos-ui-skill-v1.md'), 'utf8')
+      .replace(/\r\n/g, '\n').replace(/\n/g, lineEnding === 'CRLF' ? '\r\n' : '\n');
+    fs.writeFileSync(legacy, original);
+    const options = { clientId: 'codex', skillName: COCOS_UI_SKILL_NAME };
+    const state = getBuiltInProjectSkillState(root, options);
+    assert.equal(state.status, 'update-available');
+    assert.ok(state.legacyPath);
+    const result = updateBuiltInProjectSkill(root, options);
+    assert.equal(result.state.status, 'current');
+    assert.equal(fs.readFileSync(legacy, 'utf8'), original);
+    assert.equal(fs.readFileSync(path.join(root, result.backup.path), 'utf8'), original);
+    assert.equal(fs.readFileSync(path.join(root, result.write.path), 'utf8'), buildCocosUiProjectSkillContent());
+  });
+}
 
 test('legacy modified Skills require consent and never replace an existing new-directory file', (t) => {
   const root = project(t);
